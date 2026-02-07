@@ -1,0 +1,180 @@
+---
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import { useTranslations } from '../i18n/utils';
+import type { Lang } from '../i18n/utils';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const basePath = `/${lang}`;
+---
+
+<header id="main-header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+  <nav class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+    <!-- Logo -->
+    <a href={`${basePath}/`} class="flex items-center group flex-shrink-0">
+      <img
+        src="/logo-transparent.svg"
+        alt="AIon Growth Studio"
+        class="h-14 w-auto transition-transform duration-300 group-hover:scale-105"
+      />
+    </a>
+
+    <!-- Right side: Nav + Search + Language -->
+    <div class="hidden lg:flex items-center gap-1">
+      <a href={`${basePath}/#soluciones`} class="nav-link">{t('nav.soluciones')}</a>
+      <a href={`${basePath}/`} class="nav-link">{t('nav.plataforma')}</a>
+      <a href={`${basePath}/#diagnostico`} class="nav-link">{t('nav.diagnostico')}</a>
+      <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="nav-link">{t('nav.blog')}</a>
+      <a href={`${basePath}/#diagnostico`} class="nav-link">{t('nav.contacto')}</a>
+
+      <!-- Search -->
+      <button class="p-2.5 ml-2 rounded-xl hover:bg-white/10 transition-colors" aria-label="Search">
+        <svg class="w-5 h-5 text-current opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </button>
+
+      <!-- Divider -->
+      <div class="w-px h-5 bg-current opacity-20 mx-2"></div>
+
+      <!-- Language Switcher -->
+      <LanguageSwitcher lang={lang} />
+    </div>
+
+    <!-- Mobile menu button -->
+    <button
+      id="mobile-menu-btn"
+      class="lg:hidden p-2.5 rounded-xl hover:bg-white/10 transition-colors"
+      aria-label="Open menu"
+      aria-expanded="false"
+    >
+      <svg id="menu-icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+      <svg id="menu-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div id="mobile-menu" class="lg:hidden hidden">
+    <div class="px-6 py-6 bg-aion-dark/98 backdrop-blur-xl border-t border-white/10">
+      <div class="flex flex-col gap-1">
+        <a href={`${basePath}/#soluciones`} class="mobile-nav-link">{t('nav.soluciones')}</a>
+        <a href={`${basePath}/`} class="mobile-nav-link">{t('nav.plataforma')}</a>
+        <a href={`${basePath}/#diagnostico`} class="mobile-nav-link">{t('nav.diagnostico')}</a>
+        <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="mobile-nav-link">{t('nav.blog')}</a>
+        <a href={`${basePath}/#diagnostico`} class="mobile-nav-link">{t('nav.contacto')}</a>
+      </div>
+      <div class="mt-6 pt-6 border-t border-white/10">
+        <LanguageSwitcher lang={lang} />
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Spacer for fixed header -->
+<div class="h-20"></div>
+
+<style>
+  #main-header {
+    background: rgba(11, 27, 61, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: white;
+  }
+
+  #main-header.scrolled {
+    background: rgba(11, 27, 61, 0.98);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .nav-link {
+    position: relative;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    transition: color 0.2s ease;
+    border-radius: 0.75rem;
+  }
+
+  .nav-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 1rem;
+    right: 1rem;
+    height: 2px;
+    background: linear-gradient(90deg, #0066FF, #00D4FF);
+    border-radius: 1px;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+
+  .nav-link:hover::after {
+    transform: scaleX(1);
+  }
+
+  .mobile-nav-link {
+    display: block;
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-nav-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+</style>
+
+<script>
+  // Scroll effect
+  const header = document.getElementById('main-header');
+  if (header) {
+    window.addEventListener('scroll', () => {
+      header.classList.toggle('scrolled', window.scrollY > 20);
+    });
+  }
+
+  // Mobile menu toggle
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const iconOpen = document.getElementById('menu-icon-open');
+  const iconClose = document.getElementById('menu-icon-close');
+
+  if (menuBtn && mobileMenu && iconOpen && iconClose) {
+    menuBtn.addEventListener('click', () => {
+      const isOpen = !mobileMenu.classList.contains('hidden');
+      mobileMenu.classList.toggle('hidden');
+      iconOpen.classList.toggle('hidden');
+      iconClose.classList.toggle('hidden');
+      menuBtn.setAttribute('aria-expanded', String(!isOpen));
+    });
+
+    // Close on link click
+    mobileMenu.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+        iconOpen.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+        menuBtn.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
+</script>

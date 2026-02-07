@@ -1,0 +1,143 @@
+---
+import Layout from './Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const { frontmatter } = Astro.props;
+const lang = 'es';
+---
+
+<Layout title={`${frontmatter.title} - Blog AIon Growth Studio`} description={frontmatter.description} lang={lang}>
+  <Header lang={lang} />
+
+  <article class="pt-4 pb-20">
+    <!-- Hero -->
+    <div class="bg-gradient-to-b from-gray-50 to-white py-16">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="max-w-3xl mx-auto">
+          {frontmatter.category && (
+            <span class="inline-block px-4 py-2 bg-accent-100 text-accent-700 font-medium rounded-full mb-6">
+              {frontmatter.category}
+            </span>
+          )}
+
+          <h1 class="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-gray-900 mb-6 leading-tight">
+            {frontmatter.title}
+          </h1>
+
+          <div class="flex items-center gap-4 text-gray-600">
+            <span class="font-medium">{frontmatter.author}</span>
+            <span>&middot;</span>
+            <time datetime={frontmatter.date}>
+              {new Date(frontmatter.date).toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </time>
+            {frontmatter.readTime && (
+              <>
+                <span>&middot;</span>
+                <span>{frontmatter.readTime}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Featured Image -->
+    {frontmatter.image && (
+      <div class="max-w-7xl mx-auto px-6 -mt-8 mb-12">
+        <div class="max-w-4xl mx-auto">
+          <img
+            src={frontmatter.image}
+            alt={frontmatter.title}
+            class="w-full rounded-2xl shadow-2xl"
+          />
+        </div>
+      </div>
+    )}
+
+    <!-- Content -->
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="max-w-3xl mx-auto prose prose-lg prose-primary">
+        <slot />
+      </div>
+    </div>
+
+    <!-- Share -->
+    <div class="max-w-7xl mx-auto px-6 mt-16">
+      <div class="max-w-3xl mx-auto border-t border-gray-200 pt-8">
+        <p class="text-sm text-gray-600 mb-4">Compartir este artículo:</p>
+        <div class="flex gap-4">
+          <button class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+            LinkedIn
+          </button>
+          <button class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
+            Twitter
+          </button>
+          <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+            Copiar enlace
+          </button>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <Footer lang={lang} />
+</Layout>
+
+<style is:global>
+  .prose {
+    color: theme('colors.gray.700');
+  }
+
+  .prose h2 {
+    @apply text-3xl font-display font-bold text-gray-900 mt-12 mb-6;
+  }
+
+  .prose h3 {
+    @apply text-2xl font-display font-semibold text-gray-900 mt-8 mb-4;
+  }
+
+  .prose p {
+    @apply text-lg leading-relaxed mb-6;
+  }
+
+  .prose a {
+    @apply text-primary-600 hover:text-primary-700 font-medium no-underline;
+  }
+
+  .prose strong {
+    @apply text-gray-900 font-semibold;
+  }
+
+  .prose ul, .prose ol {
+    @apply my-6 space-y-2;
+  }
+
+  .prose li {
+    @apply text-lg;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-accent-400 pl-6 italic my-8 text-gray-600;
+  }
+
+  .prose code {
+    @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono text-accent-700;
+  }
+
+  .prose pre {
+    @apply bg-gray-900 text-gray-100 rounded-xl p-6 overflow-x-auto my-8;
+  }
+
+  .prose pre code {
+    @apply bg-transparent text-gray-100 p-0;
+  }
+
+  .prose img {
+    @apply rounded-xl my-8;
+  }
+</style>
