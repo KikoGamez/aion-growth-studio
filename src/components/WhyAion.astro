@@ -1,0 +1,43 @@
+---
+import { useTranslations } from '../i18n/utils';
+import type { Lang } from '../i18n/utils';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+const pillars = [
+  { titleKey: 'why.1.title' as const, descKey: 'why.1.desc' as const, desc2Key: 'why.1.desc2' as const },
+  { titleKey: 'why.2.title' as const, descKey: 'why.2.desc' as const, desc2Key: 'why.2.desc2' as const },
+  { titleKey: 'why.3.title' as const, descKey: 'why.3.desc' as const, desc2Key: 'why.3.desc2' as const },
+];
+---
+
+<section class="py-24 md:py-32 bg-slate-50/50">
+  <div class="max-w-7xl mx-auto px-6 md:px-8">
+    <div class="text-center mb-16 md:mb-24 fade-in">
+      <h2 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-editorial">
+        {t('why.title')}
+      </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+      {pillars.map((pillar) => (
+        <div class="fade-in">
+          <h3 class="text-xl md:text-2xl font-bold text-slate-900 mb-4">
+            {t(pillar.titleKey)}
+          </h3>
+          <p class="text-base text-slate-600 leading-relaxed mb-3">
+            {t(pillar.descKey)}
+          </p>
+          <p class="text-base text-slate-500 leading-relaxed">
+            {t(pillar.desc2Key)}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

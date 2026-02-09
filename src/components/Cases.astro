@@ -13,6 +13,7 @@ const cases = [
   {
     labelKey: 'cases.1.label' as const,
     descKey: 'cases.1.desc' as const,
+    detailKey: 'cases.1.detail' as const,
     statKey: 'cases.1.stat' as const,
     statLabelKey: 'cases.1.stat.label' as const,
     gradient: 'from-aion-dark to-aion-primary',
@@ -20,6 +21,7 @@ const cases = [
   {
     labelKey: 'cases.2.label' as const,
     descKey: 'cases.2.desc' as const,
+    detailKey: 'cases.2.detail' as const,
     statKey: 'cases.2.stat' as const,
     statLabelKey: 'cases.2.stat.label' as const,
     gradient: 'from-aion-primary to-aion-blue',
@@ -27,6 +29,7 @@ const cases = [
   {
     labelKey: 'cases.3.label' as const,
     descKey: 'cases.3.desc' as const,
+    detailKey: 'cases.3.detail' as const,
     statKey: 'cases.3.stat' as const,
     statLabelKey: 'cases.3.stat.label' as const,
     gradient: 'from-slate-700 to-slate-900',
@@ -45,7 +48,7 @@ const cases = [
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
       {cases.map((c) => (
         <div class="fade-in group bg-white border border-slate-200 rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
-          <div class={`h-48 bg-gradient-to-br ${c.gradient} flex items-center justify-center`}>
+          <div class={`h-44 bg-gradient-to-br ${c.gradient} flex items-center justify-center`}>
             <div class="text-center">
               <div class="text-5xl font-bold text-white">{t(c.statKey)}</div>
               <div class="text-sm text-white/60 mt-2 font-medium">{t(c.statLabelKey)}</div>
@@ -55,8 +58,11 @@ const cases = [
             <h3 class="text-lg font-bold text-slate-900 mb-3">
               {t(c.labelKey)}
             </h3>
-            <p class="text-base text-slate-600 leading-relaxed">
+            <p class="text-base text-slate-600 leading-relaxed mb-4">
               {t(c.descKey)}
+            </p>
+            <p class="text-sm text-slate-400 leading-relaxed whitespace-pre-line">
+              {t(c.detailKey)}
             </p>
           </div>
         </div>

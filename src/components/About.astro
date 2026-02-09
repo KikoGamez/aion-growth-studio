@@ -21,7 +21,24 @@ const t = useTranslations(lang);
       <div class="mt-12 md:mt-16 space-y-6 text-lg md:text-xl text-slate-600 leading-relaxed">
         <p>{t('about.text.1')}</p>
         <p>{t('about.text.2')}</p>
-        <p class="font-medium text-slate-900">{t('about.text.3')}</p>
+        <p class="font-bold text-slate-900">{t('about.text.3')}</p>
+        <p>{t('about.text.4')}</p>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="mt-20 md:mt-24 grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto fade-in">
+      <div class="text-center">
+        <div class="text-4xl md:text-5xl font-bold text-aion-primary">{t('about.stat.1.value')}</div>
+        <div class="text-slate-500 mt-2 text-sm">{t('about.stat.1.label')}</div>
+      </div>
+      <div class="text-center">
+        <div class="text-4xl md:text-5xl font-bold text-aion-primary">{t('about.stat.2.value')}</div>
+        <div class="text-slate-500 mt-2 text-sm">{t('about.stat.2.label')}</div>
+      </div>
+      <div class="text-center">
+        <div class="text-4xl md:text-5xl font-bold text-aion-primary">{t('about.stat.3.value')}</div>
+        <div class="text-slate-500 mt-2 text-sm">{t('about.stat.3.label')}</div>
       </div>
     </div>
   </div>
