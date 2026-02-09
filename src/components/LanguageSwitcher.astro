@@ -11,15 +11,10 @@ const otherLang: Lang = lang === 'es' ? 'en' : 'es';
 const otherPath = `/${otherLang}/`;
 ---
 
-<div class="lang-switcher relative">
-  <a
-    href={otherPath}
-    class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors hover:bg-white/10"
-    aria-label={`Switch to ${languages[otherLang]}`}
-  >
-    <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a14.5 14.5 0 014 9 14.5 14.5 0 01-4 9 14.5 14.5 0 01-4-9 14.5 14.5 0 014-9z" />
-    </svg>
-    <span class="uppercase tracking-wide">{otherLang}</span>
-  </a>
-</div>
+<a
+  href={otherPath}
+  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
+  aria-label={`Switch to ${languages[otherLang]}`}
+>
+  <span class="uppercase tracking-wide text-xs">{otherLang}</span>
+</a>

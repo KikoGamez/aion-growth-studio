@@ -12,147 +12,105 @@ const t = useTranslations(lang);
 const basePath = `/${lang}`;
 ---
 
-<header id="main-header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
-  <nav class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+<header id="main-header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-500 bg-white/90 backdrop-blur-lg border-b border-slate-200/60">
+  <nav class="max-w-7xl mx-auto px-6 md:px-8 h-16 md:h-[72px] flex items-center justify-between">
     <!-- Logo -->
-    <a href={`${basePath}/`} class="flex items-center group flex-shrink-0">
+    <a href={`${basePath}/`} class="flex items-center gap-3 group flex-shrink-0">
       <img
-        src="/logo-transparent.svg"
-        alt="AIon Growth Studio"
-        class="h-14 w-auto transition-transform duration-300 group-hover:scale-105"
+        src="/logo-aion-dark.png"
+        alt="AION Growth Studio"
+        class="h-9 md:h-11 w-auto transition-transform duration-500 group-hover:scale-105"
+        loading="eager"
       />
     </a>
 
-    <!-- Right side: Nav + Search + Language -->
+    <!-- Right side: Nav + Language -->
     <div class="hidden lg:flex items-center gap-1">
-      <a href={`${basePath}/#soluciones`} class="nav-link">{t('nav.soluciones')}</a>
-      <a href={`${basePath}/`} class="nav-link">{t('nav.plataforma')}</a>
-      <a href={`${basePath}/#diagnostico`} class="nav-link">{t('nav.diagnostico')}</a>
+      <a href={`${basePath}/#servicios`} class="nav-link">{t('nav.soluciones')}</a>
+      <a href={`${basePath}/#proceso`} class="nav-link">{t('nav.plataforma')}</a>
+      <a href={`${basePath}/#casos`} class="nav-link">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="nav-link">{t('nav.blog')}</a>
-      <a href={`${basePath}/#diagnostico`} class="nav-link">{t('nav.contacto')}</a>
+      <a href={`${basePath}/#cta`} class="nav-link">{t('nav.contacto')}</a>
 
-      <!-- Search -->
-      <button class="p-2.5 ml-2 rounded-xl hover:bg-white/10 transition-colors" aria-label="Search">
-        <svg class="w-5 h-5 text-current opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </button>
+      <div class="w-px h-4 bg-slate-300 mx-3"></div>
 
-      <!-- Divider -->
-      <div class="w-px h-5 bg-current opacity-20 mx-2"></div>
-
-      <!-- Language Switcher -->
       <LanguageSwitcher lang={lang} />
     </div>
 
     <!-- Mobile menu button -->
     <button
       id="mobile-menu-btn"
-      class="lg:hidden p-2.5 rounded-xl hover:bg-white/10 transition-colors"
+      class="lg:hidden p-2 -mr-2 rounded-xl hover:bg-slate-100 transition-colors"
       aria-label="Open menu"
       aria-expanded="false"
     >
-      <svg id="menu-icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      <svg id="menu-icon-open" class="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
-      <svg id="menu-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      <svg id="menu-icon-close" class="w-6 h-6 text-slate-700 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
   </nav>
 
   <!-- Mobile Menu -->
   <div id="mobile-menu" class="lg:hidden hidden">
-    <div class="px-6 py-6 bg-aion-dark/98 backdrop-blur-xl border-t border-white/10">
+    <div class="px-6 py-6 bg-white border-t border-slate-100">
       <div class="flex flex-col gap-1">
-        <a href={`${basePath}/#soluciones`} class="mobile-nav-link">{t('nav.soluciones')}</a>
-        <a href={`${basePath}/`} class="mobile-nav-link">{t('nav.plataforma')}</a>
-        <a href={`${basePath}/#diagnostico`} class="mobile-nav-link">{t('nav.diagnostico')}</a>
+        <a href={`${basePath}/#servicios`} class="mobile-nav-link">{t('nav.soluciones')}</a>
+        <a href={`${basePath}/#proceso`} class="mobile-nav-link">{t('nav.plataforma')}</a>
+        <a href={`${basePath}/#casos`} class="mobile-nav-link">{t('nav.diagnostico')}</a>
         <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="mobile-nav-link">{t('nav.blog')}</a>
-        <a href={`${basePath}/#diagnostico`} class="mobile-nav-link">{t('nav.contacto')}</a>
+        <a href={`${basePath}/#cta`} class="mobile-nav-link">{t('nav.contacto')}</a>
       </div>
-      <div class="mt-6 pt-6 border-t border-white/10">
+      <div class="mt-4 pt-4 border-t border-slate-100">
         <LanguageSwitcher lang={lang} />
       </div>
     </div>
   </div>
 </header>
 
-<!-- Spacer for fixed header -->
-<div class="h-20"></div>
+<div class="h-16 md:h-[72px]"></div>
 
 <style>
-  #main-header {
-    background: rgba(11, 27, 61, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    color: white;
-  }
-
-  #main-header.scrolled {
-    background: rgba(11, 27, 61, 0.98);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
-  }
-
   .nav-link {
-    position: relative;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.875rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.85);
-    transition: color 0.2s ease;
-    border-radius: 0.75rem;
+    color: rgb(71 85 105);
+    border-radius: 0.5rem;
+    transition: color 0.2s ease, background 0.2s ease;
   }
 
   .nav-link:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: 4px;
-    left: 1rem;
-    right: 1rem;
-    height: 2px;
-    background: linear-gradient(90deg, #0066FF, #00D4FF);
-    border-radius: 1px;
-    transform: scaleX(0);
-    transition: transform 0.3s ease;
-  }
-
-  .nav-link:hover::after {
-    transform: scaleX(1);
+    color: rgb(15 23 42);
+    background: rgb(241 245 249);
   }
 
   .mobile-nav-link {
     display: block;
-    padding: 0.875rem 1rem;
+    padding: 0.75rem 1rem;
     font-size: 1rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.85);
+    color: rgb(71 85 105);
     border-radius: 0.75rem;
     transition: all 0.2s ease;
   }
 
   .mobile-nav-link:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.08);
+    color: rgb(15 23 42);
+    background: rgb(248 250 252);
   }
 </style>
 
 <script>
-  // Scroll effect
   const header = document.getElementById('main-header');
   if (header) {
     window.addEventListener('scroll', () => {
-      header.classList.toggle('scrolled', window.scrollY > 20);
+      header.classList.toggle('shadow-sm', window.scrollY > 10);
     });
   }
 
-  // Mobile menu toggle
   const menuBtn = document.getElementById('mobile-menu-btn');
   const mobileMenu = document.getElementById('mobile-menu');
   const iconOpen = document.getElementById('menu-icon-open');
@@ -167,7 +125,6 @@ const basePath = `/${lang}`;
       menuBtn.setAttribute('aria-expanded', String(!isOpen));
     });
 
-    // Close on link click
     mobileMenu.querySelectorAll('a').forEach((link) => {
       link.addEventListener('click', () => {
         mobileMenu.classList.add('hidden');

@@ -1,0 +1,66 @@
+---
+import { useTranslations } from '../i18n/utils';
+import type { Lang } from '../i18n/utils';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+const cases = [
+  {
+    labelKey: 'cases.1.label' as const,
+    descKey: 'cases.1.desc' as const,
+    statKey: 'cases.1.stat' as const,
+    statLabelKey: 'cases.1.stat.label' as const,
+    gradient: 'from-aion-dark to-aion-primary',
+  },
+  {
+    labelKey: 'cases.2.label' as const,
+    descKey: 'cases.2.desc' as const,
+    statKey: 'cases.2.stat' as const,
+    statLabelKey: 'cases.2.stat.label' as const,
+    gradient: 'from-aion-primary to-aion-blue',
+  },
+  {
+    labelKey: 'cases.3.label' as const,
+    descKey: 'cases.3.desc' as const,
+    statKey: 'cases.3.stat' as const,
+    statLabelKey: 'cases.3.stat.label' as const,
+    gradient: 'from-slate-700 to-slate-900',
+  },
+];
+---
+
+<section id="casos" class="py-24 md:py-32 bg-slate-50/50">
+  <div class="max-w-7xl mx-auto px-6 md:px-8">
+    <div class="text-center mb-16 md:mb-24 fade-in">
+      <h2 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-editorial">
+        {t('cases.title')}
+      </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+      {cases.map((c) => (
+        <div class="fade-in group bg-white border border-slate-200 rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
+          <div class={`h-48 bg-gradient-to-br ${c.gradient} flex items-center justify-center`}>
+            <div class="text-center">
+              <div class="text-5xl font-bold text-white">{t(c.statKey)}</div>
+              <div class="text-sm text-white/60 mt-2 font-medium">{t(c.statLabelKey)}</div>
+            </div>
+          </div>
+          <div class="p-8 md:p-10">
+            <h3 class="text-lg font-bold text-slate-900 mb-3">
+              {t(c.labelKey)}
+            </h3>
+            <p class="text-base text-slate-600 leading-relaxed">
+              {t(c.descKey)}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

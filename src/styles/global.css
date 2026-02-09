@@ -6,8 +6,8 @@
   html {
     scroll-behavior: smooth;
   }
-  
+
   body {
-    @apply text-gray-900;
+    @apply text-slate-900;
   }
 }
