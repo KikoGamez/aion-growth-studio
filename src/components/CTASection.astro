@@ -10,18 +10,18 @@ const { lang } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<section id="cta" class="relative overflow-hidden">
+<section id="diagnostico" class="relative overflow-hidden">
   <div class="cta-bg absolute inset-0"></div>
   <div class="cta-dots absolute inset-0"></div>
 
   <div class="relative max-w-7xl mx-auto px-6 md:px-8 py-24 md:py-36">
     <div class="max-w-4xl mx-auto text-center fade-in">
-      <h2 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-editorial leading-[0.95]">
+      <h2 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[0.95]">
         {t('cta.title.1')}<br />
         {t('cta.title.2')}
       </h2>
 
-      <p class="mt-10 text-lg md:text-xl text-slate-300 leading-relaxed max-w-2xl mx-auto">
+      <p class="mt-8 md:mt-10 text-lg md:text-xl text-slate-300 leading-relaxed max-w-2xl mx-auto">
         {t('cta.text')}
       </p>
 
@@ -29,10 +29,10 @@ const t = useTranslations(lang);
         {t('cta.text.2')}
       </p>
 
-      <div class="mt-12">
+      <div class="mt-10 md:mt-12" id="contacto">
         <a
           href="mailto:hola@aiongrowth.studio"
-          class="inline-flex items-center gap-3 px-8 py-4 bg-white text-aion-dark font-semibold text-base rounded-2xl transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-white/10"
+          class="inline-flex items-center gap-3 px-8 py-4 bg-white text-[#0B1B3D] font-semibold text-base md:text-lg rounded-full transition-all duration-300 hover:scale-105 hover:bg-cyan-300 hover:shadow-2xl"
         >
           {t('cta.button')}
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
