@@ -23,13 +23,13 @@ const basePath = `/${lang}`;
   <div class="absolute inset-0 z-[1] bg-black/30"></div>
 
   <!-- Navigation -->
-  <nav class="relative z-50 flex items-center justify-between px-6 md:px-8 lg:px-16 py-5 md:py-6">
-    <!-- Logo 3x + tagline -->
+  <nav class="relative z-50 flex items-start justify-between px-6 md:px-8 lg:px-16 py-5 md:py-6">
+    <!-- Logo 2x + tagline -->
     <a href={`${basePath}/`} class="flex flex-col items-start">
       <img
         src="/logo-aion-dark.png"
         alt="AION Growth Studio"
-        class="w-[180px] md:w-[240px] h-auto drop-shadow-lg"
+        class="w-[360px] md:w-[480px] h-auto drop-shadow-lg"
         loading="eager"
       />
       <span class="text-sm text-white/70 mt-1.5 font-normal tracking-wide">
@@ -38,7 +38,7 @@ const basePath = `/${lang}`;
     </a>
 
     <!-- Desktop nav pills -->
-    <div class="hidden lg:flex items-center gap-2">
+    <div class="hidden lg:flex items-center gap-2 mt-2">
       <a href={`${basePath}/#soluciones`} class="nav-pill">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="nav-pill">{t('nav.casos')}</a>
       <a href={`${basePath}/#diagnostico`} class="nav-pill">{t('nav.diagnostico')}</a>
