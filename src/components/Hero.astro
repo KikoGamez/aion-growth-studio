@@ -11,26 +11,30 @@ const t = useTranslations(lang);
 const basePath = `/${lang}`;
 ---
 
-<section class="relative h-screen w-full overflow-hidden">
-  <!-- CSS-based abstract AI background -->
-  <div class="absolute inset-0 z-0 hero-bg">
-    <div class="absolute inset-0 hero-dots"></div>
-    <div class="absolute inset-0 bg-gradient-to-r from-[#0B1B3D]/95 via-[#0B1B3D]/80 to-[#0B1B3D]/60"></div>
-    <!-- Animated orbs for depth -->
-    <div class="hero-orb hero-orb-1"></div>
-    <div class="hero-orb hero-orb-2"></div>
-    <div class="hero-orb hero-orb-3"></div>
-  </div>
+<section class="relative min-h-screen w-full overflow-hidden hero-section">
+  <!-- Background Image -->
+  <img
+    src="/hero-bg.jpg"
+    alt=""
+    class="absolute inset-0 w-full h-full object-cover z-0"
+    loading="eager"
+  />
+  <!-- Dark overlay for legibility -->
+  <div class="absolute inset-0 z-[1] bg-black/30"></div>
 
-  <!-- Navigation integrated over the image -->
-  <nav class="relative z-50 flex items-center justify-between px-6 md:px-8 py-5 md:py-6">
-    <a href={`${basePath}/`} class="flex items-center">
+  <!-- Navigation -->
+  <nav class="relative z-50 flex items-center justify-between px-6 md:px-8 lg:px-16 py-5 md:py-6">
+    <!-- Logo 3x + tagline -->
+    <a href={`${basePath}/`} class="flex flex-col items-start">
       <img
         src="/logo-aion-dark.png"
         alt="AION Growth Studio"
-        class="h-14 md:h-20 w-auto drop-shadow-lg"
+        class="w-[180px] md:w-[240px] h-auto drop-shadow-lg"
         loading="eager"
       />
+      <span class="text-sm text-white/70 mt-1.5 font-normal tracking-wide">
+        {t('hero.tagline')}
+      </span>
     </a>
 
     <!-- Desktop nav pills -->
@@ -60,7 +64,7 @@ const basePath = `/${lang}`;
   </nav>
 
   <!-- Mobile menu -->
-  <div id="mobile-menu" class="lg:hidden hidden absolute top-[72px] left-0 right-0 z-50 bg-[#0B1B3D]/95 backdrop-blur-lg border-t border-white/10">
+  <div id="mobile-menu" class="lg:hidden hidden absolute top-[100px] left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-t border-white/10">
     <div class="px-6 py-6 flex flex-col gap-2">
       <a href={`${basePath}/#soluciones`} class="mobile-pill">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="mobile-pill">{t('nav.casos')}</a>
@@ -75,130 +79,74 @@ const basePath = `/${lang}`;
     </div>
   </div>
 
-  <!-- Main content: Text LEFT + Card RIGHT -->
-  <div class="relative z-40 max-w-7xl mx-auto px-6 md:px-8 h-[calc(100vh-100px)] flex items-center">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center w-full">
+  <!-- Hero Content -->
+  <div class="relative z-10 px-6 md:px-8 lg:px-16">
+    <!-- Text LEFT, positioned at ~40vh -->
+    <div class="hero-text-left pt-[35vh] md:pt-[40vh] max-w-[700px]">
+      <h1 class="hero-headline text-white mb-6">
+        {t('hero.title.1')}<br />
+        {t('hero.title.2')}
+      </h1>
 
-      <!-- LEFT: Text -->
-      <div class="max-w-2xl">
-        <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[0.95] tracking-tight mb-8">
-          {t('hero.title.1')}<br />
-          <span class="text-white/60">{t('hero.title.2')}</span><br />
-          {t('hero.title.3')}
-        </h1>
+      <p class="hero-subheadline text-white/90 max-w-[600px] mb-8">
+        {t('hero.subtitle')}
+      </p>
 
-        <p class="text-lg md:text-xl lg:text-2xl text-white/80 leading-relaxed mb-10 max-w-xl">
-          {t('hero.subtitle')}
-        </p>
+      <a
+        href={`${basePath}/#diagnostico`}
+        class="inline-block px-8 py-4 bg-white text-[#0B1B3D] rounded-full font-semibold text-base hover:bg-cyan-300 hover:scale-105 transition-all duration-300 shadow-2xl"
+      >
+        {t('hero.cta')}
+      </a>
+    </div>
 
-        <a
-          href={`${basePath}/#diagnostico`}
-          class="inline-block px-8 py-4 bg-white text-[#0B1B3D] rounded-full font-semibold text-lg hover:bg-cyan-300 hover:scale-105 transition-all duration-300 shadow-2xl"
-        >
-          {t('hero.cta')}
-        </a>
-
-        <p class="text-sm text-white/50 mt-4">{t('hero.cta.note')}</p>
-      </div>
-
-      <!-- RIGHT: Floating Card -->
-      <div class="hidden lg:block">
-        <div class="relative">
-          <p class="text-white/60 text-sm font-medium mb-4 tracking-wide">{t('hero.card.label')}</p>
-
-          <div class="rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-            <div class="hero-card-gradient h-[450px] relative flex items-end">
-              <!-- Abstract pattern overlay -->
-              <div class="absolute inset-0 hero-card-pattern"></div>
-              <!-- Mesh lines decoration -->
-              <svg class="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 400 450" fill="none">
-                <path d="M0 200 Q100 150 200 200 T400 200" stroke="rgba(255,255,255,0.3)" stroke-width="0.5" />
-                <path d="M0 250 Q150 200 300 250 T400 220" stroke="rgba(255,255,255,0.2)" stroke-width="0.5" />
-                <path d="M0 300 Q200 250 350 300 T400 280" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />
-                <circle cx="120" cy="180" r="3" fill="rgba(0,212,255,0.6)" />
-                <circle cx="280" cy="220" r="2" fill="rgba(0,212,255,0.4)" />
-                <circle cx="350" cy="160" r="2.5" fill="rgba(255,255,255,0.3)" />
-                <circle cx="80" cy="280" r="2" fill="rgba(0,102,255,0.5)" />
-                <circle cx="200" cy="140" r="1.5" fill="rgba(255,255,255,0.4)" />
-              </svg>
-              <div class="relative z-10 p-8">
-                <p class="text-cyan-300 text-sm font-medium mb-2">{t('hero.card.project')}</p>
-                <h3 class="text-2xl font-bold text-white leading-tight whitespace-pre-line">
-                  {t('hero.card.title')}
-                </h3>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <!-- Card RIGHT (bottom-right, reduced 30%) -->
+    <div class="hidden lg:block card-projects-right">
+      <img
+        src="/projects-placeholder.jpg"
+        alt="Projects"
+        class="w-full h-[200px] object-cover rounded-xl mb-4"
+      />
+      <h3 class="text-2xl font-bold text-slate-900 mb-2">
+        {t('hero.card.label')}
+      </h3>
+      <p class="text-cyan-600 text-sm font-medium mb-1">{t('hero.card.project')}</p>
+      <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
+        {t('hero.card.title')}
+      </p>
     </div>
   </div>
 </section>
 
 <style>
-  .hero-bg {
-    background:
-      radial-gradient(ellipse at 20% 50%, rgba(26, 84, 144, 0.5) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, rgba(0, 102, 255, 0.3) 0%, transparent 50%),
-      radial-gradient(ellipse at 60% 80%, rgba(0, 212, 255, 0.15) 0%, transparent 40%),
-      radial-gradient(ellipse at 40% 30%, rgba(46, 117, 182, 0.2) 0%, transparent 60%),
-      linear-gradient(180deg, #0B1B3D 0%, #071225 100%);
+  .hero-section {
+    position: relative;
   }
 
-  .hero-dots {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-    background-size: 32px 32px;
+  .hero-headline {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.4;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   }
 
-  .hero-orb {
+  .hero-subheadline {
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  .card-projects-right {
     position: absolute;
-    border-radius: 50%;
-    filter: blur(80px);
-    animation: float 20s ease-in-out infinite;
-  }
-
-  .hero-orb-1 {
-    width: 400px;
-    height: 400px;
-    background: rgba(0, 102, 255, 0.15);
-    top: 10%;
-    right: 20%;
-    animation-delay: 0s;
-  }
-
-  .hero-orb-2 {
-    width: 300px;
-    height: 300px;
-    background: rgba(0, 212, 255, 0.1);
-    bottom: 20%;
-    left: 10%;
-    animation-delay: -7s;
-  }
-
-  .hero-orb-3 {
-    width: 250px;
-    height: 250px;
-    background: rgba(26, 84, 144, 0.15);
-    top: 40%;
-    left: 50%;
-    animation-delay: -14s;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    33% { transform: translate(30px, -20px) scale(1.05); }
-    66% { transform: translate(-20px, 20px) scale(0.95); }
-  }
-
-  .hero-card-gradient {
-    background: linear-gradient(135deg, #1A5490 0%, #0066FF 50%, #00D4FF 100%);
-  }
-
-  .hero-card-pattern {
-    background-image:
-      radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 50%),
-      radial-gradient(circle at 70% 60%, rgba(255,255,255,0.06) 0%, transparent 40%);
+    right: 4rem;
+    bottom: 4rem;
+    width: 280px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    z-index: 10;
   }
 
   .nav-pill {

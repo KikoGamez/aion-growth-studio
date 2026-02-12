@@ -15,12 +15,11 @@ export const ui = {
     'nav.contacto': 'Contacto',
 
     // Hero
-    'hero.title.1': 'Growth ya no es',
-    'hero.title.2': 'marketing.',
-    'hero.title.3': 'Es infraestructura operativa con IA.',
+    'hero.tagline': 'New era of Growth.',
+    'hero.title.1': 'Growth ya no es marketing.',
+    'hero.title.2': 'Es infraestructura operativa con IA.',
     'hero.subtitle': 'En AION Growth Studio te ayudamos a construir un nuevo motor de crecimiento eficiente y robusto.',
-    'hero.cta': '¿Cómo ve la IA tu marca?',
-    'hero.cta.note': 'Incluye análisis de Visibilidad en IA (AEO Score)',
+    'hero.cta': 'Haz diagnóstico de tu marca',
     'hero.card.label': 'Projects made easy.',
     'hero.card.project': 'intervía.ai',
     'hero.card.title': 'Una nueva marca con\nvocación internacional',
@@ -113,12 +112,11 @@ export const ui = {
     'nav.contacto': 'Contact',
 
     // Hero
-    'hero.title.1': 'Growth is no longer',
-    'hero.title.2': 'marketing.',
-    'hero.title.3': 'It\u2019s operational infrastructure with AI.',
+    'hero.tagline': 'New era of Growth.',
+    'hero.title.1': 'Growth is no longer marketing.',
+    'hero.title.2': 'It\u2019s operational infrastructure with AI.',
     'hero.subtitle': 'At AION Growth Studio we help you build a new efficient and robust growth engine.',
-    'hero.cta': 'How does AI see your brand?',
-    'hero.cta.note': 'Includes AI Visibility analysis (AEO Score)',
+    'hero.cta': 'Get your brand diagnostic',
     'hero.card.label': 'Projects made easy.',
     'hero.card.project': 'interv\u00EDa.ai',
     'hero.card.title': 'A new brand with\ninternational ambition',
