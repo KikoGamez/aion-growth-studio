@@ -10,8 +10,11 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^4.0.0",
     "@astrojs/tailwind": "^5.0.0",
+    "@notionhq/client": "^2.3.0",
+    "astro": "^4.0.0",
+    "marked": "^17.0.2",
+    "notion-to-md": "^3.1.9",
     "tailwindcss": "^3.3.5"
   }
 }

@@ -1,0 +1,24 @@
+---
+import BlogPost from '../../layouts/BlogPost.astro';
+import { fetchPublishedPosts, fetchPostBySlug, fetchPostContent } from '../../lib/notion';
+
+export async function getStaticPaths() {
+  const posts = await fetchPublishedPosts('es');
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+  }));
+}
+
+const { slug } = Astro.params;
+const post = await fetchPostBySlug(slug!);
+
+if (!post) {
+  return Astro.redirect('/blog');
+}
+
+const content = await fetchPostContent(post.id);
+---
+
+<BlogPost frontmatter={post} lang="es">
+  <Fragment set:html={content} />
+</BlogPost>

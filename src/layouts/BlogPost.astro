@@ -3,8 +3,7 @@ import Layout from './Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 
-const { frontmatter } = Astro.props;
-const lang = 'es';
+const { frontmatter, lang = 'es' } = Astro.props;
 ---
 
 <Layout title={`${frontmatter.title} — AION Growth Studio`} description={frontmatter.description} lang={lang}>
@@ -28,7 +27,7 @@ const lang = 'es';
             <span class="font-medium">{frontmatter.author}</span>
             <span>&middot;</span>
             <time datetime={frontmatter.date}>
-              {new Date(frontmatter.date).toLocaleDateString('es-ES', {
+              {new Date(frontmatter.date).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
