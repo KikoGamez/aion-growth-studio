@@ -79,41 +79,45 @@ const basePath = `/${lang}`;
     </div>
   </div>
 
-  <!-- Hero Content -->
-  <div class="relative z-10 px-6 md:px-8 lg:px-16">
-    <!-- Text LEFT, positioned at ~40vh -->
-    <div class="hero-text-left pt-[18vh] md:pt-[22vh] max-w-[700px]">
-      <h1 class="hero-headline text-white mb-6">
-        {t('hero.title.1')}<br />
-        {t('hero.title.2')}
-      </h1>
+  <!-- Hero Content: two-column grid aligned at bottom -->
+  <div class="relative z-10 px-6 md:px-8 lg:px-16 pt-[18vh] md:pt-[22vh]">
+    <div class="flex items-end justify-between gap-12">
 
-      <p class="hero-subheadline text-white/90 max-w-[600px] mb-8">
-        {t('hero.subtitle')}
-      </p>
+      <!-- Text LEFT -->
+      <div class="max-w-[700px]">
+        <h1 class="hero-headline text-white mb-6">
+          {t('hero.title.1')}<br />
+          {t('hero.title.2')}
+        </h1>
 
-      <a
-        href={`${basePath}/#diagnostico`}
-        class="inline-block px-8 py-4 bg-white text-[#0B1B3D] rounded-full font-semibold text-base hover:bg-cyan-300 hover:scale-105 transition-all duration-300 shadow-2xl"
-      >
-        {t('hero.cta')}
-      </a>
-    </div>
+        <p class="hero-subheadline text-white/90 max-w-[600px] mb-8">
+          {t('hero.subtitle')}
+        </p>
 
-    <!-- Card RIGHT (bottom-right, reduced 30%) -->
-    <div class="hidden lg:block card-projects-right">
-      <img
-        src="/projects-placeholder.jpg"
-        alt="Projects"
-        class="w-full h-[200px] object-cover rounded-xl mb-4"
-      />
-      <h3 class="text-2xl font-bold text-slate-900 mb-2">
-        {t('hero.card.label')}
-      </h3>
-      <p class="text-cyan-600 text-sm font-medium mb-1">{t('hero.card.project')}</p>
-      <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-        {t('hero.card.title')}
-      </p>
+        <a
+          href={`${basePath}/#diagnostico`}
+          class="inline-block px-8 py-4 bg-white text-[#0B1B3D] rounded-full font-semibold text-base hover:bg-cyan-300 hover:scale-105 transition-all duration-300 shadow-2xl"
+        >
+          {t('hero.cta')}
+        </a>
+      </div>
+
+      <!-- Card RIGHT, bottom-aligned with button -->
+      <div class="hidden lg:block w-[280px] flex-shrink-0 bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
+        <img
+          src="/projects-placeholder.jpg"
+          alt="Projects"
+          class="w-full h-[200px] object-cover rounded-xl mb-4"
+        />
+        <h3 class="text-2xl font-bold text-slate-900 mb-2">
+          {t('hero.card.label')}
+        </h3>
+        <p class="text-cyan-600 text-sm font-medium mb-1">{t('hero.card.project')}</p>
+        <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
+          {t('hero.card.title')}
+        </p>
+      </div>
+
     </div>
   </div>
 </section>
@@ -134,19 +138,6 @@ const basePath = `/${lang}`;
     font-size: 1.125rem;
     font-weight: 400;
     line-height: 1.6;
-  }
-
-  .card-projects-right {
-    position: absolute;
-    right: 4rem;
-    bottom: 8rem;
-    width: 280px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    z-index: 10;
   }
 
   .nav-pill {
