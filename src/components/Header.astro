@@ -26,11 +26,11 @@ const basePath = `/${lang}`;
 
     <!-- Right side: Nav + Language -->
     <div class="hidden lg:flex items-center gap-1">
-      <a href={`${basePath}/#servicios`} class="nav-link">{t('nav.soluciones')}</a>
-      <a href={`${basePath}/#proceso`} class="nav-link">{t('nav.plataforma')}</a>
-      <a href={`${basePath}/#casos`} class="nav-link">{t('nav.diagnostico')}</a>
+      <a href={`${basePath}/#soluciones`} class="nav-link">{t('nav.soluciones')}</a>
+      <a href={`${basePath}/#casos`} class="nav-link">{t('nav.casos')}</a>
+      <a href={`${basePath}/#diagnostico`} class="nav-link">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="nav-link">{t('nav.blog')}</a>
-      <a href={`${basePath}/#cta`} class="nav-link">{t('nav.contacto')}</a>
+      <a href={`${basePath}/#contacto`} class="nav-link">{t('nav.contacto')}</a>
 
       <div class="w-px h-4 bg-slate-300 mx-3"></div>
 
@@ -57,11 +57,11 @@ const basePath = `/${lang}`;
   <div id="mobile-menu" class="lg:hidden hidden">
     <div class="px-6 py-6 bg-white border-t border-slate-100">
       <div class="flex flex-col gap-1">
-        <a href={`${basePath}/#servicios`} class="mobile-nav-link">{t('nav.soluciones')}</a>
-        <a href={`${basePath}/#proceso`} class="mobile-nav-link">{t('nav.plataforma')}</a>
-        <a href={`${basePath}/#casos`} class="mobile-nav-link">{t('nav.diagnostico')}</a>
+        <a href={`${basePath}/#soluciones`} class="mobile-nav-link">{t('nav.soluciones')}</a>
+        <a href={`${basePath}/#casos`} class="mobile-nav-link">{t('nav.casos')}</a>
+        <a href={`${basePath}/#diagnostico`} class="mobile-nav-link">{t('nav.diagnostico')}</a>
         <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="mobile-nav-link">{t('nav.blog')}</a>
-        <a href={`${basePath}/#cta`} class="mobile-nav-link">{t('nav.contacto')}</a>
+        <a href={`${basePath}/#contacto`} class="mobile-nav-link">{t('nav.contacto')}</a>
       </div>
       <div class="mt-4 pt-4 border-t border-slate-100">
         <LanguageSwitcher lang={lang} />
