@@ -1,13 +1,8 @@
 ---
-import BlogPost from '../../../layouts/BlogPost.astro';
-import { fetchPublishedPosts, fetchPostBySlug, fetchPostContent } from '../../../lib/notion';
+export const prerender = false;
 
-export async function getStaticPaths() {
-  const posts = await fetchPublishedPosts('en');
-  return posts.map((post) => ({
-    params: { slug: post.slug },
-  }));
-}
+import BlogPost from '../../../layouts/BlogPost.astro';
+import { fetchPostBySlug, fetchPostContent } from '../../../lib/notion';
 
 const { slug } = Astro.params;
 const post = await fetchPostBySlug(slug!);
