@@ -25,7 +25,7 @@ export const ui = {
     'hero.card.title': 'Una nueva marca con\nvocación internacional',
 
     // About
-    'about.label': 'Beneficios',
+    'about.label': 'Sobre nosotros',
     'about.headline': 'Ayudamos a equipos ambiciosos a construir infraestructuras de IA que les den diferenciación competitiva sostenible en cualquier mercado',
     'about.cta': 'More About Us',
     'about.rating': '4.9/5 rating de clientes',
@@ -33,6 +33,9 @@ export const ui = {
     'about.stat.1.label': 'Sweet Spot Revenue',
     'about.stat.2.value': '8 weeks',
     'about.stat.2.label': 'Deployment Time',
+
+    // What we do
+    'whatwedo.label': '¿Qué hacemos?',
 
     // Testimonial
     'testimonial.quote': 'Con AION el proceso fue ágil y preciso. El resultado no fue una web, sino un sistema de crecimiento real para nuestro negocio \u2014 una marca con la que nos sentimos plenamente representados.',
@@ -122,7 +125,7 @@ export const ui = {
     'hero.card.title': 'A new brand with\ninternational ambition',
 
     // About
-    'about.label': 'Benefits',
+    'about.label': 'About us',
     'about.headline': 'We help ambitious teams build AI infrastructures that give them sustainable competitive differentiation in any market',
     'about.cta': 'More About Us',
     'about.rating': '4.9/5 client rating',
@@ -130,6 +133,9 @@ export const ui = {
     'about.stat.1.label': 'Sweet Spot Revenue',
     'about.stat.2.value': '8 weeks',
     'about.stat.2.label': 'Deployment Time',
+
+    // What we do
+    'whatwedo.label': 'What we do',
 
     // Testimonial
     'testimonial.quote': 'With AION the process was agile and precise. The result was not a website, but a real growth system for our business \u2014 a brand we feel fully represented by.',
