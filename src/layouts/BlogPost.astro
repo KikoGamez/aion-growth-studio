@@ -4,61 +4,94 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 
 const { frontmatter, lang = 'es' } = Astro.props;
+const blogUrl = lang === 'en' ? '/en/blog' : '/blog';
+const backLabel = lang === 'en' ? 'Back to blog' : 'Volver al blog';
+const dateLocale = lang === 'en' ? 'en-US' : 'es-ES';
 ---
 
 <Layout title={`${frontmatter.title} — AION Growth Studio`} description={frontmatter.description} lang={lang}>
-  <Header lang={lang} />
+  <Header lang={lang} compact />
 
-  <article class="pb-20">
-    <div class="py-16 md:py-24">
-      <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="max-w-3xl mx-auto">
-          {frontmatter.category && (
-            <span class="inline-block px-3 py-1 bg-slate-100 text-slate-600 text-sm font-medium rounded-full mb-6">
-              {frontmatter.category}
-            </span>
-          )}
+  <!-- Hero with brand gradient -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 post-hero-bg"></div>
+    <div class="absolute inset-0 post-hero-dots"></div>
+    <div class="relative max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-24">
+      <div class="max-w-3xl">
+        <!-- Back link -->
+        <a href={blogUrl} class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-400 transition-colors mb-8 group">
+          <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+          </svg>
+          {backLabel}
+        </a>
 
-          <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight tracking-tight">
-            {frontmatter.title}
-          </h1>
+        {frontmatter.category && (
+          <span class="inline-block px-3 py-1 bg-white/10 backdrop-blur-md text-cyan-400 text-xs font-semibold rounded-full mb-6 tracking-wide uppercase">
+            {frontmatter.category}
+          </span>
+        )}
 
-          <div class="flex items-center gap-4 text-slate-500 text-sm">
-            <span class="font-medium">{frontmatter.author}</span>
-            <span>&middot;</span>
-            <time datetime={frontmatter.date}>
-              {new Date(frontmatter.date).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </time>
-            {frontmatter.readTime && (
-              <>
-                <span>&middot;</span>
-                <span>{frontmatter.readTime}</span>
-              </>
-            )}
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-8 leading-tight tracking-tight">
+          {frontmatter.title}
+        </h1>
+
+        <div class="flex flex-wrap items-center gap-4 text-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
+              <span class="text-white text-sm font-bold">{frontmatter.author?.charAt(0) || 'A'}</span>
+            </div>
+            <div>
+              <p class="text-white font-medium">{frontmatter.author}</p>
+              <p class="text-slate-400 text-xs">
+                <time datetime={frontmatter.date}>
+                  {new Date(frontmatter.date).toLocaleDateString(dateLocale, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </time>
+                {frontmatter.readTime && (
+                  <span> &middot; {frontmatter.readTime}</span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  </section>
 
+  <article class="bg-slate-50">
+    <!-- Featured image -->
     {frontmatter.image && (
-      <div class="max-w-7xl mx-auto px-6 md:px-8 -mt-8 mb-12">
+      <div class="max-w-7xl mx-auto px-6 md:px-8 -mt-8 relative z-10">
         <div class="max-w-4xl mx-auto">
           <img
             src={frontmatter.image}
             alt={frontmatter.title}
-            class="w-full rounded-2xl"
+            class="w-full rounded-2xl shadow-2xl"
           />
         </div>
       </div>
     )}
 
-    <div class="max-w-7xl mx-auto px-6 md:px-8">
+    <!-- Content -->
+    <div class="max-w-7xl mx-auto px-6 md:px-8 py-12 md:py-20">
       <div class="max-w-3xl mx-auto prose">
         <slot />
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <div class="max-w-7xl mx-auto px-6 md:px-8 pb-16 md:pb-24">
+      <div class="max-w-3xl mx-auto pt-8 border-t border-slate-200">
+        <a href={blogUrl} class="inline-flex items-center gap-2 text-sm font-medium text-aion-primary hover:text-aion-dark transition-colors group">
+          <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+          </svg>
+          {backLabel}
+        </a>
       </div>
     </div>
   </article>
@@ -66,19 +99,31 @@ const { frontmatter, lang = 'es' } = Astro.props;
   <Footer lang={lang} />
 </Layout>
 
+<style>
+  .post-hero-bg {
+    background: linear-gradient(160deg, #0B1B3D 0%, #1A5490 50%, #0B1B3D 100%);
+  }
+  .post-hero-dots {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+</style>
+
 <style is:global>
   .prose { color: rgb(71 85 105); }
   .prose h2 { font-size: 1.875rem; font-weight: 700; color: rgb(15 23 42); margin-top: 3rem; margin-bottom: 1.5rem; }
   .prose h3 { font-size: 1.5rem; font-weight: 600; color: rgb(15 23 42); margin-top: 2rem; margin-bottom: 1rem; }
   .prose p { font-size: 1.125rem; line-height: 1.75; margin-bottom: 1.5rem; }
-  .prose a { color: #1A5490; font-weight: 500; }
-  .prose a:hover { color: #0B1B3D; }
+  .prose a { color: #1A5490; font-weight: 500; text-decoration: underline; text-decoration-color: rgba(26, 84, 144, 0.3); text-underline-offset: 2px; transition: text-decoration-color 0.2s; }
+  .prose a:hover { color: #0B1B3D; text-decoration-color: #0B1B3D; }
   .prose strong { color: rgb(15 23 42); font-weight: 600; }
   .prose ul, .prose ol { margin: 1.5rem 0; padding-left: 1.5rem; }
   .prose li { font-size: 1.125rem; margin-bottom: 0.5rem; }
-  .prose blockquote { border-left: 3px solid rgb(203 213 225); padding-left: 1.5rem; font-style: italic; margin: 2rem 0; color: rgb(100 116 139); }
-  .prose code { background: rgb(241 245 249); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; }
-  .prose pre { background: rgb(15 23 42); color: rgb(226 232 240); border-radius: 0.75rem; padding: 1.5rem; overflow-x: auto; margin: 2rem 0; }
+  .prose li::marker { color: #1A5490; }
+  .prose blockquote { border-left: 3px solid #1A5490; padding-left: 1.5rem; font-style: italic; margin: 2rem 0; color: rgb(100 116 139); background: rgba(26, 84, 144, 0.03); padding: 1.5rem; border-radius: 0 0.75rem 0.75rem 0; }
+  .prose code { background: rgb(241 245 249); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; color: #1A5490; }
+  .prose pre { background: #0B1B3D; color: rgb(226 232 240); border-radius: 0.75rem; padding: 1.5rem; overflow-x: auto; margin: 2rem 0; }
   .prose pre code { background: transparent; color: inherit; padding: 0; }
   .prose img { border-radius: 0.75rem; margin: 2rem 0; }
+  .prose hr { border-color: rgb(226 232 240); margin: 3rem 0; }
 </style>
