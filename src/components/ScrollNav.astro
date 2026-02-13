@@ -1,0 +1,98 @@
+---
+import { useTranslations } from '../i18n/utils';
+import type { Lang } from '../i18n/utils';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const basePath = `/${lang}`;
+---
+
+<!-- Sticky nav that appears after scrolling past hero -->
+<nav id="scroll-nav" class="fixed top-0 left-0 right-0 z-40 scroll-nav-hidden transition-all duration-500">
+  <div class="scroll-nav-bg absolute inset-0"></div>
+
+  <!-- Logo watermark -->
+  <div class="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 pointer-events-none">
+    <img
+      src="/logo-aion-dark.png"
+      alt=""
+      class="h-8 md:h-10 w-auto opacity-[0.08]"
+    />
+  </div>
+
+  <div class="relative max-w-7xl mx-auto px-6 md:px-8 h-12 flex items-center justify-end">
+    <!-- Nav links — low contrast -->
+    <div class="hidden md:flex items-center gap-6">
+      <a href={`${basePath}/#soluciones`} class="scroll-nav-link">{t('nav.soluciones')}</a>
+      <a href={`${basePath}/#casos`} class="scroll-nav-link">{t('nav.casos')}</a>
+      <a href={`${basePath}/#diagnostico`} class="scroll-nav-link">{t('nav.diagnostico')}</a>
+      <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="scroll-nav-link">{t('nav.blog')}</a>
+      <a href={`${basePath}/#contacto`} class="scroll-nav-link">{t('nav.contacto')}</a>
+    </div>
+
+    <!-- Mobile: just the links in compact form -->
+    <div class="flex md:hidden items-center gap-4">
+      <a href={`${basePath}/#soluciones`} class="scroll-nav-link text-[11px]">{t('nav.soluciones')}</a>
+      <a href={`${basePath}/#casos`} class="scroll-nav-link text-[11px]">{t('nav.casos')}</a>
+      <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="scroll-nav-link text-[11px]">{t('nav.blog')}</a>
+      <a href={`${basePath}/#contacto`} class="scroll-nav-link text-[11px]">{t('nav.contacto')}</a>
+    </div>
+  </div>
+</nav>
+
+<style>
+  .scroll-nav-bg {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+  }
+
+  .scroll-nav-link {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgba(100, 116, 139, 0.6);
+    transition: color 0.2s ease;
+    letter-spacing: 0.01em;
+  }
+
+  .scroll-nav-link:hover {
+    color: rgba(15, 23, 42, 0.8);
+  }
+
+  .scroll-nav-hidden {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
+
+  .scroll-nav-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+</style>
+
+<script>
+  const scrollNav = document.getElementById('scroll-nav');
+  if (scrollNav) {
+    const heroHeight = window.innerHeight;
+
+    function checkScroll() {
+      if (window.scrollY > heroHeight * 0.8) {
+        scrollNav.classList.remove('scroll-nav-hidden');
+        scrollNav.classList.add('scroll-nav-visible');
+      } else {
+        scrollNav.classList.remove('scroll-nav-visible');
+        scrollNav.classList.add('scroll-nav-hidden');
+      }
+    }
+
+    window.addEventListener('scroll', checkScroll, { passive: true });
+    checkScroll();
+  }
+</script>

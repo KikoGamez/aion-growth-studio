@@ -25,7 +25,7 @@ export const ui = {
     'hero.card.title': 'Una nueva marca con\nvocación internacional',
 
     // About
-    'about.label': 'About us',
+    'about.label': 'Beneficios',
     'about.headline': 'Ayudamos a equipos ambiciosos a construir infraestructuras de IA que les den diferenciación competitiva sostenible en cualquier mercado',
     'about.cta': 'More About Us',
     'about.rating': '4.9/5 rating de clientes',
@@ -122,7 +122,7 @@ export const ui = {
     'hero.card.title': 'A new brand with\ninternational ambition',
 
     // About
-    'about.label': 'About us',
+    'about.label': 'Benefits',
     'about.headline': 'We help ambitious teams build AI infrastructures that give them sustainable competitive differentiation in any market',
     'about.cta': 'More About Us',
     'about.rating': '4.9/5 client rating',
