@@ -29,7 +29,7 @@ const basePath = `/${lang}`;
     <div class="hidden lg:flex items-center gap-1">
       <a href={`${basePath}/#soluciones`} class="nav-link">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="nav-link">{t('nav.casos')}</a>
-      <a href={`${basePath}/#diagnostico`} class="nav-link">{t('nav.diagnostico')}</a>
+      <a href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'} class="nav-link">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="nav-link">{t('nav.blog')}</a>
       <a href={`${basePath}/#contacto`} class="nav-link">{t('nav.contacto')}</a>
 
@@ -60,7 +60,7 @@ const basePath = `/${lang}`;
       <div class="flex flex-col gap-1">
         <a href={`${basePath}/#soluciones`} class="mobile-nav-link">{t('nav.soluciones')}</a>
         <a href={`${basePath}/#casos`} class="mobile-nav-link">{t('nav.casos')}</a>
-        <a href={`${basePath}/#diagnostico`} class="mobile-nav-link">{t('nav.diagnostico')}</a>
+        <a href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'} class="mobile-nav-link">{t('nav.diagnostico')}</a>
         <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="mobile-nav-link">{t('nav.blog')}</a>
         <a href={`${basePath}/#contacto`} class="mobile-nav-link">{t('nav.contacto')}</a>
       </div>

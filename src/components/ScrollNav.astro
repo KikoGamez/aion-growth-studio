@@ -29,7 +29,7 @@ const basePath = `/${lang}`;
     <div class="hidden md:flex items-center gap-6">
       <a href={`${basePath}/#soluciones`} class="scroll-nav-link">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="scroll-nav-link">{t('nav.casos')}</a>
-      <a href={`${basePath}/#diagnostico`} class="scroll-nav-link">{t('nav.diagnostico')}</a>
+      <a href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'} class="scroll-nav-link">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="scroll-nav-link">{t('nav.blog')}</a>
       <a href={`${basePath}/#contacto`} class="scroll-nav-link">{t('nav.contacto')}</a>
     </div>
