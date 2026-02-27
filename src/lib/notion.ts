@@ -61,16 +61,17 @@ function slugify(text: string): string {
 
 function pageToPost(page: any): NotionPost {
   const rawSlug = extractProperty(page, 'Slug', 'rich_text');
+  const title = extractProperty(page, 'Title', 'title');
   return {
     id: page.id,
-    title: extractProperty(page, 'Title', 'title'),
+    title,
     description: extractProperty(page, 'Description', 'rich_text'),
     author: extractProperty(page, 'Author', 'people'),
     date: extractProperty(page, 'Date', 'date'),
     category: extractProperty(page, 'Category', 'select'),
     readTime: extractProperty(page, 'ReadTime', 'rich_text'),
     image: extractProperty(page, 'Image', 'url'),
-    slug: slugify(rawSlug),
+    slug: rawSlug ? slugify(rawSlug) : slugify(title),
     lang: extractProperty(page, 'Lang', 'select'),
     tags: extractProperty(page, 'Tags', 'multi_select'),
     seoScore: extractProperty(page, 'SEO Score', 'number'),
