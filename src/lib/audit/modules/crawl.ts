@@ -1,0 +1,100 @@
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import type { CrawlResult } from '../types';
+
+export async function runCrawl(url: string): Promise<CrawlResult> {
+  try {
+    const response = await axios.get(url, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0; +https://aiongrowth.studio)',
+      },
+      maxRedirects: 5,
+      validateStatus: (status) => status < 500,
+    });
+
+    const html = String(response.data);
+    const $ = cheerio.load(html);
+
+    const title = $('title').first().text().trim().slice(0, 100);
+    const description = ($('meta[name="description"]').attr('content') || '').trim().slice(0, 200);
+    const h1s = $('h1')
+      .map((_, el) => $(el).text().trim())
+      .get()
+      .filter(Boolean)
+      .slice(0, 5)
+      .map((h) => h.slice(0, 100));
+    const h2Count = $('h2').length;
+
+    const images = $('img');
+    const imageCount = images.length;
+    const imagesWithAlt = images.filter((_, el) => !!$(el).attr('alt')).length;
+
+    const hasCanonical = $('link[rel="canonical"]').length > 0;
+    const hasRobots = $('meta[name="robots"]').length > 0;
+    const hasSchemaMarkup = $('script[type="application/ld+json"]').length > 0;
+
+    const hostname = new URL(url).hostname;
+    const internalLinks = $('a[href]')
+      .filter((_, el) => {
+        const href = $(el).attr('href') || '';
+        return href.startsWith('/') || href.includes(hostname);
+      })
+      .length;
+
+    const bodyText = $('body').text().trim();
+    const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
+
+    // Quick sitemap check
+    let hasSitemap = false;
+    try {
+      const sitemapUrl = new URL('/sitemap.xml', url).href;
+      const sitemapRes = await axios.head(sitemapUrl, { timeout: 3000, validateStatus: () => true });
+      hasSitemap = sitemapRes.status < 400;
+    } catch {
+      // no sitemap
+    }
+
+    // Extract social media handles
+    const allLinks = $('a[href]').map((_, el) => $(el).attr('href') || '').get();
+
+    const instagramHandle = extractHandle(allLinks, /instagram\.com\/([A-Za-z0-9_.]+)/);
+    const twitterHandle = extractHandle(allLinks, /(?:twitter|x)\.com\/([A-Za-z0-9_]+)/);
+    const linkedinRaw = allLinks.find((h) => h.includes('linkedin.com/company') || h.includes('linkedin.com/in'));
+    const linkedinUrl = linkedinRaw ? linkedinRaw.split('?')[0] : undefined;
+
+    return {
+      title,
+      description,
+      h1s,
+      h2Count,
+      imageCount,
+      imagesWithAlt,
+      hasCanonical,
+      hasRobots,
+      hasSitemap,
+      hasSchemaMarkup,
+      internalLinks,
+      wordCount,
+      loadedOk: true,
+      ...(instagramHandle && { instagramHandle }),
+      ...(twitterHandle && { twitterHandle }),
+      ...(linkedinUrl && { linkedinUrl }),
+    };
+  } catch (err: any) {
+    return {
+      loadedOk: false,
+      error: (err.message || 'Failed to crawl').slice(0, 150),
+    };
+  }
+}
+
+function extractHandle(links: string[], pattern: RegExp): string | undefined {
+  for (const link of links) {
+    const match = link.match(pattern);
+    if (match?.[1] && !['explore', 'reels', 'stories', 'p', 'tv', 'share', 'sharer'].includes(match[1])) {
+      return match[1];
+    }
+  }
+  return undefined;
+}

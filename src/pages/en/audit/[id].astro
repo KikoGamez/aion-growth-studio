@@ -1,0 +1,727 @@
+---
+export const prerender = false;
+import Layout from '../../../layouts/Layout.astro';
+import { getAuditPage } from '../../../lib/audit/notion';
+
+const { id } = Astro.params;
+const lang = 'en';
+
+let auditUrl = '';
+let initialStatus = 'processing';
+
+if (id) {
+  try {
+    const audit = await getAuditPage(id);
+    auditUrl = audit.url;
+    initialStatus = audit.status;
+  } catch {
+    // Page not found or Notion error — show loading state
+  }
+}
+
+const domain = auditUrl ? new URL(auditUrl).hostname.replace(/^www\./, '') : '';
+
+const MODULES = [
+  { key: 'crawl', label: 'Technical SEO Analysis', icon: '🔍' },
+  { key: 'ssl', label: 'SSL/HTTPS Security', icon: '🔒' },
+  { key: 'pagespeed', label: 'Web Performance (PageSpeed)', icon: '⚡' },
+  { key: 'sector', label: 'Sector Detection', icon: '🎯' },
+  { key: 'content', label: 'Content Analysis', icon: '📝' },
+  { key: 'geo', label: 'AI Visibility (GEO)', icon: '🤖' },
+  { key: 'instagram', label: 'Instagram & Social Media', icon: '📸' },
+  { key: 'linkedin', label: 'LinkedIn Company Page', icon: '💼' },
+  { key: 'gbp', label: 'Google Business Profile', icon: '📍' },
+  { key: 'traffic', label: 'Estimated Traffic', icon: '📈' },
+  { key: 'competitors', label: 'Competitor Analysis', icon: '🏆' },
+  { key: 'score', label: 'Final Score', icon: '📊' },
+  { key: 'insights', label: 'Executive Diagnosis', icon: '💡' },
+];
+---
+
+<Layout
+  title={`Analyzing ${domain || 'your website'} — AION`}
+  description="Digital visibility analysis in progress"
+  lang={lang}
+>
+  <div class="audit-bg min-h-screen text-white flex flex-col">
+    <!-- Header -->
+    <nav class="flex items-center justify-between px-6 md:px-12 py-5">
+      <a href="/en/">
+        <img src="/logo-aion-dark.png" alt="AION Growth Studio" class="h-10 w-auto" />
+      </a>
+      <div class="flex items-center gap-2">
+        <a href="/en/diagnostic" class="text-sm text-white/60 hover:text-white transition-colors">New analysis</a>
+      </div>
+    </nav>
+
+    <div class="flex-1 px-4 py-8 max-w-3xl mx-auto w-full">
+
+      <!-- PROCESSING STATE -->
+      <div id="processing-state">
+        <div class="text-center mb-10">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-400/20 rounded-full text-cyan-300 text-xs font-medium mb-4">
+            <span class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+            Analysis in progress
+          </div>
+          <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">
+            Analyzing your website
+          </h1>
+          {domain && (
+            <p class="text-slate-400 text-sm font-mono">{domain}</p>
+          )}
+        </div>
+
+        <!-- Progress bar -->
+        <div class="mb-8">
+          <div class="flex justify-between text-xs text-slate-400 mb-2">
+            <span>Progress</span>
+            <span id="progress-pct">0%</span>
+          </div>
+          <div class="h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+            <div
+              id="progress-bar"
+              class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-700"
+              style="width: 0%"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Module list -->
+        <div class="space-y-2">
+          {MODULES.map((mod) => (
+            <div
+              id={`module-${mod.key}`}
+              class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/3 border border-white/5 opacity-40 transition-all duration-300"
+            >
+              <span class="module-icon text-lg w-6 text-center">○</span>
+              <span class="text-sm text-slate-300">{mod.icon} {mod.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- RESULTS STATE -->
+      <div id="results-state" class="hidden">
+        <div class="text-center mb-10">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-400/20 rounded-full text-emerald-300 text-xs font-medium mb-4">
+            <span>✅</span>
+            Analysis complete
+          </div>
+          <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">
+            Digital Visibility Report
+          </h1>
+          {domain && (
+            <p class="text-slate-400 text-sm font-mono">{domain}</p>
+          )}
+        </div>
+
+        <!-- Score gauge -->
+        <div class="flex flex-col items-center mb-10">
+          <div class="relative w-36 h-36 mb-4">
+            <svg class="w-36 h-36 -rotate-90" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+              <circle
+                id="score-ring"
+                cx="18" cy="18" r="15.9"
+                fill="none"
+                stroke="#22d3ee"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-dasharray="0, 100"
+                class="transition-all duration-1000"
+              />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="score-value" class="text-4xl font-bold text-white">—</span>
+              <span class="text-xs text-slate-400">/100</span>
+            </div>
+          </div>
+          <p class="text-sm text-slate-400" id="score-label">AEO Score</p>
+        </div>
+
+        <!-- Score breakdown -->
+        <div id="score-breakdown" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8"></div>
+
+        <!-- Executive insights -->
+        <div id="insights-section" class="hidden mb-8"></div>
+
+        <!-- Detailed sections -->
+        <div id="detail-sections" class="space-y-4"></div>
+
+        <!-- CTA -->
+        <div class="mt-12 p-6 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-400/20 rounded-2xl text-center">
+          <h3 class="text-lg font-bold text-white mb-2">Want to implement these improvements?</h3>
+          <p class="text-sm text-slate-300 mb-4">At AION we deploy growth infrastructure in 8 weeks.</p>
+          <a
+            href="mailto:hola@aiongrowth.studio"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0B1B3D] font-semibold text-sm rounded-xl hover:bg-cyan-300 transition-all duration-300"
+          >
+            Talk to AION →
+          </a>
+        </div>
+      </div>
+
+      <!-- ERROR STATE -->
+      <div id="error-state" class="hidden text-center py-20">
+        <div class="text-5xl mb-4">⚠️</div>
+        <h2 class="text-xl font-bold text-white mb-2">Analysis could not be completed</h2>
+        <p class="text-slate-400 text-sm mb-6">An error occurred while analyzing your website. Please try again.</p>
+        <a
+          href="/en/diagnostic"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#0B1B3D] font-semibold text-sm rounded-xl hover:bg-cyan-300 transition-all duration-300"
+        >
+          New analysis
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center py-6 text-xs text-slate-500">
+      <a href="/en/" class="hover:text-slate-300 transition-colors">AION Growth Studio</a>
+      <span class="mx-2">·</span>
+      <a href="mailto:hola@aiongrowth.studio" class="hover:text-slate-300 transition-colors">hola@aiongrowth.studio</a>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .audit-bg {
+    background: linear-gradient(160deg, #0B1B3D 0%, #0d2347 50%, #0B1B3D 100%);
+  }
+  .bg-white\/3 {
+    background-color: rgba(255,255,255,0.03);
+  }
+</style>
+
+<script define:vars={{ auditId: id, initialStatus }}>
+  const MODULES = [
+    'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo', 'instagram', 'linkedin', 'gbp', 'traffic', 'competitors', 'score', 'insights'
+  ];
+
+  let completedModules = new Set();
+
+  function setProgress(pct) {
+    const bar = document.getElementById('progress-bar');
+    const label = document.getElementById('progress-pct');
+    if (bar) bar.style.width = `${pct}%`;
+    if (label) label.textContent = `${pct}%`;
+  }
+
+  function markModule(key, state) {
+    const el = document.getElementById(`module-${key}`);
+    if (!el) return;
+    const icon = el.querySelector('.module-icon');
+    el.classList.remove('opacity-40');
+    if (state === 'done') {
+      if (icon) icon.textContent = '✅';
+      el.classList.add('border-emerald-500/30', 'bg-emerald-500/5');
+    } else if (state === 'running') {
+      if (icon) icon.textContent = '⏳';
+      el.classList.add('border-cyan-500/30', 'bg-cyan-500/5');
+    }
+  }
+
+  function showResults(data) {
+    document.getElementById('processing-state').classList.add('hidden');
+    document.getElementById('results-state').classList.remove('hidden');
+
+    const results = data.results || {};
+    const score = results.score?.total ?? data.score ?? 0;
+
+    // Insights section
+    const ins = results.insights;
+    if (ins && !ins.skipped && (ins.bullets?.length || ins.initiatives?.length)) {
+      const insSection = document.getElementById('insights-section');
+      if (insSection) {
+        const bulletsHtml = (ins.bullets || []).map(b =>
+          `<li class="flex items-start gap-2.5 text-sm text-slate-200 leading-relaxed">
+            <span class="text-cyan-400 mt-0.5 shrink-0">→</span>
+            <span>${b}</span>
+          </li>`
+        ).join('');
+
+        const initiativesHtml = (ins.initiatives || []).map((init, i) =>
+          `<div class="flex gap-4 p-4 bg-white/5 border border-white/10 rounded-xl">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0">${i + 1}</div>
+            <div>
+              <p class="text-sm font-semibold text-white mb-1">${init.title}</p>
+              <p class="text-xs text-slate-300 leading-relaxed">${init.description}</p>
+            </div>
+          </div>`
+        ).join('');
+
+        insSection.innerHTML = `
+          <div class="bg-gradient-to-br from-[#0d2347] to-[#0B1B3D] border border-cyan-400/20 rounded-2xl p-6 md:p-8">
+            <div class="flex items-center gap-2 mb-6">
+              <span class="text-xl">💡</span>
+              <h2 class="text-lg font-bold text-white">Your digital presence diagnosis</h2>
+            </div>
+            <ul class="space-y-3 mb-8">${bulletsHtml}</ul>
+            ${initiativesHtml.length ? `
+              <div class="border-t border-white/10 pt-6 mt-6">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                  <span class="w-5 h-5 bg-amber-500/20 rounded flex items-center justify-center text-amber-400 text-xs">★</span>
+                  Your 3 priority initiatives
+                </h3>
+                <div class="space-y-3">${initiativesHtml}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        insSection.classList.remove('hidden');
+      }
+    }
+
+    const ring = document.getElementById('score-ring');
+    const scoreVal = document.getElementById('score-value');
+    const scoreLabel = document.getElementById('score-label');
+    if (ring) {
+      const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444';
+      ring.setAttribute('stroke', color);
+      ring.setAttribute('stroke-dasharray', `${score}, 100`);
+    }
+    if (scoreVal) scoreVal.textContent = score;
+    if (scoreLabel) {
+      const label = score >= 70 ? 'Good visibility' : score >= 40 ? 'Moderate visibility' : 'Low visibility';
+      scoreLabel.textContent = label;
+    }
+
+    const breakdown = results.score?.breakdown;
+    if (breakdown) {
+      const container = document.getElementById('score-breakdown');
+      const items = [
+        { label: 'Technical', value: breakdown.technical, icon: '⚙️' },
+        { label: 'Performance', value: breakdown.performance, icon: '⚡' },
+        { label: 'Content', value: breakdown.content, icon: '📝' },
+        { label: 'Visibility', value: breakdown.visibility, icon: '🤖' },
+      ];
+      container.innerHTML = items.map(item => {
+        const color = item.value >= 70 ? 'text-emerald-400' : item.value >= 40 ? 'text-amber-400' : 'text-red-400';
+        return `<div class="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+          <div class="text-lg mb-1">${item.icon}</div>
+          <div class="text-2xl font-bold ${color} mb-1">${item.value}</div>
+          <div class="text-xs text-slate-400">${item.label}</div>
+        </div>`;
+      }).join('');
+    }
+
+    const container = document.getElementById('detail-sections');
+    const sections = [];
+
+    if (results.crawl && !results.crawl.skipped) {
+      const c = results.crawl;
+      sections.push(buildSection('🔍 Technical SEO Analysis', [
+        { label: 'Title', value: c.title || '—' },
+        { label: 'Meta description', value: c.description || '—' },
+        { label: 'Word count', value: c.wordCount || 0 },
+        { label: 'H1 tags', value: (c.h1s || []).join(', ') || '—' },
+        { label: 'Canonical tag', value: c.hasCanonical ? '✅ Present' : '❌ Missing' },
+        { label: 'Schema.org', value: c.hasSchemaMarkup ? '✅ Present' : '❌ Missing' },
+        { label: 'XML Sitemap', value: c.hasSitemap ? '✅ Present' : '❌ Not found' },
+        { label: 'Images with alt', value: `${c.imagesWithAlt || 0} / ${c.imageCount || 0}` },
+      ]));
+    }
+
+    if (results.ssl && !results.ssl.skipped) {
+      const s = results.ssl;
+      sections.push(buildSection('🔒 SSL/HTTPS Security', [
+        { label: 'Status', value: s.valid ? '✅ Valid' : '❌ Invalid or expired' },
+        { label: 'Issuer', value: s.issuer || '—' },
+        { label: 'Expires', value: s.expiresAt ? `${s.daysUntilExpiry} days (${s.expiresAt})` : '—' },
+        { label: 'Protocol', value: s.protocol || '—' },
+      ]));
+    }
+
+    if (results.pagespeed && !results.pagespeed.skipped) {
+      const ps = results.pagespeed;
+      const rows = [];
+      if (ps.mobile) {
+        rows.push(
+          { label: 'Mobile performance', value: `${ps.mobile.performance}/100` },
+          { label: 'Mobile accessibility', value: `${ps.mobile.accessibility}/100` },
+          { label: 'SEO (Lighthouse)', value: `${ps.mobile.seo}/100` },
+        );
+        if (ps.mobile.lcp) rows.push({ label: 'LCP (ms)', value: ps.mobile.lcp });
+        if (ps.mobile.cls !== undefined) rows.push({ label: 'CLS', value: ps.mobile.cls.toFixed(3) });
+      }
+      if (ps.desktop) rows.push({ label: 'Desktop performance', value: `${ps.desktop.performance}/100` });
+      sections.push(buildSection('⚡ Web Performance (PageSpeed)', rows));
+    }
+
+    if (results.sector && !results.sector.skipped) {
+      const sec = results.sector;
+      sections.push(buildSection('🎯 Detected Sector', [
+        { label: 'Sector', value: sec.sector || '—' },
+        { label: 'Confidence', value: sec.confidence ? `${Math.round(sec.confidence * 100)}%` : '—' },
+        { label: 'Keywords', value: (sec.keywords || []).join(', ') || '—' },
+        { label: 'Rationale', value: sec.rationale || '—' },
+      ]));
+    }
+
+    if (results.content && !results.content.skipped) {
+      const c = results.content;
+      sections.push(buildSection('📝 Content Analysis', [
+        { label: 'Clarity', value: `${c.clarity || 0}/100` },
+        { label: 'Value proposition', value: c.valueProposition || '—' },
+        { label: 'Target audience', value: c.audienceMatch || '—' },
+        { label: 'Main CTA', value: c.cta || '—' },
+        { label: 'Strengths', value: (c.strengths || []).join(' · ') || '—' },
+        { label: 'Weaknesses', value: (c.weaknesses || []).join(' · ') || '—' },
+      ]));
+    }
+
+    if (results.geo && !results.geo.skipped) {
+      const g = results.geo;
+      const brandScore = g.brandScore ?? 0;
+      const sectorScore = g.sectorScore ?? 0;
+      const brandLabel = brandScore >= 60 ? 'High' : brandScore >= 30 ? 'Partial' : 'Not present';
+      const sectorLabel = sectorScore >= 40 ? 'High' : sectorScore >= 20 ? 'Medium' : 'Low';
+      const brandColor = brandScore >= 60 ? 'text-emerald-400' : brandScore >= 30 ? 'text-amber-400' : 'text-slate-400';
+      const sectorColor = sectorScore >= 40 ? 'text-emerald-400' : sectorScore >= 20 ? 'text-amber-400' : 'text-red-400';
+
+      const queries = (g.queries || []).map(q =>
+        `<div class="flex items-start gap-2 py-2 border-b border-white/5 last:border-0">
+          <span class="mt-0.5 shrink-0">${q.mentioned ? '✅' : q.isBrandQuery ? '○' : '◉'}</span>
+          <div class="flex-1">
+            <span class="text-xs text-slate-300">${q.query}</span>
+            ${q.mentioned ? '<span class="block text-xs text-emerald-400 mt-0.5">Your brand was mentioned</span>' : ''}
+            ${!q.isBrandQuery && !q.mentioned ? '<span class="block text-xs text-slate-500 mt-0.5">Sector covered — brand not yet mentioned</span>' : ''}
+          </div>
+        </div>`
+      ).join('');
+
+      sections.push(`
+        <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+          <h3 class="text-base font-semibold text-white mb-1">🤖 AI Visibility (GEO)</h3>
+          <p class="text-xs text-slate-400 mb-4">Overall score: <span class="text-cyan-400 font-bold">${g.overallScore || 0}/100</span></p>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <div class="text-xl font-bold ${brandColor}">${brandScore}</div>
+              <div class="text-xs text-slate-400 mt-0.5">Brand in AI</div>
+              <div class="text-xs ${brandColor} font-medium">${brandLabel}</div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <div class="text-xl font-bold ${sectorColor}">${sectorScore}</div>
+              <div class="text-xs text-slate-400 mt-0.5">Sector in AI</div>
+              <div class="text-xs ${sectorColor} font-medium">${sectorLabel}</div>
+            </div>
+          </div>
+          <div>${queries}</div>
+        </div>
+      `);
+    }
+
+    if (results.instagram) {
+      const ig = results.instagram;
+      if (ig.found === false) {
+        sections.push(`
+          <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+            <h3 class="text-base font-semibold text-white mb-2">📸 Instagram & Social Media</h3>
+            <p class="text-xs text-slate-400">No Instagram link detected on the website.</p>
+          </div>
+        `);
+      } else {
+        const engagementColor = !ig.engagementRate ? 'text-slate-400'
+          : ig.engagementRate >= 3 ? 'text-emerald-400'
+          : ig.engagementRate >= 1 ? 'text-amber-400'
+          : 'text-red-400';
+
+        const competitorsHtml = (ig.competitors || []).length > 0 ? `
+          <div class="mt-4 pt-4 border-t border-white/10">
+            <p class="text-xs font-semibold text-slate-300 mb-3">Competitor comparison</p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-slate-400">
+                    <th class="text-left pb-2 font-medium">Account</th>
+                    <th class="text-right pb-2 font-medium">Followers</th>
+                    <th class="text-right pb-2 font-medium">Posts</th>
+                    <th class="text-right pb-2 font-medium">Engagement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-t border-white/5">
+                    <td class="py-2 text-cyan-400 font-medium">@${ig.handle} <span class="text-slate-500">(you)</span></td>
+                    <td class="py-2 text-right text-slate-200">${formatNum(ig.followers)}</td>
+                    <td class="py-2 text-right text-slate-200">${formatNum(ig.posts)}</td>
+                    <td class="py-2 text-right ${engagementColor}">${ig.engagementRate != null ? ig.engagementRate + '%' : '—'}</td>
+                  </tr>
+                  ${(ig.competitors || []).map(c => {
+                    const cColor = !c.engagementRate ? 'text-slate-400'
+                      : c.engagementRate >= 3 ? 'text-emerald-400'
+                      : c.engagementRate >= 1 ? 'text-amber-400'
+                      : 'text-red-400';
+                    return `<tr class="border-t border-white/5">
+                      <td class="py-2"><a href="${c.url}" target="_blank" class="text-slate-300 hover:text-white">@${c.handle}</a></td>
+                      <td class="py-2 text-right text-slate-400">${formatNum(c.followers)}</td>
+                      <td class="py-2 text-right text-slate-400">${formatNum(c.posts)}</td>
+                      <td class="py-2 text-right ${cColor}">${c.engagementRate != null ? c.engagementRate + '%' : '—'}</td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : '';
+
+        sections.push(`
+          <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+            <h3 class="text-base font-semibold text-white mb-1">📸 Instagram</h3>
+            <a href="${ig.url}" target="_blank" class="text-xs text-cyan-400 hover:underline mb-4 block">@${ig.handle}</a>
+            <div class="grid grid-cols-3 gap-3 mb-4">
+              <div class="bg-white/5 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-white">${formatNum(ig.followers)}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Followers</div>
+              </div>
+              <div class="bg-white/5 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold text-white">${formatNum(ig.posts)}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Posts</div>
+              </div>
+              <div class="bg-white/5 rounded-xl p-3 text-center">
+                <div class="text-lg font-bold ${engagementColor}">${ig.engagementRate != null ? ig.engagementRate + '%' : '—'}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Engagement</div>
+              </div>
+            </div>
+            ${ig.avgLikes != null ? `<p class="text-xs text-slate-400 mb-1">Avg last 12 posts: <span class="text-slate-200">${formatNum(ig.avgLikes)} likes · ${formatNum(ig.avgComments)} comments</span></p>` : ''}
+            ${ig.bio ? `<p class="text-xs text-slate-400 mt-2 italic">"${ig.bio}"</p>` : ''}
+            ${ig.reason ? `<p class="text-xs text-amber-400/80 mt-2">${ig.reason}</p>` : ''}
+            ${ig.isVerified ? `<span class="inline-block mt-2 px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs rounded-full">✓ Verified account</span>` : ''}
+            ${ig.isBusinessAccount && ig.businessCategory ? `<span class="inline-block mt-2 ml-1 px-2 py-0.5 bg-white/10 text-slate-300 text-xs rounded-full">${ig.businessCategory}</span>` : ''}
+            ${competitorsHtml}
+          </div>
+        `);
+      }
+    }
+
+    if (results.linkedin) {
+      const li = results.linkedin;
+      if (li.found === false) {
+        sections.push(`
+          <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+            <h3 class="text-base font-semibold text-white mb-2">💼 LinkedIn Company Page</h3>
+            <p class="text-xs text-slate-400">No LinkedIn link detected on the website.</p>
+          </div>
+        `);
+      } else {
+        const competitorsHtml = (li.competitors || []).length > 0 ? `
+          <div class="mt-4 pt-4 border-t border-white/10">
+            <p class="text-xs font-semibold text-slate-300 mb-3">Competitor comparison</p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-slate-400">
+                    <th class="text-left pb-2 font-medium">Company</th>
+                    <th class="text-right pb-2 font-medium">Followers</th>
+                    <th class="text-right pb-2 font-medium">Employees</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-t border-white/5">
+                    <td class="py-2 text-cyan-400 font-medium">${li.name || '(you)'} <span class="text-slate-500">(you)</span></td>
+                    <td class="py-2 text-right text-slate-200">${formatNum(li.followers)}</td>
+                    <td class="py-2 text-right text-slate-200">${li.employees || '—'}</td>
+                  </tr>
+                  ${(li.competitors || []).map(c => `
+                    <tr class="border-t border-white/5">
+                      <td class="py-2"><a href="${c.url}" target="_blank" class="text-slate-300 hover:text-white">${c.name}</a></td>
+                      <td class="py-2 text-right text-slate-400">${formatNum(c.followers)}</td>
+                      <td class="py-2 text-right text-slate-400">${c.employees || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : '';
+
+        sections.push(`
+          <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+            <h3 class="text-base font-semibold text-white mb-1">💼 LinkedIn Company Page</h3>
+            <a href="${li.url}" target="_blank" class="text-xs text-cyan-400 hover:underline mb-4 block">${li.url}</a>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div class="bg-white/5 rounded-xl p-3 text-center col-span-1">
+                <div class="text-lg font-bold text-white">${formatNum(li.followers)}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Followers</div>
+              </div>
+              ${li.employees ? `<div class="bg-white/5 rounded-xl p-3 text-center col-span-1">
+                <div class="text-sm font-bold text-white">${li.employees}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Employees</div>
+              </div>` : ''}
+              ${li.industry ? `<div class="bg-white/5 rounded-xl p-3 text-center col-span-1">
+                <div class="text-xs font-semibold text-slate-200 leading-snug">${li.industry}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Industry</div>
+              </div>` : ''}
+              ${li.headquarters ? `<div class="bg-white/5 rounded-xl p-3 text-center col-span-1">
+                <div class="text-xs font-semibold text-slate-200 leading-snug">${li.headquarters}</div>
+                <div class="text-xs text-slate-400 mt-0.5">HQ</div>
+              </div>` : ''}
+            </div>
+            ${li.description ? `<p class="text-xs text-slate-400 italic">"${li.description}"</p>` : ''}
+            ${li.reason ? `<p class="text-xs text-amber-400/80 mt-2">${li.reason}</p>` : ''}
+            ${competitorsHtml}
+          </div>
+        `);
+      }
+    }
+
+    if (results.gbp && !results.gbp.skipped) {
+      const g = results.gbp;
+      sections.push(buildSection('📍 Google Business Profile', g.found ? [
+        { label: 'Status', value: '✅ Found' },
+        { label: 'Name', value: g.name || '—' },
+        { label: 'Rating', value: g.rating ? `${g.rating} ⭐ (${g.reviewCount} reviews)` : '—' },
+        { label: 'Address', value: g.address || '—' },
+      ] : [
+        { label: 'Status', value: '❌ Not found' },
+      ]));
+    }
+
+    if (results.traffic && !results.traffic.skipped) {
+      const t = results.traffic;
+      const fmtDur = (s) => {
+        if (!s) return '—';
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+      };
+      const channelLabels = { organic: 'Organic', direct: 'Direct', social: 'Social', referral: 'Referral', paid: 'Paid', email: 'Email' };
+      const channelsHtml = t.channels ? Object.entries(t.channels).map(([key, ch]) => {
+        const label = channelLabels[key] || key;
+        const share = ch.share ?? 0;
+        const barColor = key === 'organic' ? 'bg-emerald-500' : key === 'direct' ? 'bg-blue-500' : key === 'social' ? 'bg-pink-500' : key === 'referral' ? 'bg-amber-500' : key === 'paid' ? 'bg-purple-500' : 'bg-slate-500';
+        return `<div class="flex items-center gap-3 py-1.5">
+          <span class="text-xs text-slate-400 w-16 shrink-0">${label}</span>
+          <div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div class="${barColor} h-full rounded-full" style="width:${share}%"></div>
+          </div>
+          <span class="text-xs text-slate-300 w-8 text-right">${share}%</span>
+        </div>`;
+      }).join('') : '';
+      const countriesHtml = (t.topCountries || []).map(c =>
+        `<div class="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+          <span class="text-xs text-slate-300">${c.name}</span>
+          <span class="text-xs text-slate-400">${c.share}%</span>
+        </div>`
+      ).join('');
+
+      sections.push(`
+        <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+          <h3 class="text-base font-semibold text-white mb-4">📈 Estimated Traffic (last 12 months)</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <div class="text-xl font-bold text-white">${t.visits != null ? formatNum(t.visits) : '—'}</div>
+              <div class="text-xs text-slate-400 mt-0.5">Total visits</div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <div class="text-xl font-bold ${t.bounceRate != null && t.bounceRate < 50 ? 'text-emerald-400' : t.bounceRate != null && t.bounceRate < 70 ? 'text-amber-400' : 'text-red-400'}">${t.bounceRate != null ? t.bounceRate + '%' : '—'}</div>
+              <div class="text-xs text-slate-400 mt-0.5">Bounce rate</div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <div class="text-xl font-bold text-white">${t.pagesPerVisit != null ? t.pagesPerVisit : '—'}</div>
+              <div class="text-xs text-slate-400 mt-0.5">Pages/visit</div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+              <div class="text-xl font-bold text-white">${fmtDur(t.avgSessionDuration)}</div>
+              <div class="text-xs text-slate-400 mt-0.5">Avg. duration</div>
+            </div>
+          </div>
+          ${channelsHtml ? `<div class="mb-4"><p class="text-xs font-semibold text-slate-300 mb-2">Traffic by channel</p>${channelsHtml}</div>` : ''}
+          ${countriesHtml ? `<div><p class="text-xs font-semibold text-slate-300 mb-2">Top countries</p>${countriesHtml}</div>` : ''}
+        </div>
+      `);
+    }
+
+    if (results.competitors && !results.competitors.skipped) {
+      const comps = results.competitors?.competitors || [];
+      if (comps.length > 0) {
+        const list = comps.map(c =>
+          `<div class="py-2 border-b border-white/5 last:border-0">
+            <a href="${c.url}" target="_blank" class="text-sm text-cyan-400 hover:underline">${c.name}</a>
+            <p class="text-xs text-slate-400 mt-0.5">${c.snippet}</p>
+          </div>`
+        ).join('');
+        sections.push(`
+          <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+            <h3 class="text-base font-semibold text-white mb-4">🏆 Detected Competitors</h3>
+            ${list}
+          </div>
+        `);
+      }
+    }
+
+    container.innerHTML = sections.join('');
+  }
+
+  function formatNum(n) {
+    if (n == null) return '—';
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  function buildSection(title, rows) {
+    const rowsHtml = rows.map(r =>
+      `<div class="flex gap-3 py-2 border-b border-white/5 last:border-0">
+        <span class="text-xs text-slate-400 w-36 shrink-0">${r.label}</span>
+        <span class="text-xs text-slate-200 flex-1">${r.value}</span>
+      </div>`
+    ).join('');
+    return `
+      <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+        <h3 class="text-base font-semibold text-white mb-4">${title}</h3>
+        ${rowsHtml}
+      </div>
+    `;
+  }
+
+  function showError() {
+    document.getElementById('processing-state').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(`/api/audit/${auditId}/status`);
+      if (!res.ok) { showError(); return; }
+      const data = await res.json();
+
+      setProgress(data.progress || 0);
+
+      if (data.module_completed) {
+        completedModules.add(data.module_completed);
+        MODULES.forEach((key, i) => {
+          if (completedModules.has(key)) markModule(key, 'done');
+          else if (i === completedModules.size) markModule(key, 'running');
+        });
+      }
+
+      if (data.status === 'completed') {
+        setProgress(100);
+        MODULES.forEach(key => markModule(key, 'done'));
+        showResults(data);
+        return;
+      }
+
+      if (data.status === 'error') { showError(); return; }
+
+      const nextIdx = completedModules.size;
+      if (nextIdx < MODULES.length) markModule(MODULES[nextIdx], 'running');
+
+      setTimeout(poll, 2000);
+    } catch (err) {
+      console.error('Poll error:', err);
+      setTimeout(poll, 3000);
+    }
+  }
+
+  if (initialStatus === 'completed') {
+    poll();
+  } else if (initialStatus === 'error') {
+    showError();
+  } else {
+    markModule(MODULES[0], 'running');
+    setProgress(2);
+    setTimeout(poll, 1500);
+  }
+</script>
