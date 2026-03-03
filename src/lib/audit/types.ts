@@ -123,7 +123,8 @@ export interface GeoQuery {
   query: string;
   mentioned: boolean;
   isBrandQuery?: boolean;
-  context?: string;
+  context?: string;     // First 180 chars of answer when mentioned
+  answer?: string;      // First 150 chars of answer when NOT mentioned (for debugging)
   level?: number;        // 1=sector, 2=value prop, 3=keywords, 4=direct brand
   levelLabel?: string;  // Human-readable label for this funnel level
   pts?: number;         // Points awarded at this level

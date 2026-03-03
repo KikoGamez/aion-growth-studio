@@ -52,10 +52,14 @@ const HEDGING_PHRASES = [
 
 function detectMention(answer: string, domain: string, brandName: string): boolean {
   const lower = answer.toLowerCase();
-  return (
-    lower.includes(domain.toLowerCase()) ||
-    (brandName.length > 5 && lower.includes(brandName.toLowerCase()))
-  );
+  // 1. Full domain (e.g. "globalexchange.es")
+  if (lower.includes(domain.toLowerCase())) return true;
+  // 2. Brand name (e.g. "Global Exchange")
+  if (brandName.length > 5 && lower.includes(brandName.toLowerCase())) return true;
+  // 3. Domain without TLD (e.g. "globalexchange" from "globalexchange.es")
+  const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '');
+  if (domainBase.length > 5 && lower.includes(domainBase.toLowerCase())) return true;
+  return false;
 }
 
 function hasHedging(answer: string): boolean {
@@ -108,32 +112,54 @@ export async function runGEO(url: string, sector: string, crawl: CrawlResult): P
     `¿Qué sabes sobre la empresa "${brandName}" (${domain})? ¿Es un referente conocido en su sector? Descríbela brevemente.`,
   ];
 
+  const askGPT = async (query: string): Promise<string> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 28000);
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 400,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Eres un asistente experto. Responde en español de forma concisa. Cuando pregunten por empresas, menciona nombres reales y específicos incluyendo marcas internacionales relevantes.',
+            },
+            { role: 'user', content: query },
+          ],
+        }),
+      });
+      if (!res.ok) return '';
+      const data = await res.json();
+      return (data?.choices?.[0]?.message?.content || '') as string;
+    } catch {
+      return ''; // timeout or network error → treat level as not mentioned
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   try {
-    const answers = await Promise.all(
-      queryTexts.map(async (query) => {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            max_tokens: 400,
-            messages: [
-              {
-                role: 'system',
-                content:
-                  'Eres un asistente experto. Responde en español de forma concisa. Cuando pregunten por empresas, menciona nombres reales y específicos incluyendo marcas internacionales relevantes.',
-              },
-              { role: 'user', content: query },
-            ],
-          }),
-        });
-        const data = await res.json();
-        return (data?.choices?.[0]?.message?.content || '') as string;
-      }),
-    );
+    // Run each query independently — one failure doesn't kill the others
+    const answers = await Promise.all(queryTexts.map(askGPT));
+
+    // If every answer came back empty, the API is down/rate-limited
+    if (answers.every((a) => a.length === 0)) {
+      return {
+        queries: [],
+        overallScore: 0,
+        brandScore: 0,
+        sectorScore: 0,
+        error: 'OpenAI API no respondió (timeout o rate limit) — reintenta en unos minutos',
+      };
+    }
 
     // Score each funnel level
     const levelResults = FUNNEL_LEVELS.map(({ level, maxPts, labelEs }, idx) => {
@@ -180,6 +206,7 @@ export async function runGEO(url: string, sector: string, crawl: CrawlResult): P
       mentioned: r.mentioned,
       isBrandQuery: r.level === 4,
       context: r.mentioned ? r.answer.slice(0, 180) : undefined,
+      answer: !r.mentioned && r.answer ? r.answer.slice(0, 150) : undefined,
       level: r.level,
       levelLabel: r.labelEs,
       pts: r.pts,
