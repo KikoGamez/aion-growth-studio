@@ -28,11 +28,11 @@ const MODULES = [
   { key: 'sector', label: 'Detección de sector', icon: '🎯' },
   { key: 'content', label: 'Análisis de contenido', icon: '📝' },
   { key: 'geo', label: 'Visibilidad en IA (GEO)', icon: '🤖' },
-  { key: 'instagram', label: 'Instagram & Redes Sociales', icon: '📸' },
-  { key: 'linkedin', label: 'LinkedIn Empresa', icon: '💼' },
   { key: 'gbp', label: 'Google Business Profile', icon: '📍' },
   { key: 'traffic', label: 'Tráfico estimado', icon: '📈' },
   { key: 'competitors', label: 'Análisis de competidores', icon: '🏆' },
+  { key: 'instagram', label: 'Instagram & Redes Sociales', icon: '📸' },
+  { key: 'linkedin', label: 'LinkedIn Empresa', icon: '💼' },
   { key: 'score', label: 'Puntuación final', icon: '📊' },
   { key: 'insights', label: 'Diagnóstico ejecutivo', icon: '💡' },
 ];
@@ -196,7 +196,7 @@ const MODULES = [
 
 <script define:vars={{ auditId: id, initialStatus }}>
   const MODULES = [
-    'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo', 'instagram', 'linkedin', 'gbp', 'traffic', 'competitors', 'score', 'insights'
+    'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo', 'gbp', 'traffic', 'competitors', 'instagram', 'linkedin', 'score', 'insights'
   ];
 
   let completedModules = new Set();
@@ -714,30 +714,32 @@ const MODULES = [
         `);
       }
 
-      // Benchmark table: consolidate social metrics from Instagram + LinkedIn competitors
-      const igOwn = results.instagram?.found ? results.instagram : null;
-      const liOwn = results.linkedin?.found ? results.linkedin : null;
+      // Benchmark: show social metrics for own company + competitors
+      const igOwn = results.instagram?.found !== false ? results.instagram : null;
+      const liOwn = results.linkedin?.found !== false ? results.linkedin : null;
       const igComps = results.instagram?.competitors || [];
       const liComps = results.linkedin?.competitors || [];
 
       let benchHtml = '';
 
-      if (igComps.length > 0 && igOwn) {
+      // Instagram table — always show if own data exists, add comp rows if available
+      if (igOwn?.handle) {
+        const engColor = (r) => !r ? 'text-slate-400' : r >= 3 ? 'text-emerald-400' : r >= 1 ? 'text-amber-400' : 'text-red-400';
         const ownRow = `<tr class="border-t border-white/5">
-          <td class="py-2 pr-3"><span class="text-xs font-semibold text-cyan-300">Tu empresa ★</span></td>
+          <td class="py-2 pr-3"><span class="text-xs font-semibold text-cyan-300"><a href="${igOwn.url}" target="_blank">@${igOwn.handle}</a> ★</span></td>
           <td class="py-2 text-right text-xs text-slate-200">${formatNum(igOwn.followers)}</td>
-          <td class="py-2 text-right text-xs ${!igOwn.engagementRate ? 'text-slate-400' : igOwn.engagementRate >= 3 ? 'text-emerald-400' : igOwn.engagementRate >= 1 ? 'text-amber-400' : 'text-red-400'}">${igOwn.engagementRate != null ? igOwn.engagementRate + '%' : '—'}</td>
+          <td class="py-2 text-right text-xs ${engColor(igOwn.engagementRate)}">${igOwn.engagementRate != null ? igOwn.engagementRate + '%' : '—'}</td>
           <td class="py-2 text-right text-xs text-slate-400">${igOwn.posts ?? '—'}</td>
         </tr>`;
         const compRows = igComps.map(c => `<tr class="border-t border-white/5">
           <td class="py-2 pr-3"><a href="${c.url}" target="_blank" class="text-xs text-slate-300 hover:text-white">@${c.handle}</a></td>
           <td class="py-2 text-right text-xs text-slate-200">${formatNum(c.followers)}</td>
-          <td class="py-2 text-right text-xs ${!c.engagementRate ? 'text-slate-400' : c.engagementRate >= 3 ? 'text-emerald-400' : c.engagementRate >= 1 ? 'text-amber-400' : 'text-red-400'}">${c.engagementRate != null ? c.engagementRate + '%' : '—'}</td>
+          <td class="py-2 text-right text-xs ${engColor(c.engagementRate)}">${c.engagementRate != null ? c.engagementRate + '%' : '—'}</td>
           <td class="py-2 text-right text-xs text-slate-400">${c.posts ?? '—'}</td>
         </tr>`).join('');
         benchHtml += `
-          <div class="mb-5">
-            <p class="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">📸 <span>Instagram</span></p>
+          <div class="${liOwn?.url ? 'mb-5' : ''}">
+            <p class="text-xs font-semibold text-slate-300 mb-2">📸 Instagram</p>
             <div class="overflow-x-auto">
               <table class="w-full text-left">
                 <thead><tr class="text-xs text-slate-500 uppercase tracking-wide">
@@ -752,9 +754,10 @@ const MODULES = [
           </div>`;
       }
 
-      if (liComps.length > 0 && liOwn) {
+      // LinkedIn table — always show if own data exists
+      if (liOwn?.url) {
         const ownRow = `<tr class="border-t border-white/5">
-          <td class="py-2 pr-3"><span class="text-xs font-semibold text-cyan-300">Tu empresa ★</span></td>
+          <td class="py-2 pr-3"><span class="text-xs font-semibold text-cyan-300"><a href="${liOwn.url}" target="_blank">${liOwn.name || 'Tu empresa'}</a> ★</span></td>
           <td class="py-2 text-right text-xs text-slate-200">${formatNum(liOwn.followers)}</td>
           <td class="py-2 text-right text-xs text-slate-400">${liOwn.employees || '—'}</td>
         </tr>`;
@@ -765,7 +768,7 @@ const MODULES = [
         </tr>`).join('');
         benchHtml += `
           <div>
-            <p class="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">💼 <span>LinkedIn</span></p>
+            <p class="text-xs font-semibold text-slate-300 mb-2">💼 LinkedIn</p>
             <div class="overflow-x-auto">
               <table class="w-full text-left">
                 <thead><tr class="text-xs text-slate-500 uppercase tracking-wide">

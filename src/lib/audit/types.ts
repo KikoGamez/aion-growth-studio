@@ -18,7 +18,7 @@ export type AuditStatus = 'processing' | 'completed' | 'error';
 
 export const STEP_ORDER: AuditStep[] = [
   'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo',
-  'instagram', 'linkedin', 'gbp', 'traffic', 'competitors', 'score', 'insights',
+  'gbp', 'traffic', 'competitors', 'instagram', 'linkedin', 'score', 'insights',
 ];
 
 export const STEP_PROGRESS: Record<AuditStep, number> = {
@@ -28,11 +28,11 @@ export const STEP_PROGRESS: Record<AuditStep, number> = {
   sector: 31,
   content: 38,
   geo: 46,
-  instagram: 54,
-  linkedin: 62,
-  gbp: 69,
-  traffic: 77,
-  competitors: 84,
+  gbp: 54,
+  traffic: 61,
+  competitors: 69,
+  instagram: 77,
+  linkedin: 84,
   score: 92,
   insights: 100,
 };
@@ -43,12 +43,12 @@ export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
   pagespeed: 'sector',
   sector: 'content',
   content: 'geo',
-  geo: 'instagram',
-  instagram: 'linkedin',
-  linkedin: 'gbp',
+  geo: 'gbp',
   gbp: 'traffic',
   traffic: 'competitors',
-  competitors: 'score',
+  competitors: 'instagram',
+  instagram: 'linkedin',
+  linkedin: 'score',
   score: 'insights',
   insights: 'done',
 };
