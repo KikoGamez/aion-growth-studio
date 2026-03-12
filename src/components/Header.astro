@@ -18,7 +18,7 @@ const basePath = `/${lang}`;
     <!-- Logo -->
     <a href={`${basePath}/`} class="flex items-center gap-3 group flex-shrink-0">
       <img
-        src="/logo-aion-dark.png"
+        src={compact ? '/logo-aion-color.png' : '/logo-aion-dark.png'}
         alt="AION Growth Studio"
         class={`w-auto transition-transform duration-500 group-hover:scale-105 ${compact ? 'h-[96px] md:h-[112px]' : 'h-[108px] md:h-[132px]'}`}
         loading="eager"
