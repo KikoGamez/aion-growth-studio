@@ -25,7 +25,7 @@ export function diagnosisHealthSummary(score: HealthScore): string {
 // ── SEO ───────────────────────────────────────────────────────────
 export function diagnosisSEO(seo: any, ctItems: any[]): string {
   if (!seo || seo.skipped) {
-    return 'No se pudieron obtener datos de posicionamiento orgánico para este dominio.';
+    return 'Este dominio no aparece en los índices de tráfico orgánico de DataForSEO, lo que indica una presencia orgánica muy baja o nula en Google. A continuación se muestran las señales técnicas de SEO que sí hemos podido evaluar.';
   }
   const kw = fmt(seo.keywordsTop10);
   const etv = fmt(seo.organicTrafficEstimate);

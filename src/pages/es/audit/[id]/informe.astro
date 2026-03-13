@@ -403,17 +403,17 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
       <p style="color:#64748b;font-size:0.875rem;margin:0 0 1rem;">Visibilidad en buscadores, IA y canales de adquisición</p>
 
       <!-- Contexto: propuesta de valor detectada -->
-      {content?.valueProposition && (
+      {content?.valueProposition && content.valueProposition !== 'Could not analyze' && (
         <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.875rem;color:#0369a1;">
           <span style="font-weight:600;">Tu web se presenta como:</span> {content.valueProposition}
-          {content.audienceMatch && <span> · Audiencia: {content.audienceMatch}</span>}
+          {content.audienceMatch && content.audienceMatch !== 'Unknown' && <span> · Audiencia: {content.audienceMatch}</span>}
         </div>
       )}
 
       <!-- 2.1 SEO -->
       <h3>🔗 Posicionamiento orgánico (SEO)</h3>
       <div class="diag-text">{diagSEO}</div>
-      {seo && (
+      {seo ? (
         <>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:0.75rem;">
             {[
@@ -435,6 +435,26 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
             </p>
           )}
         </>
+      ) : (
+        /* SEO skipped — show technical SEO signals from crawl + pagespeed as fallback */
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-top:0.5rem;">
+          {[
+            { label: 'Sitemap XML', ok: crawl.hasSitemap, note: crawl.hasSitemap ? 'Presente — Google puede rastrear el sitio' : 'No detectado — dificulta la indexación' },
+            { label: 'Etiqueta Canonical', ok: crawl.hasCanonical, note: crawl.hasCanonical ? 'Presente — evita contenido duplicado' : 'No detectada — riesgo de duplicados' },
+            { label: 'Datos estructurados', ok: crawl.hasSchemaMarkup, note: crawl.hasSchemaMarkup ? `Schema.org detectado (${(crawl.schemaTypes || []).slice(0,2).join(', ')})` : 'Sin Schema.org — menor visibilidad en rich results' },
+            { label: 'Volumen de contenido', ok: (crawl.wordCount || 0) >= 300, note: `${crawl.wordCount || 0} palabras en página principal${(crawl.wordCount || 0) < 300 ? ' — contenido escaso para SEO' : ' — base de contenido aceptable'}` },
+            ...(ps?.mobile?.seo != null ? [{ label: 'SEO técnico (Lighthouse)', ok: ps.mobile.seo >= 80, note: `Puntuación ${ps.mobile.seo}/100${ps.mobile.seo < 80 ? ' — hay mejoras técnicas pendientes' : ' — buena salud técnica'}` }] : []),
+            ...(traffic?.channels?.organic?.visits ? [{ label: 'Tráfico orgánico', ok: true, note: `~${fmt(traffic.channels.organic.visits)} visitas/mes desde búsquedas orgánicas` }] : []),
+          ].map((item) => (
+            <div style={`display:flex;gap:0.625rem;align-items:flex-start;padding:0.75rem;border-radius:0.5rem;border:1px solid ${item.ok ? '#bbf7d0' : '#fecaca'};background:${item.ok ? '#f0fdf4' : '#fef2f2'};`}>
+              <span style={`font-size:1rem;flex-shrink:0;${item.ok ? 'color:#16a34a' : 'color:#dc2626'}`}>{item.ok ? '✓' : '✗'}</span>
+              <div>
+                <div style="font-size:0.8rem;font-weight:600;color:#1e293b;">{item.label}</div>
+                <div style="font-size:0.75rem;color:#64748b;margin-top:0.125rem;">{item.note}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <!-- Top páginas -->

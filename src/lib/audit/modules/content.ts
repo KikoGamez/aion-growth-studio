@@ -8,6 +8,7 @@ export async function runContent(url: string, crawl: CrawlResult): Promise<Conte
   }
 
   const prompt = `Analyze the content quality of this website based on its metadata.
+Respond in the SAME LANGUAGE as the website content (detect from title/headings/description).
 
 URL: ${url}
 Title: ${crawl.title || 'N/A'}
