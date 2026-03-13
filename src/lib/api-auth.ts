@@ -10,7 +10,8 @@ export interface ApiKeyValidation {
  * 1. Dev mode: STUDIO_API_KEY not set → everything passes (source: 'dev')
  * 2. x-api-key header matches STUDIO_API_KEY → Platform access (source: 'platform')
  * 3. body.email present and valid → public audit flow (source: 'public')
- * 4. Otherwise → rejected (valid: false)
+ * 4. GET request (status polling from browser) → public access (audit UUID is secret)
+ * 5. Otherwise → rejected (valid: false)
  */
 export function validateApiKey(request: Request, body?: Record<string, any>): ApiKeyValidation {
   const envKey = process.env.STUDIO_API_KEY;
@@ -25,8 +26,13 @@ export function validateApiKey(request: Request, body?: Record<string, any>): Ap
     return { valid: true, source: 'platform' };
   }
 
-  // Public flow: email present
+  // Public flow: email present in body (POST requests)
   if (body?.email && typeof body.email === 'string' && body.email.includes('@')) {
+    return { valid: true, source: 'public' };
+  }
+
+  // Public flow: GET status polling from browser — audit UUID is secret enough
+  if (request.method === 'GET') {
     return { valid: true, source: 'public' };
   }
 
