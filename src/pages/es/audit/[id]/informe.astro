@@ -52,6 +52,9 @@ const cv = (!r.conversion?.skipped && r.conversion) ? r.conversion : null;
 const insights = r.insights || {};
 const seoPages = (!r.seo_pages?.skipped && r.seo_pages?.pages?.length) ? r.seo_pages : null;
 const sector = r.sector?.sector || audit.sector || '';
+const linkedin = (!r.linkedin?.skipped && r.linkedin?.found) ? r.linkedin : null;
+const instagram = (!r.instagram?.skipped && r.instagram?.found) ? r.instagram : null;
+const content = (!r.content?.skipped && r.content) ? r.content : null;
 
 // ── Hreflang / multi-domain ────────────────────────────────────────
 const hreflangAlts: any[] = crawl.hreflangAlternates || [];
@@ -199,11 +202,58 @@ const fallbackInitiatives = [
   { key: 'conversion', label: 'Conversión', score: health.conversion, action: 'Implementar un funnel de captación con formularios optimizados, CTAs claros y prueba social.' },
 ].sort((a, b) => a.score - b.score).slice(0, 3);
 
-// ── Personalized CTA data ─────────────────────────────────────────
+// ── Sector benchmarks (from competitors) ─────────────────────────
+const sectorAvgDR = ctItems.length > 0 ? Math.round(ctItems.reduce((s: number, c: any) => s + (c.domainRank || 0), 0) / ctItems.length) : null;
+const sectorAvgKW = ctItems.length > 0 ? Math.round(ctItems.reduce((s: number, c: any) => s + (c.keywordsTop10 || 0), 0) / ctItems.length) : null;
+
+// ── Competitive rank (by organic traffic) ────────────────────────
+const ownETV = seo?.organicTrafficEstimate || 0;
 const avgETV = ctItems.length > 0
   ? ctItems.reduce((s: number, c: any) => s + (c.organicTrafficEstimate || 0), 0) / ctItems.length
   : 0;
-const ownETV = seo?.organicTrafficEstimate || 0;
+const allETVs = [...ctItems.map((c: any) => c.organicTrafficEstimate || 0), ownETV].sort((a, b) => b - a);
+const ownRank = allETVs.indexOf(ownETV) + 1;
+const totalPlayers = allETVs.length;
+
+// ── LinkedIn data ─────────────────────────────────────────────────
+const liEmployees = parseInt(linkedin?.employees?.replace(/[^\d]/g, '') || '0') || 0;
+const liFollowers = linkedin?.followers || 0;
+const liRatio = liEmployees > 0 ? Math.round((liFollowers / liEmployees) * 100) : 0;
+
+// ── Stack impact descriptions ─────────────────────────────────────
+const stackItems = ts ? [
+  { key: 'analytics', label: 'Analytics', tools: ts.analytics,
+    presentNote: 'Base de medición instalada. Tienes datos para tomar decisiones.',
+    missingNote: 'No sabes qué funciona ni de dónde vienen tus clientes. Cada decisión de marketing es una apuesta.' },
+  { key: 'tagManager', label: 'Tag Manager', tools: ts.tagManager,
+    presentNote: 'Tag Manager instalado: añades herramientas sin tocar código.',
+    missingNote: 'Cada cambio de tracking requiere modificar código. Ralentiza la experimentación y encarece el mantenimiento.' },
+  { key: 'conversionPixels', label: 'Píxeles de conversión', tools: ts.conversionPixels,
+    presentNote: 'Píxeles activos: puedes hacer remarketing y optimizar campañas de pago.',
+    missingNote: 'Sin píxeles (Meta, Google Ads): no puedes reimpactar a visitantes que se van sin convertir. Dinero en paid media que no se puede optimizar.' },
+  { key: 'crmAutomation', label: 'CRM / Automatización', tools: ts.crmAutomation,
+    presentNote: 'CRM activo: leads gestionados de forma escalable y automatizada.',
+    missingNote: 'Sin CRM: los leads se gestionan manualmente. A escala, esto genera pérdidas y falta de seguimiento.' },
+  { key: 'chatSupport', label: 'Chat / Soporte', tools: ts.chatSupport,
+    presentNote: 'Chat disponible: los visitantes pueden resolver dudas en tiempo real.',
+    missingNote: 'Sin chat: un potencial cliente con una duda se va. La mayoría no vuelve.' },
+  { key: 'heatmaps', label: 'Mapas de calor', tools: ts.heatmaps,
+    presentNote: 'Mapas de calor activos: sabes exactamente qué hacen los usuarios.',
+    missingNote: 'Sin grabaciones de sesión: no sabes qué partes de tu web captan atención y cuáles se ignoran.' },
+] : [];
+
+// ── Conversion impact descriptions ────────────────────────────────
+const convItems = cv ? [
+  { label: 'Formulario de contacto', ok: cv.hasContactForm, impact: 'Sin captura de datos — visitante que se va, lead perdido para siempre' },
+  { label: 'CTAs claros', ok: cv.hasCTA, impact: 'Sin dirección explícita, el visitante no sabe qué se espera de él' },
+  { label: 'Lead magnet', ok: cv.hasLeadMagnet, impact: 'Sin incentivo: la mayoría no da sus datos sin algo a cambio' },
+  { label: 'Testimonios / prueba social', ok: cv.hasTestimonials, impact: 'Genera confianza y reduce la fricción de compra' },
+  { label: 'Precios visibles', ok: cv.hasPricing, impact: 'Sin precios: el usuario debe preguntar antes de decidir — añade fricción' },
+  { label: 'Contenido en vídeo', ok: cv.hasVideo, impact: 'El vídeo convierte hasta 3× más que texto — también mejora el tiempo en página' },
+  { label: 'Chat en vivo', ok: cv.hasChatWidget, impact: 'Sin respuesta inmediata: dudas no resueltas = usuarios que abandonan' },
+] : [];
+
+// ── Personalized CTA data ─────────────────────────────────────────
 const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
 ---
 
@@ -307,15 +357,16 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
     <!-- 4 pillar strip -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #e2e8f0;">
       {[
-        { label: 'Visibilidad', value: health.visibilidad, desc: '¿Te encuentran?' },
-        { label: 'Competitividad', value: health.competitividad, desc: 'vs sector' },
-        { label: 'Experiencia', value: health.experiencia, desc: 'Cuando llegan' },
-        { label: 'Conversión', value: health.conversion, desc: '¿Convierten?' },
+        { label: 'Visibilidad', value: health.visibilidad, desc: '¿Te encuentran?', benchmark: sectorAvgDR != null ? `sector DR ~${sectorAvgDR}` : null },
+        { label: 'Competitividad', value: health.competitividad, desc: 'vs sector', benchmark: sectorAvgKW != null ? `sector KW ~${fmt(sectorAvgKW)}` : null },
+        { label: 'Experiencia', value: health.experiencia, desc: 'Cuando llegan', benchmark: null },
+        { label: 'Conversión', value: health.conversion, desc: '¿Convierten?', benchmark: null },
       ].map((p, i) => (
         <div style={`padding:1.25rem 1rem;text-align:center;${i < 3 ? 'border-right:1px solid #e2e8f0;' : ''}`}>
           <div class="pillar-score" style={`color:${scoreColor(p.value)}`}>{p.value}</div>
           <div class="pillar-label">{p.label}</div>
           <div style="font-size:0.65rem;color:#94a3b8;margin-top:0.125rem;">{p.desc}</div>
+          {p.benchmark && <div style="font-size:0.6rem;color:#cbd5e1;margin-top:0.25rem;">{p.benchmark}</div>}
         </div>
       ))}
     </div>
@@ -325,23 +376,39 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
       <h2>¿Te encuentran?</h2>
       <p style="color:#64748b;font-size:0.875rem;margin:0 0 1rem;">Visibilidad en buscadores, IA y canales de adquisición</p>
 
+      <!-- Contexto: propuesta de valor detectada -->
+      {content?.valueProposition && (
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.875rem;color:#0369a1;">
+          <span style="font-weight:600;">Tu web se presenta como:</span> {content.valueProposition}
+          {content.audienceMatch && <span> · Audiencia: {content.audienceMatch}</span>}
+        </div>
+      )}
+
       <!-- 2.1 SEO -->
       <h3>🔗 Posicionamiento orgánico (SEO)</h3>
       <div class="diag-text">{diagSEO}</div>
       {seo && (
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:1rem;">
-          {[
-            { label: 'Domain Rank', value: seo.domainRank ?? '—', color: scoreColor(seo.domainRank ?? 0) },
-            { label: 'Tráf. org./mes', value: fmt(seo.organicTrafficEstimate), color: '#0f172a' },
-            { label: 'Keywords top 10', value: fmt(seo.keywordsTop10), color: '#0f172a' },
-            { label: 'Dom. referentes', value: fmt(seo.referringDomains), color: '#0f172a' },
-          ].map((m) => (
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.75rem;text-align:center;">
-              <div style={`font-size:1.25rem;font-weight:700;color:${m.color}`}>{m.value}</div>
-              <div style="font-size:0.7rem;color:#64748b;margin-top:0.125rem;">{m.label}</div>
-            </div>
-          ))}
-        </div>
+        <>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:0.75rem;">
+            {[
+              { label: 'Domain Rank', value: seo.domainRank ?? '—', color: scoreColor(seo.domainRank ?? 0), bench: sectorAvgDR != null ? `sector: ${sectorAvgDR}` : null, above: sectorAvgDR != null && (seo.domainRank ?? 0) >= sectorAvgDR },
+              { label: 'Tráf. org./mes', value: fmt(seo.organicTrafficEstimate), color: '#0f172a', bench: avgETV > 0 ? `sector: ${fmt(Math.round(avgETV))}` : null, above: avgETV > 0 && ownETV >= avgETV },
+              { label: 'Keywords top 10', value: fmt(seo.keywordsTop10), color: '#0f172a', bench: sectorAvgKW != null ? `sector: ${fmt(sectorAvgKW)}` : null, above: sectorAvgKW != null && (seo.keywordsTop10 ?? 0) >= sectorAvgKW },
+              { label: 'Dom. referentes', value: fmt(seo.referringDomains), color: '#0f172a', bench: null, above: null },
+            ].map((m) => (
+              <div style={`border-radius:0.5rem;padding:0.75rem;text-align:center;border:1px solid ${m.above === true ? '#bbf7d0' : m.above === false ? '#fecaca' : '#e2e8f0'};background:${m.above === true ? '#f0fdf4' : m.above === false ? '#fef2f2' : '#f8fafc'};`}>
+                <div style={`font-size:1.25rem;font-weight:700;color:${m.above === true ? '#16a34a' : m.above === false ? '#dc2626' : '#0f172a'}`}>{m.value}</div>
+                <div style="font-size:0.7rem;color:#64748b;margin-top:0.125rem;">{m.label}</div>
+                {m.bench && <div style="font-size:0.6rem;color:#94a3b8;margin-top:0.2rem;">{m.bench}</div>}
+              </div>
+            ))}
+          </div>
+          {totalPlayers > 1 && (
+            <p style="font-size:0.8rem;color:#64748b;margin-bottom:1rem;">
+              📊 Posición en ranking de tráfico orgánico sectorial: <strong style={`color:${ownRank <= Math.ceil(totalPlayers / 2) ? '#16a34a' : '#dc2626'}`}>#{ownRank} de {totalPlayers}</strong>
+            </p>
+          )}
+        </>
       )}
 
       <!-- Top páginas -->
@@ -398,6 +465,12 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
               </div>
             </div>
             <div class="diag-text">{diagGEO}</div>
+            {(geo.overallScore ?? 0) < 30 && (
+              <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:0.5rem;padding:0.75rem 1rem;margin-top:0.75rem;">
+                <p style="color:#dc2626;font-weight:600;margin:0 0 0.25rem;">⚠️ Nivel crítico de invisibilidad en IA</p>
+                <p style="color:#991b1b;font-size:0.8rem;margin:0;">Tus competidores están capturando demanda que antes pasaba por Google y que ahora se resuelve en ChatGPT, Perplexity y similares. Sin presencia en IA, no existes para un segmento creciente de búsquedas informacionales y de comparación.</p>
+              </div>
+            )}
           </>
         ) : (
           <p style="color:#94a3b8;font-size:0.875rem;">Datos GEO no disponibles para este análisis.</p>
@@ -442,6 +515,63 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
           </p>
         </div>
       )}
+
+      <!-- 2.5 Presencia social -->
+      {(linkedin || instagram) && (
+        <div class="sub-section">
+          <h3>👥 Presencia social</h3>
+          {linkedin && (
+            <div style="margin-bottom:0.875rem;">
+              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.5rem 0.875rem;text-align:center;">
+                  <div style="font-size:1.1rem;font-weight:700;color:#0f172a;">{fmt(liFollowers)}</div>
+                  <div style="font-size:0.65rem;color:#64748b;">Seguidores LinkedIn</div>
+                </div>
+                {liEmployees > 0 && (
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.5rem 0.875rem;text-align:center;">
+                    <div style="font-size:1.1rem;font-weight:700;color:#0f172a;">{liEmployees}</div>
+                    <div style="font-size:0.65rem;color:#64748b;">Empleados</div>
+                  </div>
+                )}
+                {liEmployees > 0 && (
+                  <div style={`background:#f8fafc;border:1px solid ${liRatio >= 200 ? '#bbf7d0' : liRatio >= 50 ? '#fef3c7' : '#fecaca'};border-radius:0.5rem;padding:0.5rem 0.875rem;text-align:center;`}>
+                    <div style={`font-size:1.1rem;font-weight:700;color:${liRatio >= 200 ? '#16a34a' : liRatio >= 50 ? '#d97706' : '#dc2626'}`}>{liRatio}%</div>
+                    <div style="font-size:0.65rem;color:#64748b;">Ratio seg./emp.</div>
+                  </div>
+                )}
+              </div>
+              <p style="font-size:0.85rem;color:#334155;line-height:1.6;">
+                {liEmployees > 0 && liFollowers > 0 ? (
+                  liRatio < 50 ? (
+                    `Con ${liEmployees} empleados y solo ${fmt(liFollowers)} seguidores en LinkedIn, tu página tiene un ratio de seguimiento del ${liRatio}%. La media para empresas de tu perfil es 3-5× el número de empleados (${fmt(liEmployees * 3)}-${fmt(liEmployees * 5)} seguidores). LinkedIn es el canal B2B orgánico con mayor retorno — esta brecha representa alcance perdido.`
+                  ) : liRatio < 200 ? (
+                    `Presencia LinkedIn funcional con ${fmt(liFollowers)} seguidores y ${liEmployees} empleados. Hay espacio para crecer: la media del sector está en 3-5× empleados como seguidores.`
+                  ) : (
+                    `Buena presencia en LinkedIn con ${fmt(liFollowers)} seguidores vs ${liEmployees} empleados. Ratio por encima de la media del sector.`
+                  )
+                ) : `Presencia detectada en LinkedIn${linkedin.name ? ` (${linkedin.name})` : ''}.`}
+              </p>
+            </div>
+          )}
+          {instagram && (
+            <div>
+              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.5rem 0.875rem;text-align:center;">
+                  <div style="font-size:1.1rem;font-weight:700;color:#0f172a;">{fmt(instagram.followers)}</div>
+                  <div style="font-size:0.65rem;color:#64748b;">Seguidores Instagram</div>
+                </div>
+                {instagram.engagementRate != null && (
+                  <div style={`background:#f8fafc;border:1px solid ${instagram.engagementRate >= 3 ? '#bbf7d0' : instagram.engagementRate >= 1 ? '#fef3c7' : '#fecaca'};border-radius:0.5rem;padding:0.5rem 0.875rem;text-align:center;`}>
+                    <div style={`font-size:1.1rem;font-weight:700;color:${instagram.engagementRate >= 3 ? '#16a34a' : instagram.engagementRate >= 1 ? '#d97706' : '#dc2626'}`}>{instagram.engagementRate.toFixed(1)}%</div>
+                    <div style="font-size:0.65rem;color:#64748b;">Engagement rate</div>
+                  </div>
+                )}
+              </div>
+              {instagram.handle && <p style="font-size:0.8rem;color:#64748b;">@{instagram.handle} · {instagram.engagementRate != null ? (instagram.engagementRate >= 3 ? 'Buen engagement (media sector: 1-3%)' : instagram.engagementRate >= 1 ? 'Engagement dentro de media' : 'Engagement bajo — revisar estrategia de contenido') : ''}</p>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
 
     <!-- ── BLOQUE 3: BENCHMARK COMPETITIVO ──────────────────────── -->
@@ -453,7 +583,7 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
 
       {benchRows.length > 1 && (
         <>
-          <!-- Tabla benchmark con barras -->
+          <!-- Tabla benchmark con barras y colores -->
           <div style="overflow-x:auto;">
             <table>
               <thead>
@@ -462,42 +592,52 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
                   <th>DR</th>
                   <th>Tráfico org./mes</th>
                   <th>Keywords top 10</th>
+                  <th>Backlinks</th>
                 </tr>
               </thead>
               <tbody>
-                {benchRows.map((row) => (
-                  <tr class={row.isOwn ? 'own-row' : row.label === 'Media sector' ? 'avg-row' : ''}>
-                    <td style={row.isOwn ? 'color:#1A4B8C;font-weight:700;' : ''}>{row.label}</td>
-                    <td>
-                      <div class="bar-wrap">
-                        <div class="bar-bg">
-                          <div class="bar-fill" style={`width:${Math.round(((row.dr || 0) / maxDR) * 100)}%;background:${row.isOwn ? '#1A4B8C' : '#94a3b8'}`}></div>
+                {benchRows.map((row) => {
+                  const avgRow = benchRows.find(r => r.label === 'Media sector');
+                  const drAbove = avgRow?.dr != null && row.dr != null && row.isOwn ? row.dr >= avgRow.dr : null;
+                  const etvAbove = avgRow?.etv != null && row.etv != null && row.isOwn ? row.etv >= avgRow.etv : null;
+                  const kwAbove = avgRow?.kw10 != null && row.kw10 != null && row.isOwn ? row.kw10 >= avgRow.kw10 : null;
+                  return (
+                    <tr class={row.isOwn ? 'own-row' : row.label === 'Media sector' ? 'avg-row' : ''}>
+                      <td style={row.isOwn ? 'color:#1A4B8C;font-weight:700;' : ''}>{row.label}</td>
+                      <td style={drAbove === true ? 'color:#16a34a;font-weight:600;' : drAbove === false ? 'color:#dc2626;font-weight:600;' : ''}>
+                        <div class="bar-wrap">
+                          <div class="bar-bg">
+                            <div class="bar-fill" style={`width:${Math.round(((row.dr || 0) / maxDR) * 100)}%;background:${row.isOwn ? '#1A4B8C' : '#94a3b8'}`}></div>
+                          </div>
+                          <span style="font-size:0.8rem;width:2rem;text-align:right;">{row.dr ?? '—'}</span>
                         </div>
-                        <span style="font-size:0.8rem;width:2rem;text-align:right;">{row.dr ?? '—'}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div class="bar-wrap">
-                        <div class="bar-bg">
-                          <div class="bar-fill" style={`width:${Math.round(((row.etv || 0) / maxETV) * 100)}%;background:${row.isOwn ? '#1A4B8C' : '#94a3b8'}`}></div>
+                      </td>
+                      <td style={etvAbove === true ? 'color:#16a34a;font-weight:600;' : etvAbove === false ? 'color:#dc2626;font-weight:600;' : ''}>
+                        <div class="bar-wrap">
+                          <div class="bar-bg">
+                            <div class="bar-fill" style={`width:${Math.round(((row.etv || 0) / maxETV) * 100)}%;background:${row.isOwn ? '#1A4B8C' : '#94a3b8'}`}></div>
+                          </div>
+                          <span style="font-size:0.8rem;width:3rem;text-align:right;">{fmt(row.etv)}</span>
                         </div>
-                        <span style="font-size:0.8rem;width:3rem;text-align:right;">{fmt(row.etv)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div class="bar-wrap">
-                        <div class="bar-bg">
-                          <div class="bar-fill" style={`width:${Math.round(((row.kw10 || 0) / maxKW) * 100)}%;background:${row.isOwn ? '#1A4B8C' : '#94a3b8'}`}></div>
+                      </td>
+                      <td style={kwAbove === true ? 'color:#16a34a;font-weight:600;' : kwAbove === false ? 'color:#dc2626;font-weight:600;' : ''}>
+                        <div class="bar-wrap">
+                          <div class="bar-bg">
+                            <div class="bar-fill" style={`width:${Math.round(((row.kw10 || 0) / maxKW) * 100)}%;background:${row.isOwn ? '#1A4B8C' : '#94a3b8'}`}></div>
+                          </div>
+                          <span style="font-size:0.8rem;width:3rem;text-align:right;">{fmt(row.kw10)}</span>
                         </div>
-                        <span style="font-size:0.8rem;width:3rem;text-align:right;">{fmt(row.kw10)}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style="font-size:0.8rem;color:#64748b;">{row.bl != null ? fmt(row.bl) : '—'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">DR = Domain Rank (0-100, autoridad de dominio). Estimaciones DataForSEO.</p>
+          <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">
+            DR = Domain Rank (0-100). Celdas en <span style="color:#16a34a;font-weight:600;">verde</span> = por encima de media sector · <span style="color:#dc2626;font-weight:600;">rojo</span> = por debajo. Estimaciones DataForSEO.
+          </p>
         </>
       )}
 
@@ -523,17 +663,32 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         </div>
       )}
 
-      <!-- Detalle competidores -->
+      <!-- Detalle competidores enriquecido -->
       {competitors.length > 0 && (
         <div class="sub-section">
           <h3>Competidores detectados</h3>
           <div style="display:flex;flex-direction:column;gap:0.5rem;">
-            {competitors.map((c: any) => (
-              <div style="padding:0.75rem;background:#f8fafc;border-radius:0.5rem;border:1px solid #e2e8f0;">
-                <a href={c.url} target="_blank" rel="noopener" style="font-weight:600;color:#1A4B8C;font-size:0.875rem;text-decoration:none;">{c.name}</a>
-                <p style="font-size:0.8rem;color:#64748b;margin:0.25rem 0 0;">{c.snippet}</p>
-              </div>
-            ))}
+            {competitors.map((c: any) => {
+              const cDomain = (() => { try { return new URL(c.url).hostname.replace(/^www\./, ''); } catch { return c.url; } })();
+              const cTraffic = ctItems.find((ct: any) => ct.domain === cDomain || ct.url === c.url || c.url.includes(ct.domain));
+              return (
+                <div style="padding:0.875rem 1rem;background:#f8fafc;border-radius:0.5rem;border:1px solid #e2e8f0;">
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+                    <div>
+                      <a href={c.url} target="_blank" rel="noopener" style="font-weight:600;color:#1A4B8C;font-size:0.875rem;text-decoration:none;">{c.name}</a>
+                      <p style="font-size:0.775rem;color:#64748b;margin:0.2rem 0 0;">{c.snippet}</p>
+                    </div>
+                    {cTraffic && (
+                      <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+                        {cTraffic.domainRank != null && <span style="font-size:0.7rem;background:#e0e7ff;color:#3730a3;padding:0.15rem 0.5rem;border-radius:9999px;font-weight:600;">DR {cTraffic.domainRank}</span>}
+                        {cTraffic.organicTrafficEstimate != null && <span style="font-size:0.7rem;background:#f0fdf4;color:#15803d;padding:0.15rem 0.5rem;border-radius:9999px;font-weight:600;">{fmt(cTraffic.organicTrafficEstimate)}/mo</span>}
+                        {cTraffic.keywordsTop10 != null && <span style="font-size:0.7rem;background:#fefce8;color:#a16207;padding:0.15rem 0.5rem;border-radius:9999px;font-weight:600;">{fmt(cTraffic.keywordsTop10)} KW</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -620,19 +775,18 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         </>
       )}
 
-      <!-- SSL -->
-      {ssl && (
-        <div class="sub-section">
-          {ssl.valid ? (
-            <p style="font-size:0.875rem;color:#16a34a;">✅ Certificado SSL válido · {ssl.issuer ? `Emitido por ${ssl.issuer}` : ''} {ssl.daysUntilExpiry ? `· Expira en ${ssl.daysUntilExpiry} días` : ''}</p>
-          ) : (
-            <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:0.5rem;padding:0.75rem 1rem;">
-              <p style="color:#dc2626;font-weight:600;margin:0;">⚠️ Problema con el certificado SSL</p>
-              <p style="color:#b91c1c;font-size:0.8rem;margin:0.25rem 0 0;">El certificado no es válido o ha expirado. Esto afecta el posicionamiento en Google y genera alertas de seguridad en el navegador.</p>
-            </div>
-          )}
-        </div>
-      )}
+      <!-- Configuración técnica básica (inline, no requiere sección propia) -->
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;padding-top:0.25rem;">
+        {ssl && (ssl.valid
+          ? <span style="font-size:0.75rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ SSL válido{ssl.daysUntilExpiry ? ` · ${ssl.daysUntilExpiry}d` : ''}</span>
+          : <span style="font-size:0.75rem;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:600;">⚠️ SSL inválido — urgente</span>
+        )}
+        {crawl.hasCanonical && <span style="font-size:0.75rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ Canonical</span>}
+        {!crawl.hasCanonical && <span style="font-size:0.75rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">⚠️ Sin canonical</span>}
+        {crawl.hasSitemap && <span style="font-size:0.75rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ Sitemap</span>}
+        {!crawl.hasSitemap && <span style="font-size:0.75rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">⚠️ Sin sitemap</span>}
+        {crawl.hasRobots && <span style="font-size:0.75rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ robots.txt</span>}
+      </div>
 
       <!-- 4.2 Schema Markup -->
       <div class="sub-section">
@@ -660,13 +814,13 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         )}
       </div>
 
-      <!-- 4.3 Tech Stack -->
+      <!-- 4.3 Tech Stack — diagnóstico narrativo -->
       {ts && (
         <div class="sub-section">
           <h3>🛠️ Madurez del stack de marketing</h3>
-          <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;">
-            <div style="position:relative;width:72px;height:72px;flex-shrink:0;">
-              <svg width="72" height="72" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
+          <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.875rem;">
+            <div style="position:relative;width:64px;height:64px;flex-shrink:0;">
+              <svg width="64" height="64" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
                 <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" stroke-width="3"/>
                 <circle cx="18" cy="18" r="15.9" fill="none"
                   stroke={scoreColor(ts.maturityScore ?? 0)}
@@ -674,71 +828,82 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
                   stroke-dasharray={`${ts.maturityScore ?? 0}, 100`} />
               </svg>
               <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                <span style={`font-size:0.875rem;font-weight:800;color:${scoreColor(ts.maturityScore ?? 0)}`}>{ts.maturityScore ?? 0}</span>
+                <span style={`font-size:0.85rem;font-weight:800;color:${scoreColor(ts.maturityScore ?? 0)}`}>{ts.maturityScore ?? 0}</span>
               </div>
             </div>
             <div>
-              <p style="font-weight:600;color:#0f172a;margin:0;">{ts.maturityScore >= 70 ? 'Stack maduro' : ts.maturityScore >= 40 ? 'Configuración básica' : 'Carencias importantes'}</p>
-              {ts.cms && <p style="font-size:0.8rem;color:#64748b;margin:0.125rem 0 0;">CMS: {ts.cms}</p>}
+              <p style="font-weight:700;color:#0f172a;margin:0;font-size:0.95rem;">{(ts.maturityScore ?? 0) >= 70 ? 'Stack maduro' : (ts.maturityScore ?? 0) >= 40 ? 'Configuración básica' : 'Carencias importantes'} — {ts.maturityScore ?? 0}/100</p>
+              {ts.cms && <p style="font-size:0.8rem;color:#64748b;margin:0.25rem 0 0;">CMS detectado: <strong>{ts.cms}</strong></p>}
             </div>
           </div>
-          <div class="diag-text">{diagStack}</div>
-          {[
-            { label: 'Analytics', tools: ts.analytics },
-            { label: 'Tag Manager', tools: ts.tagManager },
-            { label: 'Píxeles de conversión', tools: ts.conversionPixels },
-            { label: 'CRM / Automatización', tools: ts.crmAutomation },
-            { label: 'Chat / Soporte', tools: ts.chatSupport },
-            { label: 'Mapas de calor', tools: ts.heatmaps },
-          ].filter(c => c.tools?.length).map((cat) => (
-            <div class="check-row">
-              <span class="check-ok">✓</span>
-              <div>
-                <span style="font-size:0.8rem;font-weight:500;color:#334155;">{cat.label}:</span>&nbsp;
-                <span style="font-size:0.8rem;color:#64748b;">{(cat.tools || []).join(', ')}</span>
+
+          {/* ✅ Herramientas presentes */}
+          {stackItems.filter(s => s.tools?.length > 0).length > 0 && (
+            <div style="margin-bottom:0.875rem;">
+              <p style="font-size:0.775rem;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">✅ Lo que tienes</p>
+              <div style="display:flex;flex-direction:column;gap:0.375rem;">
+                {stackItems.filter(s => s.tools?.length > 0).map(s => (
+                  <div style="font-size:0.875rem;color:#334155;">
+                    <span style="font-weight:600;">{s.label}:</span> <span style="color:#64748b;">{s.tools.join(', ')}</span>
+                    <span style="color:#94a3b8;font-size:0.8rem;"> — {s.presentNote}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-          {[
-            { key: 'analytics', label: 'Analytics' },
-            { key: 'tagManager', label: 'Tag Manager' },
-            { key: 'conversionPixels', label: 'Píxeles de conversión' },
-            { key: 'crmAutomation', label: 'CRM / Automatización' },
-            { key: 'chatSupport', label: 'Chat en vivo' },
-          ].filter(c => !ts[c.key]?.length).map((cat) => (
-            <div class="check-row">
-              <span class="check-no">✗</span>
-              <span style="font-size:0.8rem;color:#64748b;">{cat.label} — no detectado</span>
+          )}
+
+          {/* ⚠️ Herramientas que faltan + por qué importan */}
+          {stackItems.filter(s => !s.tools?.length).length > 0 && (
+            <div>
+              <p style="font-size:0.775rem;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">⚠️ Lo que te falta</p>
+              <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                {stackItems.filter(s => !s.tools?.length).map(s => (
+                  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.375rem;padding:0.5rem 0.75rem;font-size:0.85rem;">
+                    <span style="font-weight:600;color:#92400e;">Sin {s.label}:</span>
+                    <span style="color:#78350f;"> {s.missingNote}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      <!-- 4.3 Conversión -->
+      <!-- 4.4 Conversión — diagnóstico primero, detalle después -->
       {cv && (
         <div class="sub-section">
           <h3>🎯 Capacidad de conversión</h3>
-          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-            <span style={`font-size:1.5rem;font-weight:800;color:${scoreColor(cv.funnelScore ?? 0)}`}>{cv.funnelScore ?? 0}/100</span>
-            <span style={`font-size:0.8rem;font-weight:600;color:${scoreColor(cv.funnelScore ?? 0)}`}>
-              {(cv.funnelScore ?? 0) >= 70 ? 'Funnel bien configurado' : (cv.funnelScore ?? 0) >= 40 ? 'Funnel básico, mejoras posibles' : 'Funnel débil — alta prioridad'}
+          <!-- Diagnóstico ejecutivo ARRIBA -->
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.625rem;">
+            <span style={`font-size:1.5rem;font-weight:800;color:${scoreColor(cv.funnelScore ?? 0)}`} class="num">{cv.funnelScore ?? 0}/100</span>
+            <span style={`font-size:0.85rem;font-weight:700;color:${scoreColor(cv.funnelScore ?? 0)}`}>
+              {(cv.funnelScore ?? 0) >= 70 ? 'Funnel bien configurado' : (cv.funnelScore ?? 0) >= 40 ? 'Funnel básico — mejoras posibles' : 'Funnel débil — alta prioridad'}
             </span>
           </div>
           <div class="diag-text">{diagFunnel}</div>
-          {[
-            { label: 'Formulario de contacto', ok: cv.hasContactForm },
-            { label: 'CTAs claros', ok: cv.hasCTA },
-            { label: 'Lead magnet', ok: cv.hasLeadMagnet },
-            { label: 'Testimonios / prueba social', ok: cv.hasTestimonials },
-            { label: 'Precios visibles', ok: cv.hasPricing },
-            { label: 'Contenido en vídeo', ok: cv.hasVideo },
-            { label: 'Chat en vivo', ok: cv.hasChatWidget },
-          ].map((c) => (
-            <div class="check-row">
-              <span class={c.ok ? 'check-ok' : 'check-no'}>{c.ok ? '✓' : '✗'}</span>
-              <span style="font-size:0.875rem;">{c.label}</span>
-            </div>
-          ))}
+          <!-- Tabla con impacto por elemento -->
+          <div style="overflow-x:auto;margin-top:0.75rem;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Elemento de conversión</th>
+                  <th style="text-align:center;">Estado</th>
+                  <th>Impacto en el negocio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {convItems.map((c) => (
+                  <tr>
+                    <td style="font-size:0.875rem;font-weight:500;">{c.label}</td>
+                    <td style="text-align:center;">
+                      <span style={`font-weight:700;color:${c.ok ? '#16a34a' : '#dc2626'}`}>{c.ok ? '✓' : '✗'}</span>
+                    </td>
+                    <td style={`font-size:0.8rem;color:${c.ok ? '#16a34a' : '#64748b'};`}>{c.impact}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -749,15 +914,24 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
       <p style="color:#64748b;font-size:0.875rem;margin:0 0 1.5rem;">Iniciativas prioritarias ordenadas por ratio impacto/esfuerzo</p>
 
       {insights.initiatives?.length > 0 ? (
-        insights.initiatives.map((init: any, i: number) => (
-          <div class="initiative-card">
-            <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem;">
-              <span class="initiative-num">{i + 1}</span>
-              <h3 style="margin:0;font-size:1rem;">{init.title}</h3>
+        insights.initiatives.map((init: any, i: number) => {
+          const impactTags = [
+            { label: i === 0 ? '🟢 Alto' : i === 1 ? '🟡 Medio-alto' : '🟡 Medio', color: i === 0 ? '#16a34a' : '#d97706', bg: i === 0 ? '#f0fdf4' : '#fffbeb' },
+          ];
+          return (
+            <div class="initiative-card">
+              <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem;">
+                <span class="initiative-num">{i + 1}</span>
+                <h3 style="margin:0;font-size:1rem;">{init.title}</h3>
+              </div>
+              <p style="font-size:0.9rem;color:#334155;line-height:1.65;margin:0 0 0.875rem;">{init.description}</p>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <span style={`font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:${impactTags[0].bg};color:${impactTags[0].color};border:1px solid ${impactTags[0].color}40;`}>Impacto {impactTags[0].label}</span>
+                <span style="font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;">Plazo {i === 0 ? '1-2 meses' : i === 1 ? '2-4 meses' : '3-6 meses'}</span>
+              </div>
             </div>
-            <p style="font-size:0.9rem;color:#334155;line-height:1.65;margin:0;">{init.description}</p>
-          </div>
-        ))
+          );
+        })
       ) : (
         fallbackInitiatives.map((item, i) => (
           <div class="initiative-card">
@@ -765,7 +939,17 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
               <span class="initiative-num">{i + 1}</span>
               <h3 style="margin:0;font-size:1rem;">Mejorar: {item.label} ({item.score}/100)</h3>
             </div>
-            <p style="font-size:0.9rem;color:#334155;line-height:1.65;margin:0;">{item.action}</p>
+            <p style="font-size:0.75rem;color:#64748b;margin:0 0 0.5rem;">
+              {item.key === 'conversion' ? `Tu funnel score es ${item.score}/100. Cada visita que no convierte es un lead perdido.`
+                : item.key === 'visibilidad' ? `Tu score de visibilidad es ${item.score}/100. Estás dejando demanda orgánica a la competencia.`
+                : item.key === 'competitividad' ? `Tu posición competitiva es ${item.score}/100. Los competidores superan tus métricas clave.`
+                : `Tu score de experiencia es ${item.score}/100. El rendimiento técnico afecta conversión directamente.`}
+            </p>
+            <p style="font-size:0.9rem;color:#334155;line-height:1.65;margin:0 0 0.875rem;">{item.action}</p>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <span style={`font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:${item.score < 40 ? '#fef2f2' : '#fffbeb'};color:${item.score < 40 ? '#dc2626' : '#d97706'};border:1px solid ${item.score < 40 ? '#fca5a580' : '#fde68a80'};`}>Impacto {item.score < 40 ? '🟢 Alto' : '🟡 Medio'}</span>
+              <span style="font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;">Plazo {i === 0 ? '1-2 meses' : '2-4 meses'}</span>
+            </div>
           </div>
         ))
       )}
@@ -794,20 +978,40 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         </h2>
       ) : (
         <h2 class="num" style="font-size:clamp(1.5rem,4vw,2.25rem);font-weight:700;margin:0 0 0.75rem;line-height:1.2;">
-          Tu negocio tiene oportunidades claras de crecimiento.
+          Este diagnóstico es una foto de hoy.
         </h2>
       )}
-      <p style="font-size:1rem;color:rgba(255,255,255,0.75);max-width:480px;margin:0 auto 2rem;line-height:1.6;">
+      <p style="font-size:1rem;color:rgba(255,255,255,0.75);max-width:520px;margin:0 auto 2rem;line-height:1.6;">
         Podemos ayudarte a {btObjective} con un plan de acción concreto. Sin humo.
       </p>
-      <a
-        href="mailto:hola@aiongrowth.studio"
-        style="display:inline-flex;align-items:center;gap:0.5rem;background:#fff;color:#0B1B3D;font-weight:700;font-size:0.95rem;padding:0.875rem 2rem;border-radius:0.75rem;text-decoration:none;transition:opacity 0.2s;"
-        onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'"
-      >
-        Hablar con AION →
-      </a>
-      <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin:1rem 0 0;">Sin compromiso · Respuesta en menos de 24h</p>
+      <!-- Dos CTAs -->
+      <div style="display:flex;align-items:stretch;justify-content:center;gap:1rem;flex-wrap:wrap;max-width:640px;margin:0 auto;">
+        <!-- CTA 1: Radar plan -->
+        <div style="flex:1;min-width:240px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:1rem;padding:1.25rem 1.5rem;text-align:left;">
+          <p style="font-size:0.65rem;font-weight:700;color:#67e8f9;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.375rem;">Plan Radar</p>
+          <p style="font-size:1.1rem;font-weight:700;color:#fff;margin:0 0 0.5rem;line-height:1.3;">Informe mensual de evolución</p>
+          <p style="font-size:0.8rem;color:rgba(255,255,255,0.65);margin:0 0 1rem;line-height:1.5;">GA4 real, benchmark competitivo actualizado, tendencias y deck ejecutivo mensual.</p>
+          <a
+            href="mailto:hola@aiongrowth.studio?subject=Plan Radar — {domain}"
+            style="display:inline-flex;align-items:center;gap:0.375rem;background:#1A4B8C;color:#fff;font-weight:700;font-size:0.85rem;padding:0.625rem 1.25rem;border-radius:0.625rem;text-decoration:none;"
+          >
+            Ver plan Radar →
+          </a>
+        </div>
+        <!-- CTA 2: Growth Advisor -->
+        <div style="flex:1;min-width:240px;background:#fff;border-radius:1rem;padding:1.25rem 1.5rem;text-align:left;">
+          <p style="font-size:0.65rem;font-weight:700;color:#1A4B8C;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.375rem;">Growth Advisor</p>
+          <p style="font-size:1.1rem;font-weight:700;color:#0B1B3D;margin:0 0 0.5rem;line-height:1.3;">Sesión gratuita de revisión</p>
+          <p style="font-size:0.8rem;color:#475569;margin:0 0 1rem;line-height:1.5;">15 minutos para revisar tu diagnóstico, resolver dudas y explorar cómo avanzar.</p>
+          <a
+            href="mailto:hola@aiongrowth.studio?subject=Sesión Growth Advisor — {domain}"
+            style="display:inline-flex;align-items:center;gap:0.375rem;background:#0B1B3D;color:#fff;font-weight:700;font-size:0.85rem;padding:0.625rem 1.25rem;border-radius:0.625rem;text-decoration:none;"
+          >
+            Hablar con un advisor →
+          </a>
+        </div>
+      </div>
+      <p style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin:1.5rem 0 0;">Sin compromiso · Respuesta en menos de 24h</p>
     </div>
 
     <!-- ── FOOTER ──────────────────────────────────────────────────── -->
