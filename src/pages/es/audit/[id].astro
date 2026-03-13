@@ -31,8 +31,10 @@ const MODULES = [
   { key: 'gbp',        label: 'Google Business Profile',       icon: '📍' },
   { key: 'traffic',    label: 'Tráfico estimado',              icon: '📈' },
   { key: 'seo',        label: 'SEO orgánico y backlinks',      icon: '🔗' },
+  { key: 'seo_pages',  label: 'Top páginas orgánicas',         icon: '📄' },
   { key: 'competitors',        label: 'Análisis de competidores',      icon: '🏆' },
   { key: 'competitor_traffic', label: 'Tráfico de competidores',       icon: '📊' },
+  { key: 'keyword_gap',        label: 'Keyword gap vs competidores',   icon: '🔑' },
   { key: 'instagram',          label: 'Instagram & Redes Sociales',    icon: '📸' },
   { key: 'linkedin',   label: 'LinkedIn Empresa',              icon: '💼' },
   { key: 'techstack',  label: 'Stack tecnológico y medición',  icon: '🛠️' },
@@ -200,7 +202,7 @@ const MODULES = [
 
 <script define:vars={{ auditId: id, initialStatus, domain }}>
   const MODULES = [
-    'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo', 'gbp', 'traffic', 'seo', 'competitors', 'competitor_traffic', 'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights'
+    'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo', 'gbp', 'traffic', 'seo', 'seo_pages', 'competitors', 'competitor_traffic', 'keyword_gap', 'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights'
   ];
 
   let completedModules = new Set();
@@ -607,6 +609,7 @@ const MODULES = [
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
             <div class="bg-white/5 rounded-xl p-3 text-center">
               <div class="text-xl font-bold text-white">${formatNum(tr.visits)}</div>
+              ${tr.visitsGrowth != null ? `<div class="text-xs font-semibold mt-0.5 ${tr.visitsGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}">${tr.visitsGrowth > 0 ? '+' : ''}${tr.visitsGrowth}% vs año ant.</div>` : ''}
               <div class="text-xs text-slate-400 mt-0.5">Visitas/año</div>
             </div>
             <div class="bg-white/5 rounded-xl p-3 text-center">
@@ -733,6 +736,32 @@ const MODULES = [
       }
     }
 
+    // ── Keyword Gap ────────────────────────────────────────────────
+    if (results.keyword_gap && !results.keyword_gap.skipped && results.keyword_gap.items?.length) {
+      const kg = results.keyword_gap;
+      const kgRows = kg.items.map(item => `<tr class="border-t border-white/5">
+        <td class="py-2 pr-3 text-xs text-slate-200">${item.keyword}</td>
+        <td class="py-2 text-right text-xs text-slate-400">${item.searchVolume != null ? formatNum(item.searchVolume) + '/mo' : '—'}</td>
+        <td class="py-2 text-right text-xs text-slate-400">${item.competitorPosition ?? '—'}</td>
+      </tr>`).join('');
+      sections.push(`
+        <div class="bg-white/3 border border-white/8 rounded-2xl p-5">
+          <h3 class="text-base font-semibold text-white mb-1">🔑 Keyword gap vs competidores</h3>
+          <p class="text-xs text-slate-500 mb-4">Keywords en top 10 de <span class="text-slate-300">${kg.competitor}</span> donde no apareces — oportunidades de posicionamiento.</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead><tr class="text-xs text-slate-500 uppercase tracking-wide">
+                <th class="pb-1.5 font-medium">Keyword</th>
+                <th class="pb-1.5 font-medium text-right">Búsquedas/mes</th>
+                <th class="pb-1.5 font-medium text-right">Posición competidor</th>
+              </tr></thead>
+              <tbody>${kgRows}</tbody>
+            </table>
+          </div>
+        </div>
+      `);
+    }
+
     // ── Visibilidad orgánica (DataForSEO) ─────────────────────────
     if (results.seo && !results.seo.skipped) {
       const s = results.seo;
@@ -811,6 +840,29 @@ const MODULES = [
             </div>
           </div>
           ${compTableHtml}
+          ${(() => {
+            const sp = results.seo_pages;
+            if (!sp || sp.skipped || !sp.pages?.length) return '';
+            const rows = sp.pages.map(p => `<tr class="border-t border-white/5">
+              <td class="py-2 pr-2 text-xs text-slate-300 max-w-[140px] truncate" title="${p.pageAddress}">${p.pageAddress.replace(/^https?:\/\/[^/]+/, '') || '/'}</td>
+              <td class="py-2 text-right text-xs text-slate-200">${p.trafficEstimate != null ? formatNum(p.trafficEstimate) + '/mo' : '—'}</td>
+              <td class="py-2 text-right text-xs text-slate-400">${p.keywords ?? '—'}</td>
+            </tr>`).join('');
+            return `
+              <div class="mt-5 pt-4 border-t border-white/8">
+                <p class="text-xs font-semibold text-slate-300 mb-3">Top páginas orgánicas</p>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left">
+                    <thead><tr class="text-xs text-slate-500 uppercase tracking-wide">
+                      <th class="pb-1.5 font-medium">Página</th>
+                      <th class="pb-1.5 font-medium text-right">Tráf. est./mo</th>
+                      <th class="pb-1.5 font-medium text-right">Keywords</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                  </table>
+                </div>
+              </div>`;
+          })()}
         </div>
       `);
     }

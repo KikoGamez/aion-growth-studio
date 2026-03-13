@@ -3,12 +3,40 @@ import type { TrafficResult } from '../types';
 const LOGIN = import.meta.env.DATAFORSEO_LOGIN || process.env.DATAFORSEO_LOGIN;
 const PASSWORD = import.meta.env.DATAFORSEO_PASSWORD || process.env.DATAFORSEO_PASSWORD;
 
+const BASE_URL = 'https://api.dataforseo.com/v3/traffic_analytics/summary/live';
+
 const COUNTRY_NAMES: Record<string, string> = {
   ES: 'España', US: 'EE.UU.', MX: 'México', AR: 'Argentina',
   CO: 'Colombia', CL: 'Chile', PE: 'Perú', GB: 'Reino Unido',
   DE: 'Alemania', FR: 'Francia', IT: 'Italia', BR: 'Brasil',
   PT: 'Portugal', CA: 'Canadá', AU: 'Australia',
 };
+
+function buildDateRange(yearsAgo: number): { dateFrom: string; dateTo: string } {
+  const now = new Date();
+  const dateTo = new Date(now.getFullYear() - yearsAgo, now.getMonth(), 1);
+  const dateFrom = new Date(dateTo.getFullYear() - 1, dateTo.getMonth(), 1);
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  return { dateFrom: fmt(dateFrom), dateTo: fmt(dateTo) };
+}
+
+async function fetchTrafficSummary(
+  domain: string,
+  auth: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<any> {
+  const res = await fetch(BASE_URL, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify([{ target: domain, date_from: dateFrom, date_to: dateTo }]),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const task = data?.tasks?.[0];
+  if (task?.status_code !== 20000) return null;
+  return task?.result?.[0] || null;
+}
 
 export async function runTraffic(url: string): Promise<TrafficResult> {
   if (!LOGIN || !PASSWORD) {
@@ -20,50 +48,20 @@ export async function runTraffic(url: string): Promise<TrafficResult> {
 
   const auth = Buffer.from(`${LOGIN}:${PASSWORD}`).toString('base64');
 
-  // Date range: last 12 months
-  const now = new Date();
-  const dateTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const dateFrom = new Date(now.getFullYear() - 1, now.getMonth(), 1);
-  const dateFromStr = `${dateFrom.getFullYear()}-${String(dateFrom.getMonth() + 1).padStart(2, '0')}-01`;
+  const current = buildDateRange(0);
+  const previous = buildDateRange(1);
 
   try {
-    const res = await fetch('https://api.dataforseo.com/v3/traffic_analytics/summary/live', {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([
-        {
-          target: domain,
-          date_from: dateFromStr,
-          date_to: dateTo,
-        },
-      ]),
-    });
+    const [resultCurrent, resultPrev] = await Promise.all([
+      fetchTrafficSummary(domain, auth, current.dateFrom, current.dateTo),
+      fetchTrafficSummary(domain, auth, previous.dateFrom, previous.dateTo),
+    ]);
 
-    if (!res.ok) {
-      return { skipped: true, reason: `DataForSEO API error: ${res.status}` };
+    if (!resultCurrent) {
+      return { skipped: true, reason: 'Tráfico insuficiente para estimar (dominio muy pequeño o nuevo)' };
     }
 
-    const data = await res.json();
-    const task = data?.tasks?.[0];
-
-    if (task?.status_code !== 20000) {
-      const msg = task?.status_message || 'Unknown error';
-      // Insufficient data = domain too small or new
-      if (msg.includes('not found') || msg.includes('No data')) {
-        return { skipped: true, reason: 'Tráfico insuficiente para estimar (dominio muy pequeño o nuevo)' };
-      }
-      return { skipped: true, reason: msg };
-    }
-
-    const result = task?.result?.[0];
-    if (!result) {
-      return { skipped: true, reason: 'Sin datos de tráfico disponibles' };
-    }
-
-    const metrics = result.metrics || {};
+    const metrics = resultCurrent.metrics || {};
 
     // Sum all channel visits for total
     const channelKeys = ['organic', 'paid', 'social', 'referral', 'direct', 'email'];
@@ -88,8 +86,21 @@ export async function runTraffic(url: string): Promise<TrafficResult> {
       }
     }
 
+    // Year-over-year growth
+    let visitsGrowth: number | undefined;
+    if (resultPrev) {
+      const prevMetrics = resultPrev.metrics || {};
+      let prevTotal = 0;
+      for (const key of channelKeys) {
+        prevTotal += prevMetrics[key]?.visits || 0;
+      }
+      if (prevTotal > 0 && totalVisits > 0) {
+        visitsGrowth = Math.round(((totalVisits - prevTotal) / prevTotal) * 100);
+      }
+    }
+
     // Top countries
-    const topCountries: TrafficResult['topCountries'] = (result.top_countries || [])
+    const topCountries: TrafficResult['topCountries'] = (resultCurrent.top_countries || [])
       .slice(0, 5)
       .map((c: any) => ({
         code: c.country_iso_code,
@@ -102,6 +113,7 @@ export async function runTraffic(url: string): Promise<TrafficResult> {
 
     return {
       visits: totalVisits || undefined,
+      visitsGrowth,
       bounceRate: organic.bounce_rate ? Math.round(organic.bounce_rate * 100) : undefined,
       pagesPerVisit: organic.pages_per_visit ? Math.round(organic.pages_per_visit * 10) / 10 : undefined,
       avgSessionDuration: organic.avg_session_duration ? Math.round(organic.avg_session_duration) : undefined,

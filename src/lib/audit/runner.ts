@@ -9,8 +9,10 @@ import { runLinkedIn } from './modules/linkedin';
 import { runGBP } from './modules/gbp';
 import { runTraffic } from './modules/traffic';
 import { runSEO } from './modules/seo';
+import { runSeoPages } from './modules/seo-pages';
 import { runCompetitors } from './modules/competitors';
 import { runCompetitorTraffic } from './modules/competitor-traffic';
+import { runKeywordGap } from './modules/keyword-gap';
 import { runTechStack } from './modules/techstack';
 import { runConversion } from './modules/conversion';
 import { runScore } from './modules/score';
@@ -95,6 +97,10 @@ export async function executeStep(step: AuditStep, audit: AuditPageData): Promis
         result = await runSEO(url);
         break;
 
+      case 'seo_pages':
+        result = await runSeoPages(url);
+        break;
+
       case 'competitors': {
         const sector = (results.sector as any)?.sector || 'business services';
         result = await runCompetitors(url, sector, results.crawl || {}, audit.userCompetitors);
@@ -105,6 +111,17 @@ export async function executeStep(step: AuditStep, audit: AuditPageData): Promis
         const comps: Array<{ name: string; url: string }> =
           (results.competitors as any)?.competitors || [];
         result = await runCompetitorTraffic(comps);
+        break;
+      }
+
+      case 'keyword_gap': {
+        // Pick best competitor by DR from competitor_traffic, fallback to first competitor
+        const ctItems: Array<{ url: string; domainRank?: number }> =
+          (results.competitor_traffic as any)?.items || [];
+        const compsByDr = [...ctItems].sort((a, b) => (b.domainRank || 0) - (a.domainRank || 0));
+        const bestComp = compsByDr[0]?.url ||
+          (results.competitors as any)?.competitors?.[0]?.url || '';
+        result = await runKeywordGap(url, bestComp);
         break;
       }
 

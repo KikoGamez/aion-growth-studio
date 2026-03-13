@@ -10,8 +10,10 @@ export type AuditStep =
   | 'gbp'
   | 'traffic'
   | 'seo'
+  | 'seo_pages'
   | 'competitors'
   | 'competitor_traffic'
+  | 'keyword_gap'
   | 'techstack'
   | 'conversion'
   | 'score'
@@ -22,8 +24,8 @@ export type AuditStatus = 'processing' | 'completed' | 'error';
 
 export const STEP_ORDER: AuditStep[] = [
   'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo',
-  'gbp', 'traffic', 'seo', 'competitors', 'competitor_traffic', 'instagram', 'linkedin',
-  'techstack', 'conversion', 'score', 'insights',
+  'gbp', 'traffic', 'seo', 'seo_pages', 'competitors', 'competitor_traffic', 'keyword_gap',
+  'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights',
 ];
 
 export const STEP_PROGRESS: Record<AuditStep, number> = {
@@ -35,10 +37,12 @@ export const STEP_PROGRESS: Record<AuditStep, number> = {
   geo: 36,
   gbp: 42,
   traffic: 47,
-  seo: 52,
+  seo: 50,
+  seo_pages: 54,
   competitors: 57,
-  competitor_traffic: 61,
-  instagram: 65,
+  competitor_traffic: 60,
+  keyword_gap: 63,
+  instagram: 66,
   linkedin: 69,
   techstack: 74,
   conversion: 80,
@@ -55,9 +59,11 @@ export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
   geo: 'gbp',
   gbp: 'traffic',
   traffic: 'seo',
-  seo: 'competitors',
+  seo: 'seo_pages',
+  seo_pages: 'competitors',
   competitors: 'competitor_traffic',
-  competitor_traffic: 'instagram',
+  competitor_traffic: 'keyword_gap',
+  keyword_gap: 'instagram',
   instagram: 'linkedin',
   linkedin: 'techstack',
   techstack: 'conversion',
@@ -325,6 +331,30 @@ export interface SEOResult extends ModuleResult {
   organicTrafficEstimate?: number;  // estimated monthly organic visits
   referringDomains?: number;
   backlinksTotal?: number;
+}
+
+// ── New: SEO top pages ─────────────────────────────────────────────
+export interface SeoPageItem {
+  pageAddress: string;
+  trafficEstimate?: number;
+  keywords?: number;
+  topPosition?: number;
+}
+
+export interface SeoPagesResult extends ModuleResult {
+  pages?: SeoPageItem[];
+}
+
+// ── New: Keyword gap vs competitors ───────────────────────────────
+export interface KeywordGapItem {
+  keyword: string;
+  searchVolume?: number;
+  competitorPosition?: number;
+}
+
+export interface KeywordGapResult extends ModuleResult {
+  competitor?: string;
+  items?: KeywordGapItem[];
 }
 
 export interface AuditPageData {
