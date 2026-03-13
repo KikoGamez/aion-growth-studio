@@ -345,14 +345,22 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
     <div style="background:#0B1B3D;padding:3.5rem 2.5rem 2.5rem;text-align:center;color:#fff;position:relative;overflow:hidden;">
       <!-- Background glow -->
       <div style={`position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,${scoreColor(health.total)}22 0%,transparent 70%);pointer-events:none;`}></div>
-      <p style="font-size:0.7rem;font-weight:600;color:#67e8f9;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 1.25rem;position:relative;">Diagnóstico de salud digital</p>
-      <!-- Big score -->
-      <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;margin-bottom:0.75rem;">
-        <span class="num" style={`font-size:clamp(5rem,15vw,7rem);font-weight:700;line-height:0.9;color:${scoreColor(health.total)};`}>{health.total}</span>
-        <span style="font-size:0.875rem;color:rgba(255,255,255,0.4);margin-top:0.25rem;">/100 puntos</span>
+      <p style="font-size:0.7rem;font-weight:600;color:#67e8f9;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 1.5rem;position:relative;">Diagnóstico de salud digital</p>
+      <!-- Score ring gauge -->
+      <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem;">
+        <svg width="200" height="200" viewBox="0 0 36 36" style="transform:rotate(-90deg);display:block;">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="2.2"/>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke={scoreColor(health.total)}
+            stroke-width="2.2" stroke-linecap="round"
+            stroke-dasharray={`${health.total}, 100`}/>
+        </svg>
+        <div style="position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <span class="num" style={`font-size:3.5rem;font-weight:700;line-height:1;color:${scoreColor(health.total)};`}>{health.total}</span>
+          <span style="font-size:0.7rem;color:rgba(255,255,255,0.35);margin-top:0.2rem;">/100</span>
+        </div>
       </div>
-      <p style={`font-size:1rem;font-weight:600;color:${scoreColor(health.total)};margin:0 0 1.25rem;letter-spacing:0.05em;text-transform:uppercase;font-size:0.8rem;`}>{scoreLabel(health.total)}</p>
-      <p style="font-size:1rem;color:rgba(255,255,255,0.8);max-width:520px;margin:0 auto;line-height:1.65;">{diagSummary}</p>
+      <p style={`font-size:0.8rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${scoreColor(health.total)};margin:0 0 1rem;`}>{scoreLabel(health.total)}</p>
+      <p style="font-size:1rem;color:rgba(255,255,255,0.75);max-width:520px;margin:0 auto;line-height:1.65;">{diagSummary}</p>
     </div>
     <!-- 4 pillar strip -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #e2e8f0;">
@@ -370,6 +378,24 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         </div>
       ))}
     </div>
+
+    <!-- ── RESUMEN EJECUTIVO ──────────────────────────────────────── -->
+    {insights.bullets?.length > 0 && (
+      <div class="section" style="background:#f8fafc;">
+        <div style="display:flex;align-items:center;gap:0.625rem;margin-bottom:1.25rem;">
+          <span style="font-size:1.1rem;">💡</span>
+          <h2 style="margin:0;">Diagnóstico de tu presencia digital</h2>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.125rem;">
+          {insights.bullets.map((b: string) => (
+            <div style="display:flex;align-items:flex-start;gap:0.75rem;padding:0.625rem 0;border-bottom:1px solid #f1f5f9;">
+              <span style="color:#1A4B8C;font-weight:700;font-size:1rem;flex-shrink:0;margin-top:0.1rem;">→</span>
+              <p style="margin:0;font-size:0.9375rem;color:#334155;line-height:1.7;">{b}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
 
     <!-- ── BLOQUE 2: ¿TE ENCUENTRAN? ─────────────────────────────── -->
     <div class="section">
