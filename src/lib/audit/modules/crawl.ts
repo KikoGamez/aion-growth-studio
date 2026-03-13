@@ -34,6 +34,16 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
     const hasRobots = $('meta[name="robots"]').length > 0;
     const hasSchemaMarkup = $('script[type="application/ld+json"]').length > 0;
 
+    // Extract schema @type values from all JSON-LD blocks
+    const schemaTypes: string[] = [];
+    $('script[type="application/ld+json"]').each((_, el) => {
+      try {
+        const json = JSON.parse($(el).html() || '');
+        extractSchemaTypes(json, schemaTypes);
+      } catch { /* invalid JSON, skip */ }
+    });
+    const uniqueSchemaTypes = [...new Set(schemaTypes)];
+
     const hostname = new URL(url).hostname;
     const internalLinks = $('a[href]')
       .filter((_, el) => {
@@ -108,6 +118,7 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       hasRobots,
       hasSitemap,
       hasSchemaMarkup,
+      ...(uniqueSchemaTypes.length > 0 && { schemaTypes: uniqueSchemaTypes }),
       internalLinks,
       wordCount,
       loadedOk: true,
@@ -175,6 +186,18 @@ function detectBusinessType(html: string, links: string[]): BusinessType {
     return winner[1] >= 3 ? winner[0] : 'unknown';
   } catch {
     return 'unknown';
+  }
+}
+
+function extractSchemaTypes(obj: any, types: string[]): void {
+  if (!obj || typeof obj !== 'object') return;
+  if (obj['@type']) {
+    const t = obj['@type'];
+    if (Array.isArray(t)) types.push(...t);
+    else types.push(t);
+  }
+  if (Array.isArray(obj['@graph'])) {
+    for (const item of obj['@graph']) extractSchemaTypes(item, types);
   }
 }
 

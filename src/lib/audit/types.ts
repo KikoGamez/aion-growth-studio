@@ -99,6 +99,7 @@ export interface CrawlResult extends ModuleResult {
   hasRobots?: boolean;
   hasSitemap?: boolean;
   hasSchemaMarkup?: boolean;
+  schemaTypes?: string[];
   internalLinks?: number;
   wordCount?: number;
   loadedOk?: boolean;

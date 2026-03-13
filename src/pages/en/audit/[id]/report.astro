@@ -11,6 +11,7 @@ import {
   diagnosisFunnel,
   diagnosisTechStack,
   diagnosisCompetitiveGap,
+  diagnosisSchema,
 } from '../../../../lib/audit/report/diagnostics';
 
 const { id } = Astro.params;
@@ -103,6 +104,21 @@ const channelSegments = Object.entries(channels)
     pct: totalVisits > 0 ? Math.round((ch.visits / totalVisits) * 100) : 0,
     color: channelColors[key] || '#94a3b8',
   }));
+
+// ── Schema audit ─────────────────────────────────────────────────
+const schemaTypes: string[] = crawl.schemaTypes || [];
+const RECOMMENDED_SCHEMAS_EN: Record<string, string[]> = {
+  ecommerce: ['Organization', 'WebSite', 'Product', 'Offer', 'BreadcrumbList'],
+  saas: ['Organization', 'WebSite', 'SoftwareApplication', 'FAQPage'],
+  b2b: ['Organization', 'WebSite', 'Service', 'FAQPage', 'BreadcrumbList'],
+  local: ['LocalBusiness', 'Organization', 'GeoCoordinates', 'OpeningHoursSpecification'],
+  media: ['Organization', 'WebSite', 'Article', 'BreadcrumbList'],
+  unknown: ['Organization', 'WebSite', 'BreadcrumbList'],
+};
+const recommendedSchemas = RECOMMENDED_SCHEMAS_EN[businessType] || RECOMMENDED_SCHEMAS_EN.unknown;
+const presentLower = schemaTypes.map((t: string) => t.toLowerCase());
+const missingSchemas = recommendedSchemas.filter(s => !presentLower.includes(s.toLowerCase()));
+const diagSchema = diagnosisSchema(schemaTypes.length ? schemaTypes : undefined, businessType);
 
 // EN diagnostic texts (reuse same functions — they output Spanish, acceptable for v1)
 const diagSEO = diagnosisSEO(seo, ctItems);
@@ -432,6 +448,32 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
           </div>
         </>
       )}
+
+      <!-- Schema Markup -->
+      <div class="sub-section">
+        <h3>🔖 Structured Data (Schema Markup)</h3>
+        <div class="diag-text">{diagSchema}</div>
+        {schemaTypes.length > 0 && (
+          <div style="margin-bottom:0.75rem;">
+            <p style="font-size:0.75rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Detected ({schemaTypes.length})</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.375rem;">
+              {schemaTypes.map((t: string) => (
+                <span style="font-size:0.7rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:0.375rem;padding:0.125rem 0.5rem;font-weight:500;">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {missingSchemas.length > 0 && (
+          <div>
+            <p style="font-size:0.75rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Recommended for your business type — not found</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.375rem;">
+              {missingSchemas.map((t: string) => (
+                <span style="font-size:0.7rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:0.375rem;padding:0.125rem 0.5rem;font-weight:500;">✗ {t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {ts && (
         <div class="sub-section">

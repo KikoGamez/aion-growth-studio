@@ -167,6 +167,33 @@ export function diagnosisTechStack(ts: any): string {
   return `El stack de marketing tiene un nivel de madurez de ${ts.maturityScore ?? 0}/100. Carencias detectadas: ${parts.join(' ')}`;
 }
 
+// ── Schema audit ──────────────────────────────────────────────────
+const RECOMMENDED_SCHEMAS: Record<string, string[]> = {
+  ecommerce: ['Organization', 'WebSite', 'Product', 'Offer', 'BreadcrumbList'],
+  saas: ['Organization', 'WebSite', 'SoftwareApplication', 'FAQPage'],
+  b2b: ['Organization', 'WebSite', 'Service', 'FAQPage', 'BreadcrumbList'],
+  local: ['LocalBusiness', 'Organization', 'GeoCoordinates', 'OpeningHoursSpecification'],
+  media: ['Organization', 'WebSite', 'Article', 'BreadcrumbList'],
+  unknown: ['Organization', 'WebSite', 'BreadcrumbList'],
+};
+
+export function diagnosisSchema(schemaTypes: string[] | undefined, businessType: string): string {
+  if (!schemaTypes || schemaTypes.length === 0) {
+    return 'No se detectó ningún schema markup. Los datos estructurados permiten rich snippets en Google (estrellas, precios, preguntas frecuentes) y mejoran el CTR orgánico entre un 20–30%. También son señal de autoridad para motores de IA como ChatGPT.';
+  }
+  const recommended = RECOMMENDED_SCHEMAS[businessType] || RECOMMENDED_SCHEMAS.unknown;
+  const presentLower = schemaTypes.map(t => t.toLowerCase());
+  const missing = recommended.filter(s => !presentLower.includes(s.toLowerCase()));
+
+  if (missing.length === 0) {
+    return `Cobertura de schema markup excelente (${schemaTypes.length} tipos detectados). Tus datos estructurados están bien configurados para maximizar rich snippets en los resultados de búsqueda.`;
+  }
+  if (missing.length <= 2) {
+    return `Schema markup básico presente (${schemaTypes.length} tipos). Faltan ${missing.length} esquemas clave para tu tipo de negocio que desbloquearían rich snippets adicionales y mejorarían la visibilidad en IA.`;
+  }
+  return `Schema markup incompleto (${schemaTypes.length} tipos presentes, faltan ${missing.length} recomendados). Sin los esquemas correctos, Google no muestra rich snippets de tus contenidos y los motores de IA tienen menos señales para mencionarte.`;
+}
+
 // ── Competitive gap ───────────────────────────────────────────────
 export function diagnosisCompetitiveGap(seo: any, ctItems: any[], kg: any): string {
   if (!ctItems.length) return '';
