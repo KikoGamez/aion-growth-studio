@@ -150,6 +150,9 @@ const channelSegments = Object.entries(channels)
   }));
 
 // ── Schema audit ─────────────────────────────────────────────────
+// ── Business type ─────────────────────────────────────────────────
+const businessType: string = crawl.businessType || 'unknown';
+
 const schemaTypes: string[] = crawl.schemaTypes || [];
 const RECOMMENDED_SCHEMAS_ES: Record<string, string[]> = {
   ecommerce: ['Organization', 'WebSite', 'Product', 'Offer', 'BreadcrumbList'],
@@ -173,9 +176,6 @@ const diagFunnel = diagnosisFunnel(cv);
 const diagStack = diagnosisTechStack(ts);
 const diagGap = diagnosisCompetitiveGap(seo, ctItems, kg);
 const diagSummary = diagnosisHealthSummary(health);
-
-// ── Business type ─────────────────────────────────────────────────
-const businessType: string = crawl.businessType || 'unknown';
 const btLabels: Record<string, string> = {
   ecommerce: 'E-commerce',
   saas: 'SaaS / Software',
