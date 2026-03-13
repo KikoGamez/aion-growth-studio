@@ -78,7 +78,7 @@ const MODULES = [
         </div>
 
         <!-- Progress bar -->
-        <div class="mb-8">
+        <div class="mb-6">
           <div class="flex justify-between text-xs text-slate-400 mb-2">
             <span>Progress</span>
             <span id="progress-pct">0%</span>
@@ -90,6 +90,11 @@ const MODULES = [
               style="width: 0%"
             ></div>
           </div>
+        </div>
+
+        <!-- Narrative copy -->
+        <div class="mb-6 min-h-[2.5rem]">
+          <p id="progress-narrative" class="text-sm text-slate-300 text-center italic opacity-80 transition-all duration-500"></p>
         </div>
 
         <!-- Module list -->
@@ -212,6 +217,40 @@ const MODULES = [
   const MODULES = [
     'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo', 'gbp', 'traffic', 'seo', 'seo_pages', 'competitors', 'competitor_traffic', 'keyword_gap', 'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights'
   ];
+
+  const MODULE_NARRATIVE = {
+    crawl:               'Scanning technical structure and content signals…',
+    ssl:                 'Verifying domain security certificate…',
+    pagespeed:           'Measuring load speed — every second matters for SEO…',
+    sector:              'Identifying sector and market positioning…',
+    content:             'Analyzing value proposition and message clarity…',
+    geo:                 'Testing visibility on ChatGPT, Perplexity and other AI engines…',
+    gbp:                 'Looking up and auditing Google Business Profile…',
+    traffic:             'Estimating traffic volume and year-on-year trend…',
+    seo:                 'Counting top 10 Google keywords and measuring domain authority…',
+    seo_pages:           'Identifying pages that generate the most organic traffic…',
+    competitors:         'Mapping the competitive landscape…',
+    competitor_traffic:  'Comparing your traffic and keywords against direct competitors…',
+    keyword_gap:         'Finding where your competitors win and you don\'t appear…',
+    instagram:           'Analyzing social media presence and engagement…',
+    linkedin:            'Auditing professional authority on LinkedIn…',
+    techstack:           'Detecting marketing, analytics and conversion tools…',
+    conversion:          'Evaluating lead capture elements and conversion funnel…',
+    score:               'Calculating digital health score…',
+    insights:            'Generating personalized executive diagnosis…',
+  };
+
+  function setNarrative(moduleKey) {
+    const el = document.getElementById('progress-narrative');
+    if (!el) return;
+    const text = MODULE_NARRATIVE[moduleKey];
+    if (!text) return;
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.textContent = text;
+      el.style.opacity = '0.8';
+    }, 200);
+  }
 
   let completedModules = new Set();
 
@@ -989,7 +1028,10 @@ const MODULES = [
       if (data.status === 'error') { showError(); return; }
 
       const nextIdx = completedModules.size;
-      if (nextIdx < MODULES.length) markModule(MODULES[nextIdx], 'running');
+      if (nextIdx < MODULES.length) {
+        markModule(MODULES[nextIdx], 'running');
+        setNarrative(MODULES[nextIdx]);
+      }
 
       setTimeout(poll, 2000);
     } catch (err) {
@@ -1004,6 +1046,7 @@ const MODULES = [
     showError();
   } else {
     markModule(MODULES[0], 'running');
+    setNarrative(MODULES[0]);
     setProgress(2);
     setTimeout(poll, 1500);
   }

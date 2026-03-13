@@ -85,6 +85,9 @@ export interface HreflangAlternate {
   domain: string;
 }
 
+/** Detected digital business model — informs report framing and diagnostic copy */
+export type BusinessType = 'ecommerce' | 'saas' | 'b2b' | 'local' | 'media' | 'unknown';
+
 export interface CrawlResult extends ModuleResult {
   title?: string;
   description?: string;
@@ -103,6 +106,7 @@ export interface CrawlResult extends ModuleResult {
   twitterHandle?: string;
   linkedinUrl?: string;
   hreflangAlternates?: HreflangAlternate[];
+  businessType?: BusinessType;
 }
 
 export interface SSLResult extends ModuleResult {

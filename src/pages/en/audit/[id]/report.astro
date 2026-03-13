@@ -113,6 +113,33 @@ const diagFunnel = diagnosisFunnel(cv);
 const diagStack = diagnosisTechStack(ts);
 const diagGap = diagnosisCompetitiveGap(seo, ctItems, kg);
 const diagSummary = diagnosisHealthSummary(health);
+
+// ── Business type ─────────────────────────────────────────────────
+const businessType: string = crawl.businessType || 'unknown';
+const btLabels: Record<string, string> = {
+  ecommerce: 'E-commerce',
+  saas: 'SaaS / Software',
+  b2b: 'B2B · Lead Generation',
+  local: 'Local Business',
+  media: 'Media / Content',
+};
+const btLabel = btLabels[businessType] || '';
+const btObjectives: Record<string, string> = {
+  ecommerce: 'maximize online sales',
+  saas: 'increase trial activations and reduce churn',
+  b2b: 'generate qualified leads and shorten the sales cycle',
+  local: 'capture local demand and improve your Google reputation',
+  media: 'grow your organic audience and monetize it',
+  unknown: 'improve your digital presence and conversion',
+};
+const btObjective = btObjectives[businessType] || btObjectives.unknown;
+
+// ── Personalized CTA data ─────────────────────────────────────────
+const avgETV = ctItems.length > 0
+  ? ctItems.reduce((s: number, c: any) => s + (c.organicTrafficEstimate || 0), 0) / ctItems.length
+  : 0;
+const ownETV = seo?.organicTrafficEstimate || 0;
+const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
 ---
 
 <!DOCTYPE html>
@@ -123,7 +150,8 @@ const diagSummary = diagnosisHealthSummary(health);
   <meta name="robots" content="noindex,nofollow" />
   <title>Digital Growth Report — {domain} — AION Growth Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; }
@@ -139,7 +167,8 @@ const diagSummary = diagnosisHealthSummary(health);
     tr.own-row td { background: #eff6ff; font-weight: 600; }
     tr.avg-row td { background: #f8fafc; color: #64748b; font-style: italic; font-size: 0.8rem; }
     .pillar-card { border-radius: 0.75rem; padding: 1rem; text-align: center; border: 1px solid #e2e8f0; }
-    .pillar-score { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+    .num { font-family: 'Space Grotesk', system-ui, sans-serif; }
+    .pillar-score { font-size: 1.75rem; font-weight: 700; line-height: 1; font-family: 'Space Grotesk', system-ui, sans-serif; }
     .pillar-label { font-size: 0.7rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem; }
     .sub-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; }
     .diag-text { font-size: 0.9375rem; color: #334155; line-height: 1.7; background: #f8fafc; border-left: 3px solid #1A4B8C; padding: 0.875rem 1rem; border-radius: 0 0.5rem 0.5rem 0; margin: 0.75rem 0 1rem; }
@@ -175,8 +204,13 @@ const diagSummary = diagnosisHealthSummary(health);
         <span style="font-size:0.75rem;color:#94a3b8;">CONFIDENTIAL · Internal use</span>
       </div>
       <p style="font-size:0.8rem;font-weight:600;color:#67e8f9;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Digital Growth Diagnostic</p>
-      <h1 style="font-size:2rem;font-weight:800;margin:0 0 0.25rem;line-height:1.1;">{domain}</h1>
-      <p style="font-size:0.9rem;color:#94a3b8;margin:0 0 1.5rem;">{sector && `Sector: ${sector} · `}Analysis date: {auditDate}</p>
+      <h1 style="font-size:2rem;font-weight:800;margin:0 0 0.5rem;line-height:1.1;">{domain}</h1>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem;">
+        {btLabel && <span style="background:rgba(103,232,249,0.15);border:1px solid rgba(103,232,249,0.35);color:#67e8f9;font-size:0.7rem;font-weight:600;padding:0.2rem 0.65rem;border-radius:9999px;letter-spacing:0.06em;">{btLabel}</span>}
+        {sector && <span style="color:#94a3b8;font-size:0.8rem;">{sector}</span>}
+        <span style="color:#64748b;font-size:0.8rem;">·</span>
+        <span style="color:#94a3b8;font-size:0.8rem;">{auditDate}</span>
+      </div>
       {hreflangAlts.length > 0 && (
         <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:0.5rem;padding:0.75rem 1rem;font-size:0.8rem;color:#e2e8f0;">
           📌 This analysis covers {domain}. {hreflangAlts.length} additional brand domains detected: {hreflangAlts.slice(0, 5).map((a: any) => a.domain).join(', ')}.
@@ -185,37 +219,31 @@ const diagSummary = diagnosisHealthSummary(health);
       )}
     </div>
 
-    <!-- Block 1: Health Score -->
-    <div class="section">
-      <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.5rem;">
-        <div style="text-align:center;flex-shrink:0;">
-          <svg width="100" height="100" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
-            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-            <circle cx="18" cy="18" r="15.9" fill="none" stroke={scoreColor(health.total)}
-              stroke-width="3" stroke-linecap="round" stroke-dasharray={`${health.total}, 100`} />
-          </svg>
-          <div style="margin-top:-80px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <span style={`font-size:1.5rem;font-weight:800;color:${scoreColor(health.total)}`}>{health.total}</span>
-            <span style="font-size:0.65rem;color:#64748b;font-weight:500;">/100</span>
-          </div>
-          <div style="font-size:0.7rem;color:#64748b;font-weight:500;margin-top:0.25rem;">{scoreLabel(health.total)}</div>
-        </div>
-        <div style="flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;min-width:260px;">
-          {[
-            { label: 'Visibility', value: health.visibilidad, desc: 'Can people find you?' },
-            { label: 'Competitiveness', value: health.competitividad, desc: 'How do you rank vs sector?' },
-            { label: 'Experience', value: health.experiencia, desc: 'What happens when they arrive?' },
-            { label: 'Conversion', value: health.conversion, desc: 'Do they convert?' },
-          ].map((p) => (
-            <div class="pillar-card">
-              <div class="pillar-score" style={`color:${scoreColor(p.value)}`}>{scoreEmoji(p.value)} {p.value}</div>
-              <div class="pillar-label">{p.label}</div>
-              <div style="font-size:0.65rem;color:#94a3b8;margin-top:0.125rem;">{p.desc}</div>
-            </div>
-          ))}
-        </div>
+    <!-- Block 1: Health Score Hero -->
+    <div style="background:#0B1B3D;padding:3.5rem 2.5rem 2.5rem;text-align:center;color:#fff;position:relative;overflow:hidden;">
+      <div style={`position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,${scoreColor(health.total)}22 0%,transparent 70%);pointer-events:none;`}></div>
+      <p style="font-size:0.7rem;font-weight:600;color:#67e8f9;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 1.25rem;position:relative;">Digital health score</p>
+      <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;margin-bottom:0.75rem;">
+        <span class="num" style={`font-size:clamp(5rem,15vw,7rem);font-weight:700;line-height:0.9;color:${scoreColor(health.total)};`}>{health.total}</span>
+        <span style="font-size:0.875rem;color:rgba(255,255,255,0.4);margin-top:0.25rem;">/100 points</span>
       </div>
-      <div class="diag-text">{diagSummary}</div>
+      <p style={`font-size:0.8rem;font-weight:600;color:${scoreColor(health.total)};margin:0 0 1.25rem;letter-spacing:0.05em;text-transform:uppercase;`}>{scoreLabel(health.total)}</p>
+      <p style="font-size:1rem;color:rgba(255,255,255,0.8);max-width:520px;margin:0 auto;line-height:1.65;">{diagSummary}</p>
+    </div>
+    <!-- 4 pillar strip -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #e2e8f0;">
+      {[
+        { label: 'Visibility', value: health.visibilidad, desc: 'Can they find you?' },
+        { label: 'Competitiveness', value: health.competitividad, desc: 'vs sector' },
+        { label: 'Experience', value: health.experiencia, desc: 'When they arrive' },
+        { label: 'Conversion', value: health.conversion, desc: 'Do they convert?' },
+      ].map((p, i) => (
+        <div style={`padding:1.25rem 1rem;text-align:center;${i < 3 ? 'border-right:1px solid #e2e8f0;' : ''}`}>
+          <div class="pillar-score" style={`color:${scoreColor(p.value)}`}>{p.value}</div>
+          <div class="pillar-label">{p.label}</div>
+          <div style="font-size:0.65rem;color:#94a3b8;margin-top:0.125rem;">{p.desc}</div>
+        </div>
+      ))}
     </div>
 
     <!-- Block 2: Visibility -->
@@ -480,6 +508,30 @@ const diagSummary = diagnosisHealthSummary(health);
       )}
     </div>
 
+    <!-- Personalized CTA -->
+    <div class="no-print" style="padding:3.5rem 2.5rem;background:linear-gradient(135deg,#0B1B3D 0%,#1A4B8C 60%,#0e7490 100%);text-align:center;color:#fff;">
+      <p style="font-size:0.7rem;font-weight:600;color:#67e8f9;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 1rem;">Next step</p>
+      {trafficGap > 500 ? (
+        <h2 class="num" style="font-size:clamp(1.5rem,4vw,2.25rem);font-weight:700;margin:0 0 0.75rem;line-height:1.2;">
+          Your competitors get ~{fmt(trafficGap)} more visits/month than you.
+        </h2>
+      ) : (
+        <h2 class="num" style="font-size:clamp(1.5rem,4vw,2.25rem);font-weight:700;margin:0 0 0.75rem;line-height:1.2;">
+          Your business has clear digital growth opportunities.
+        </h2>
+      )}
+      <p style="font-size:1rem;color:rgba(255,255,255,0.75);max-width:480px;margin:0 auto 2rem;line-height:1.6;">
+        We can help you {btObjective} with a concrete action plan. No fluff.
+      </p>
+      <a
+        href="mailto:hola@aiongrowth.studio"
+        style="display:inline-flex;align-items:center;gap:0.5rem;background:#fff;color:#0B1B3D;font-weight:700;font-size:0.95rem;padding:0.875rem 2rem;border-radius:0.75rem;text-decoration:none;"
+      >
+        Talk to AION →
+      </a>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin:1rem 0 0;">No commitment · Response within 24h</p>
+    </div>
+
     <!-- Footer -->
     <div style="padding:1.5rem 2.5rem;background:#0B1B3D;color:#94a3b8;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
       <div>
@@ -487,8 +539,7 @@ const diagSummary = diagnosisHealthSummary(health);
         <p style="font-size:0.7rem;margin:0;">Report generated {auditDate} · aiongrowth.studio</p>
       </div>
       <div style="text-align:right;">
-        <p style="font-size:0.75rem;margin:0 0 0.25rem;">Want to implement these improvements?</p>
-        <a href="mailto:hola@aiongrowth.studio" style="font-size:0.75rem;color:#67e8f9;text-decoration:none;">hola@aiongrowth.studio →</a>
+        <p style="font-size:0.75rem;margin:0 0 0.25rem;">hola@aiongrowth.studio</p>
       </div>
     </div>
   </div>
