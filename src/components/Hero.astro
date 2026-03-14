@@ -16,101 +16,130 @@ const basePath = `/${lang}`;
   <img
     src="/hero-bg.jpg"
     alt=""
-    class="absolute inset-0 w-full h-full object-cover z-0"
+    class="absolute inset-0 w-full h-full object-cover z-0 scale-105"
     loading="eager"
   />
-  <!-- Dark overlay for legibility -->
-  <div class="absolute inset-0 z-[1] bg-black/30"></div>
+  <!-- Improved gradient overlay -->
+  <div class="absolute inset-0 z-[1] bg-gradient-to-t from-aion-dark via-aion-dark/60 to-aion-dark/30"></div>
+  <div class="absolute inset-0 z-[1] bg-gradient-to-r from-aion-dark/40 to-transparent"></div>
 
   <!-- Navigation -->
-  <nav class="relative z-50 flex items-start justify-between px-6 md:px-8 lg:px-16 py-5 md:py-6">
-    <!-- Logo 2x + tagline -->
-    <a href={`${basePath}/`} class="flex flex-col items-start">
+  <nav class="relative z-50 flex items-center justify-between section-container py-6">
+    <!-- Logo -->
+    <a href={`${basePath}/`} class="flex items-center group">
       <img
         src="/logo-aion-dark.png"
         alt="AION Growth Studio"
-        class="w-[360px] md:w-[480px] h-auto drop-shadow-lg brightness-0 invert"
+        class="w-[180px] md:w-[220px] h-auto brightness-0 invert transition-transform duration-300 group-hover:scale-105"
         loading="eager"
       />
     </a>
 
     <!-- Desktop nav pills -->
-    <div class="hidden lg:flex items-center gap-2 mt-2">
+    <div class="hidden lg:flex items-center gap-1">
       <a href={`${basePath}/#soluciones`} class="nav-pill">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="nav-pill">{t('nav.casos')}</a>
       <a href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'} class="nav-pill">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="nav-pill">{t('nav.blog')}</a>
       <a href={`${basePath}/#contacto`} class="nav-pill">{t('nav.contacto')}</a>
 
-      <div class="flex items-center gap-1 ml-3 px-4 py-2.5 rounded-full bg-white/10 backdrop-blur-md">
-        <a href="/es/" class={`text-sm font-medium transition-colors ${lang === 'es' ? 'text-white' : 'text-white/60 hover:text-white'}`}>ES</a>
-        <span class="text-white/40 text-sm">|</span>
-        <a href="/en/" class={`text-sm font-medium transition-colors ${lang === 'en' ? 'text-white' : 'text-white/60 hover:text-white'}`}>EN</a>
+      <div class="flex items-center gap-1.5 ml-4 px-4 py-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10">
+        <a href="/es/" class={`text-sm font-medium transition-colors ${lang === 'es' ? 'text-white' : 'text-white/50 hover:text-white'}`}>ES</a>
+        <span class="text-white/30 text-sm">/</span>
+        <a href="/en/" class={`text-sm font-medium transition-colors ${lang === 'en' ? 'text-white' : 'text-white/50 hover:text-white'}`}>EN</a>
       </div>
     </div>
 
     <!-- Mobile menu button -->
-    <button id="mobile-menu-btn" class="lg:hidden p-2 -mr-2" aria-label="Menu" aria-expanded="false">
-      <svg id="menu-open" class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <button id="mobile-menu-btn" class="lg:hidden p-2.5 -mr-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/10" aria-label="Menu" aria-expanded="false">
+      <svg id="menu-open" class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
-      <svg id="menu-close" class="w-7 h-7 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg id="menu-close" class="w-6 h-6 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
   </nav>
 
   <!-- Mobile menu -->
-  <div id="mobile-menu" class="lg:hidden hidden absolute top-[100px] left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-t border-white/10">
-    <div class="px-6 py-6 flex flex-col gap-2">
+  <div id="mobile-menu" class="lg:hidden hidden absolute top-[80px] left-4 right-4 z-50 bg-aion-dark/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-elevated">
+    <div class="p-5 flex flex-col gap-1">
       <a href={`${basePath}/#soluciones`} class="mobile-pill">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="mobile-pill">{t('nav.casos')}</a>
       <a href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'} class="mobile-pill">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="mobile-pill">{t('nav.blog')}</a>
       <a href={`${basePath}/#contacto`} class="mobile-pill">{t('nav.contacto')}</a>
-      <div class="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
-        <a href="/es/" class={`text-sm font-medium ${lang === 'es' ? 'text-white' : 'text-white/60'}`}>ES</a>
-        <span class="text-white/30">|</span>
-        <a href="/en/" class={`text-sm font-medium ${lang === 'en' ? 'text-white' : 'text-white/60'}`}>EN</a>
+      <div class="flex items-center gap-3 mt-3 pt-3 border-t border-white/10">
+        <a href="/es/" class={`text-sm font-medium px-3 py-1.5 rounded-full transition-all ${lang === 'es' ? 'text-white bg-white/10' : 'text-white/60 hover:text-white'}`}>ES</a>
+        <a href="/en/" class={`text-sm font-medium px-3 py-1.5 rounded-full transition-all ${lang === 'en' ? 'text-white bg-white/10' : 'text-white/60 hover:text-white'}`}>EN</a>
       </div>
     </div>
   </div>
 
   <!-- Hero Content -->
-  <div class="relative z-10 px-6 md:px-8 lg:px-36 pt-[18vh] md:pt-[calc(22vh-16px)]">
-    <!-- Text LEFT -->
-    <div class="max-w-[700px]">
-      <a
-        href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'}
-        class="inline-block px-8 py-4 bg-white text-[#0B1B3D] rounded-full font-semibold text-base hover:bg-cyan-300 hover:scale-105 transition-all duration-300 shadow-2xl mb-6"
-      >
-        {t('hero.cta')}
-      </a>
+  <div class="relative z-10 section-container flex flex-col justify-center min-h-[calc(100vh-100px)] pb-20 md:pb-28">
+    <div class="max-w-3xl">
+      <!-- Eyebrow -->
+      <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-8">
+        <span class="w-2 h-2 bg-aion-accent rounded-full animate-pulse"></span>
+        <span class="text-sm font-medium text-white/90">{t('hero.eyebrow') || 'IA Agentiva para Empresas'}</span>
+      </div>
 
-      <h1 class="hero-headline text-white">
+      <!-- Headline -->
+      <h1 class="hero-headline text-white mb-6">
         {t('hero.title.1')}<br />
-        {t('hero.title.2')}
+        <span class="text-aion-accent">{t('hero.title.2')}</span>
       </h1>
 
-      <p class="hero-subheadline text-white/60 max-w-[600px] font-bold">
+      <!-- Subtitle -->
+      <p class="hero-subheadline text-white/70 max-w-xl mb-10">
         {t('hero.subtitle')}
       </p>
+
+      <!-- CTA Buttons -->
+      <div class="flex flex-col sm:flex-row gap-4">
+        <a
+          href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'}
+          class="group inline-flex items-center justify-center gap-2 px-7 py-4 bg-white text-aion-dark rounded-full font-semibold text-base transition-all duration-300 shadow-elevated hover:shadow-glow hover:-translate-y-0.5"
+        >
+          {t('hero.cta')}
+          <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </a>
+        <a
+          href={`${basePath}/#casos`}
+          class="inline-flex items-center justify-center gap-2 px-7 py-4 bg-white/10 backdrop-blur-md text-white rounded-full font-medium text-base border border-white/20 transition-all duration-300 hover:bg-white/20 hover:-translate-y-0.5"
+        >
+          {t('hero.secondary_cta') || 'Ver casos de exito'}
+        </a>
+      </div>
     </div>
 
-    <!-- Card RIGHT, bottom aligned with button -->
-    <div class="hidden lg:block absolute right-16 bottom-0 w-[280px] bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
-      <img
-        src="/projects-placeholder.jpg"
-        alt="Projects"
-        class="w-full h-[200px] object-cover rounded-xl mb-4"
-      />
-      <h3 class="text-2xl font-bold text-slate-900 mb-2">
-        {t('hero.card.label')}
-      </h3>
-      <p class="text-cyan-600 text-sm font-medium mb-1">{t('hero.card.project')}</p>
-      <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-        {t('hero.card.title')}
-      </p>
+    <!-- Social Proof / Stats -->
+    <div class="mt-16 md:mt-20 pt-8 border-t border-white/10">
+      <div class="flex flex-wrap gap-8 md:gap-16">
+        <div class="flex flex-col">
+          <span class="text-3xl md:text-4xl font-bold text-white tracking-tight">50+</span>
+          <span class="text-sm text-white/60 mt-1">{t('hero.stat1') || 'Proyectos entregados'}</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-3xl md:text-4xl font-bold text-white tracking-tight">3x</span>
+          <span class="text-sm text-white/60 mt-1">{t('hero.stat2') || 'Aumento en eficiencia'}</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-3xl md:text-4xl font-bold text-white tracking-tight">98%</span>
+          <span class="text-sm text-white/60 mt-1">{t('hero.stat3') || 'Satisfaccion del cliente'}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll indicator -->
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-60">
+    <span class="text-xs text-white/60 uppercase tracking-widest">Scroll</span>
+    <div class="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center pt-2">
+      <div class="w-1.5 h-1.5 bg-white rounded-full animate-bounce"></div>
     </div>
   </div>
 </section>
@@ -121,42 +150,41 @@ const basePath = `/${lang}`;
   }
 
   .hero-headline {
-    font-size: 2.25rem;
-    font-weight: 600;
-    line-height: 1.3;
-    margin-bottom: 0.3em;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   }
 
   .hero-subheadline {
-    font-size: 1.375rem;
-    font-weight: 700;
-    line-height: 1.3;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    font-weight: 400;
+    line-height: 1.6;
   }
 
   .nav-pill {
-    padding: 0.625rem 1.5rem;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
     font-size: 0.875rem;
     font-weight: 500;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .nav-pill:hover {
-    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .mobile-pill {
     display: block;
-    padding: 0.75rem 1.25rem;
+    padding: 0.875rem 1rem;
     border-radius: 0.75rem;
     color: rgba(255, 255, 255, 0.8);
     font-size: 1rem;
     font-weight: 500;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .mobile-pill:hover {

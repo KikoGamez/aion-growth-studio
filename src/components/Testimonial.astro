@@ -10,21 +10,26 @@ const { lang } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<section class="py-24 md:py-32 bg-slate-50">
-  <div class="max-w-7xl mx-auto px-6 md:px-8">
-    <div class="max-w-4xl mx-auto fade-in">
+<section class="py-20 md:py-28 bg-white">
+  <div class="section-container">
+    <div class="max-w-3xl mx-auto fade-in">
 
-      <blockquote class="text-2xl sm:text-3xl md:text-4xl font-light text-slate-900 leading-relaxed mb-10 md:mb-12 italic">
-        &ldquo;{t('testimonial.quote')}&rdquo;
+      <!-- Quote icon -->
+      <svg class="w-10 h-10 text-aion-accent/30 mb-6" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+      </svg>
+
+      <blockquote class="text-xl sm:text-2xl md:text-3xl font-medium text-aion-dark leading-relaxed mb-8">
+        {t('testimonial.quote')}
       </blockquote>
 
       <div class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#1A5490] to-[#0066FF] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-aion-primary to-aion-accent flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
           AM
         </div>
         <div>
-          <p class="font-semibold text-slate-900">{t('testimonial.name')}</p>
-          <p class="text-slate-600 text-sm">{t('testimonial.role')}</p>
+          <p class="font-semibold text-aion-dark">{t('testimonial.name')}</p>
+          <p class="text-aion-muted text-sm">{t('testimonial.role')}</p>
         </div>
       </div>
 

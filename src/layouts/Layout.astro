@@ -25,7 +25,7 @@ const {
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <title>{title}</title>
   </head>
@@ -58,32 +58,40 @@ const {
     margin: 0;
     padding: 0;
     font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3 {
     font-weight: 700;
+    letter-spacing: -0.025em;
   }
 
   h4, h5 {
     font-weight: 600;
   }
 
-  p, span {
+  p {
     font-weight: 400;
-  }
-
-  button, .cta-primary, a[class*="bg-white"] {
-    font-weight: 600;
+    line-height: 1.6;
   }
 
   .fade-in {
     opacity: 0;
-    transform: translateY(24px);
-    transition: opacity 0.7s ease, transform 0.7s ease;
+    transform: translateY(16px);
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .fade-in.visible {
     opacity: 1;
     transform: translateY(0);
   }
+
+  /* Stagger animation delays for children */
+  .fade-in-stagger > *:nth-child(1) { transition-delay: 0ms; }
+  .fade-in-stagger > *:nth-child(2) { transition-delay: 75ms; }
+  .fade-in-stagger > *:nth-child(3) { transition-delay: 150ms; }
+  .fade-in-stagger > *:nth-child(4) { transition-delay: 225ms; }
+  .fade-in-stagger > *:nth-child(5) { transition-delay: 300ms; }
+  .fade-in-stagger > *:nth-child(6) { transition-delay: 375ms; }
 </style>
