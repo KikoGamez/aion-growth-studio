@@ -20,7 +20,10 @@ const basePath = `/${lang}`;
     loading="eager"
   />
   <!-- Dark overlay for legibility -->
-  <div class="absolute inset-0 z-[1] bg-black/30"></div>
+  <div class="absolute inset-0 z-[1] bg-gradient-to-b from-black/40 via-black/30 to-black/50"></div>
+  
+  <!-- Animated gradient mesh overlay -->
+  <div class="gradient-mesh z-[2]"></div>
 
   <!-- Navigation -->
   <nav class="relative z-50 flex items-start justify-between px-6 md:px-8 lg:px-16 py-5 md:py-6">
@@ -79,36 +82,46 @@ const basePath = `/${lang}`;
   <!-- Hero Content -->
   <div class="relative z-10 px-6 md:px-8 lg:px-36 pt-[18vh] md:pt-[calc(22vh-16px)]">
     <!-- Text LEFT -->
-    <div class="max-w-[700px]">
+    <div class="max-w-[800px]">
+      <!-- Floating stat badge -->
+      <div class="stat-badge inline-flex items-center gap-2 mb-6 hero-animate" style="animation-delay: 0.2s;">
+        <span class="flex h-2 w-2 relative">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-aion-emerald opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-aion-emerald"></span>
+        </span>
+        <span class="text-sm">+47% {lang === 'es' ? 'crecimiento promedio' : 'average growth'}</span>
+      </div>
+
       <a
         href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'}
-        class="inline-block px-8 py-4 bg-white text-[#0B1B3D] rounded-full font-semibold text-base hover:bg-cyan-300 hover:scale-105 transition-all duration-300 shadow-2xl mb-6"
+        class="cta-premium inline-block mb-8 hero-animate" style="animation-delay: 0.3s;"
       >
-        {t('hero.cta')}
+        <span>{t('hero.cta')}</span>
       </a>
 
-      <h1 class="hero-headline text-white">
-        {t('hero.title.1')}<br />
-        {t('hero.title.2')}
+      <h1 class="hero-headline text-white hero-animate" style="animation-delay: 0.4s;">
+        <span class="text-reveal-line" style="animation-delay: 0.5s;">{t('hero.title.1')}</span>
+        <span class="text-reveal-line gradient-text" style="animation-delay: 0.7s;">{t('hero.title.2')}</span>
       </h1>
 
-      <p class="hero-subheadline text-white/60 max-w-[600px] font-bold">
+      <p class="hero-subheadline text-white/70 max-w-[600px] hero-animate" style="animation-delay: 0.9s;">
         {t('hero.subtitle')}
       </p>
     </div>
 
-    <!-- Card RIGHT, bottom aligned with button -->
-    <div class="hidden lg:block absolute right-16 bottom-0 w-[280px] bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
+    <!-- Card RIGHT with glow effect -->
+    <div class="hidden lg:block absolute right-16 bottom-0 w-[300px] glass-dark rounded-2xl p-6 shadow-2xl hero-card-animate">
+      <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-aion-cyan/10 to-aion-emerald/5 pointer-events-none"></div>
       <img
         src="/projects-placeholder.jpg"
         alt="Projects"
-        class="w-full h-[200px] object-cover rounded-xl mb-4"
+        class="relative w-full h-[200px] object-cover rounded-xl mb-4"
       />
-      <h3 class="text-2xl font-bold text-slate-900 mb-2">
+      <h3 class="relative text-2xl font-bold text-white mb-2">
         {t('hero.card.label')}
       </h3>
-      <p class="text-cyan-600 text-sm font-medium mb-1">{t('hero.card.project')}</p>
-      <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
+      <p class="relative text-aion-cyan text-sm font-medium mb-1">{t('hero.card.project')}</p>
+      <p class="relative text-white/70 text-sm leading-relaxed whitespace-pre-line">
         {t('hero.card.title')}
       </p>
     </div>
@@ -121,17 +134,47 @@ const basePath = `/${lang}`;
   }
 
   .hero-headline {
-    font-size: 2.25rem;
-    font-weight: 600;
-    line-height: 1.3;
-    margin-bottom: 0.3em;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.5em;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
 
   .hero-subheadline {
-    font-size: 1.375rem;
-    font-weight: 700;
-    line-height: 1.3;
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* Hero animations */
+  .hero-animate {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: heroFadeIn 0.8s ease forwards;
+  }
+
+  .hero-card-animate {
+    opacity: 0;
+    transform: translateX(40px);
+    animation: heroSlideIn 1s ease forwards;
+    animation-delay: 1s;
+  }
+
+  @keyframes heroFadeIn {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes heroSlideIn {
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   .nav-pill {

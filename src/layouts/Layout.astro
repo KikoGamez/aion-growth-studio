@@ -25,7 +25,7 @@ const {
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 
     <title>{title}</title>
   </head>
@@ -33,18 +33,64 @@ const {
     <slot />
 
     <script>
+      // Scroll reveal observer with stagger support
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
             if (entry.isIntersecting) {
               entry.target.classList.add('visible');
+              
+              // Handle stagger children
+              if (entry.target.classList.contains('stagger-children')) {
+                const children = entry.target.querySelectorAll('.stagger-item');
+                children.forEach((child, index) => {
+                  (child as HTMLElement).style.animationDelay = `${index * 0.1}s`;
+                  child.classList.add('animate');
+                });
+              }
             }
           });
         },
         { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
       );
 
-      document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+      document.querySelectorAll('.fade-in, .stagger-children').forEach((el) => observer.observe(el));
+
+      // Counter animation for statistics
+      const counterObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const el = entry.target as HTMLElement;
+              const target = parseInt(el.dataset.target || '0');
+              const suffix = el.dataset.suffix || '';
+              const prefix = el.dataset.prefix || '';
+              const duration = 2000;
+              const start = performance.now();
+              
+              const animate = (currentTime: number) => {
+                const elapsed = currentTime - start;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(easeOut * target);
+                el.textContent = prefix + current + suffix;
+                
+                if (progress < 1) {
+                  requestAnimationFrame(animate);
+                } else {
+                  el.textContent = prefix + target + suffix;
+                }
+              };
+              
+              requestAnimationFrame(animate);
+              counterObserver.unobserve(el);
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+
+      document.querySelectorAll('.counter').forEach((el) => counterObserver.observe(el));
     </script>
   </body>
 </html>

@@ -1,0 +1,159 @@
+---
+import type { Lang } from '../i18n/utils';
+
+interface Props {
+  lang: Lang;
+  variant?: 'light' | 'dark';
+}
+
+const { lang, variant = 'light' } = Astro.props;
+
+const logos = [
+  { name: 'TechCorp', width: 120 },
+  { name: 'InnovateLabs', width: 130 },
+  { name: 'DataFlow', width: 110 },
+  { name: 'CloudScale', width: 125 },
+  { name: 'AIVentures', width: 115 },
+  { name: 'GrowthHub', width: 120 },
+  { name: 'NextGen', width: 100 },
+  { name: 'FutureStack', width: 130 },
+];
+---
+
+<section class:list={[
+  'py-16 md:py-20 overflow-hidden',
+  variant === 'dark' ? 'bg-aion-dark' : 'bg-white'
+]}>
+  <div class="px-6 md:px-8 lg:px-16 mb-10">
+    <p class:list={[
+      'text-center text-sm font-medium tracking-wide uppercase',
+      variant === 'dark' ? 'text-white/50' : 'text-slate-400'
+    ]}>
+      {lang === 'es' ? 'Empresas que confían en nosotros' : 'Trusted by industry leaders'}
+    </p>
+  </div>
+
+  <div class:list={[
+    'marquee-container',
+    variant === 'dark' && 'marquee-dark'
+  ]}>
+    <div class="marquee-track">
+      {/* First set of logos */}
+      {logos.map((logo) => (
+        <div class="flex-shrink-0 mx-12">
+          <div 
+            class:list={[
+              'flex items-center justify-center h-12 px-6 rounded-lg transition-all duration-300',
+              variant === 'dark' 
+                ? 'text-white/30 hover:text-white/60' 
+                : 'text-slate-300 hover:text-slate-500'
+            ]}
+            style={`width: ${logo.width}px;`}
+          >
+            <span class="font-display font-bold text-lg tracking-tight whitespace-nowrap">
+              {logo.name}
+            </span>
+          </div>
+        </div>
+      ))}
+      {/* Duplicate for seamless loop */}
+      {logos.map((logo) => (
+        <div class="flex-shrink-0 mx-12">
+          <div 
+            class:list={[
+              'flex items-center justify-center h-12 px-6 rounded-lg transition-all duration-300',
+              variant === 'dark' 
+                ? 'text-white/30 hover:text-white/60' 
+                : 'text-slate-300 hover:text-slate-500'
+            ]}
+            style={`width: ${logo.width}px;`}
+          >
+            <span class="font-display font-bold text-lg tracking-tight whitespace-nowrap">
+              {logo.name}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="px-6 md:px-8 lg:px-16 mt-16">
+    <div class="flex flex-wrap justify-center gap-x-16 gap-y-8">
+      <div class="text-center">
+        <p 
+          class:list={[
+            'text-4xl md:text-5xl font-display font-bold tracking-tight counter',
+            variant === 'dark' ? 'text-white' : 'text-aion-dark'
+          ]}
+          data-target="47"
+          data-suffix="%"
+          data-prefix="+"
+        >
+          +0%
+        </p>
+        <p class:list={[
+          'text-sm mt-2',
+          variant === 'dark' ? 'text-white/50' : 'text-slate-500'
+        ]}>
+          {lang === 'es' ? 'Crecimiento promedio' : 'Average growth'}
+        </p>
+      </div>
+      <div class="text-center">
+        <p 
+          class:list={[
+            'text-4xl md:text-5xl font-display font-bold tracking-tight counter',
+            variant === 'dark' ? 'text-white' : 'text-aion-dark'
+          ]}
+          data-target="2"
+          data-suffix="M+"
+          data-prefix="$"
+        >
+          $0M+
+        </p>
+        <p class:list={[
+          'text-sm mt-2',
+          variant === 'dark' ? 'text-white/50' : 'text-slate-500'
+        ]}>
+          {lang === 'es' ? 'Ingresos generados' : 'Revenue generated'}
+        </p>
+      </div>
+      <div class="text-center">
+        <p 
+          class:list={[
+            'text-4xl md:text-5xl font-display font-bold tracking-tight counter',
+            variant === 'dark' ? 'text-white' : 'text-aion-dark'
+          ]}
+          data-target="50"
+          data-suffix="+"
+        >
+          0+
+        </p>
+        <p class:list={[
+          'text-sm mt-2',
+          variant === 'dark' ? 'text-white/50' : 'text-slate-500'
+        ]}>
+          {lang === 'es' ? 'Proyectos completados' : 'Projects completed'}
+        </p>
+      </div>
+      <div class="text-center">
+        <p 
+          class:list={[
+            'text-4xl md:text-5xl font-display font-bold tracking-tight counter',
+            variant === 'dark' ? 'text-white' : 'text-aion-dark'
+          ]}
+          data-target="98"
+          data-suffix="%"
+        >
+          0%
+        </p>
+        <p class:list={[
+          'text-sm mt-2',
+          variant === 'dark' ? 'text-white/50' : 'text-slate-500'
+        ]}>
+          {lang === 'es' ? 'Satisfacción del cliente' : 'Client satisfaction'}
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
