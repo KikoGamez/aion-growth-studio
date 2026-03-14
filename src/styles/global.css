@@ -40,7 +40,10 @@
 
   /* Gradient text effect */
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-aion-cyan to-aion-emerald;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(to right, #00D4FF, #00E5A0);
   }
 
   /* Glow effects */
@@ -63,7 +66,10 @@
   }
 
   .glass-dark {
-    @apply bg-aion-dark/80 backdrop-blur-xl border border-white/10;
+    background-color: rgba(11, 27, 61, 0.8);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   /* Stat badge */
