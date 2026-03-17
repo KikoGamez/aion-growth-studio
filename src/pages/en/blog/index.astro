@@ -8,7 +8,10 @@ import { fetchPublishedPosts } from '../../../lib/notion';
 
 const lang = 'en';
 
-const sortedPosts = await fetchPublishedPosts('en', 'Economía Digital');
+const allPosts = await fetchPublishedPosts('en', 'Economía Digital');
+const sortedPosts = allPosts.filter(p => p.category !== 'Economía Digital');
+
+Astro.response.headers.set('Cache-Control', 'no-store');
 ---
 
 <Layout title="Blog — AION Growth Studio" lang={lang}>
