@@ -224,19 +224,30 @@ const lang = 'es';
   .bg-white\/3 { background-color: rgba(255,255,255,0.03); }
   .competitor-card {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
-    padding: 12px;
+    padding: 14px 16px;
     border-radius: 12px;
     background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.08);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
   }
-  .competitor-card:hover { background: rgba(255,255,255,0.07); }
+  .competitor-card:hover { 
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.15);
+  }
   .competitor-card.selected {
-    background: rgba(34,211,238,0.08);
-    border-color: rgba(34,211,238,0.4);
+    background: rgba(34,211,238,0.1);
+    border-color: rgba(34,211,238,0.5);
+  }
+  .competitor-card.selected .check-icon {
+    background: rgba(34,211,238,0.2);
+    border-color: #22d3ee;
+  }
+  .competitor-card.selected .check-icon svg {
+    opacity: 1;
   }
 </style>
 
@@ -371,7 +382,18 @@ const lang = 'es';
 
     // Start competitor detection in background
     const listEl = document.getElementById('competitor-list');
-    if (listEl) listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-2 animate-pulse">⏳ Analizando tu web…</p>`;
+    if (listEl) listEl.innerHTML = `
+      <div class="py-6 text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-400/20 mb-4">
+          <svg class="w-6 h-6 text-cyan-400 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+        <p class="text-sm font-medium text-white mb-1">Buscando competidores...</p>
+        <p class="text-xs text-slate-400">Analizando tu sector y mercado</p>
+      </div>
+    `;
 
     competitorsResult = null;
     competitorsPromise = fetch('/api/audit/find-competitors', {
@@ -400,36 +422,37 @@ const lang = 'es';
 
     if (listEl) {
       if (competitors.length === 0) {
-        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">No se detectaron competidores automáticamente. Puedes añadir uno manualmente.</p>`;
+        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No se detectaron competidores automaticamente. Puedes añadir uno manualmente abajo.</p>`;
       } else {
-        listEl.innerHTML = competitors.map((c: any, i: number) => `
-          <div class="competitor-card" data-url="${c.url}" data-idx="${i}" onclick="toggleCompetitor(this)">
-            <div class="w-5 h-5 rounded border border-white/30 flex items-center justify-center shrink-0 mt-0.5 check-icon">
-              <span class="hidden text-cyan-400 text-xs">✓</span>
+        listEl.innerHTML = `
+          <p class="text-xs text-slate-400 mb-3">Hemos encontrado estos competidores. Pulsa para seleccionar:</p>
+          ${competitors.map((c: any, i: number) => `
+            <div class="competitor-card group" data-url="${c.url}" data-idx="${i}" onclick="toggleCompetitor(this)">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-white truncate">${c.name}</p>
+                <p class="text-xs text-slate-400 truncate">${c.url}</p>
+              </div>
+              <div class="w-6 h-6 rounded-full border-2 border-white/20 flex items-center justify-center shrink-0 transition-all group-hover:border-cyan-400/50 check-icon">
+                <svg class="w-3.5 h-3.5 text-cyan-400 opacity-0 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </div>
             </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-white truncate">${c.name}</p>
-              <p class="text-xs text-slate-400 truncate">${c.url}</p>
-              ${c.why ? `<p class="text-xs text-slate-500 mt-0.5 italic">${c.why}</p>` : ''}
-            </div>
-          </div>
-        `).join('');
+          `).join('')}
+        `;
       }
     }
   }
 
   (window as any).toggleCompetitor = function(el: HTMLElement) {
     const url = el.getAttribute('data-url') || '';
-    const check = el.querySelector('.check-icon span') as HTMLElement;
     const isSelected = el.classList.contains('selected');
 
     if (isSelected) {
       el.classList.remove('selected');
-      if (check) check.classList.add('hidden');
       selectedCompetitors = selectedCompetitors.filter(u => u !== url);
     } else {
       el.classList.add('selected');
-      if (check) check.classList.remove('hidden');
       if (!selectedCompetitors.includes(url)) selectedCompetitors.push(url);
     }
   };
