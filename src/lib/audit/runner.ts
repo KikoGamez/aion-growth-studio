@@ -19,6 +19,8 @@ import { runScore } from './modules/score';
 import { runInsights } from './modules/insights';
 import { runContentCadence } from './modules/content-cadence';
 import { runReputation } from './modules/reputation';
+import { runMetaAds } from './modules/meta-ads';
+import { runQAAgent } from './modules/qa-agent';
 import { NEXT_STEP } from './types';
 import type { AuditStep, AuditStepOrDone, ModuleResult, AuditPageData, CrawlResult } from './types';
 
@@ -165,6 +167,17 @@ export async function executeStep(step: AuditStep, audit: AuditPageData): Promis
 
       case 'insights':
         result = await runInsights(url, results);
+        break;
+
+      case 'meta_ads': {
+        const comps: Array<{ name: string; url: string }> =
+          (results.competitors as any)?.competitors || [];
+        result = await runMetaAds(url, results.crawl || {}, comps);
+        break;
+      }
+
+      case 'qa':
+        result = await runQAAgent(results);
         break;
 
       default:

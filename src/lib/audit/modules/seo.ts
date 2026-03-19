@@ -16,7 +16,7 @@ export async function runSEO(url: string): Promise<SEOResult> {
   const timer = setTimeout(() => controller.abort(), 45000);
 
   try {
-    // ── Tier 1: domain overview (traffic + keyword counts) ────────
+    // ── Tier 1: domain overview (organic + paid metrics) ──────────
     const res = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live', {
       method: 'POST',
       signal: controller.signal,
@@ -42,13 +42,20 @@ export async function runSEO(url: string): Promise<SEOResult> {
       return { skipped: true, reason: 'DataForSEO returned no data for this domain' };
     }
 
+    // ── Organic metrics ─────────────────────────────────────────
     const m = item.metrics?.organic;
     const keywordsTop3 = (m?.pos_1 ?? 0) + (m?.pos_2_3 ?? 0);
     const keywordsPos4to10 = m?.pos_4_10 ?? 0;
     const keywordsTop10 = keywordsTop3 + keywordsPos4to10;
     const keywordsTop30 = keywordsTop10 + (m?.pos_11_20 ?? 0) + (m?.pos_21_30 ?? 0);
 
+    // ── Paid metrics (Google Ads) ────────────────────────────────
+    const mp = item.metrics?.paid;
+    const paidKeywordsTotal = mp?.count ?? 0;
+    const paidTop3Keywords = (mp?.pos_1 ?? 0) + (mp?.pos_2_3 ?? 0);
+
     const baseResult: SEOResult = {
+      // Organic
       organicTrafficEstimate: m?.etv != null ? Math.round(m.etv) : undefined,
       estimatedAdsCost: m?.estimated_paid_traffic_cost != null ? Math.round(m.estimated_paid_traffic_cost) : undefined,
       organicKeywordsTotal: m?.count,
@@ -59,10 +66,15 @@ export async function runSEO(url: string): Promise<SEOResult> {
       trendUp: m?.is_up ?? undefined,
       trendDown: m?.is_down ?? undefined,
       trendLost: m?.is_lost ?? undefined,
+      // Paid
+      paidKeywordsTotal: paidKeywordsTotal || undefined,
+      paidTrafficEstimate: mp?.etv != null ? Math.round(mp.etv) : undefined,
+      paidTrafficValue: mp?.estimated_paid_traffic_cost != null ? Math.round(mp.estimated_paid_traffic_cost) : undefined,
+      paidTop3Keywords: paidTop3Keywords || undefined,
+      isInvestingPaid: paidKeywordsTotal > 0 || undefined,
     };
 
-    // ── Tier 2: top non-branded keywords (for GEO-SEO cross-analysis) ──
-    // Non-fatal: if this call fails, we still return the base result
+    // ── Tier 2: top organic non-branded keywords ─────────────────
     try {
       const kwRes = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
         method: 'POST',
@@ -85,7 +97,6 @@ export async function runSEO(url: string): Promise<SEOResult> {
           const kwItems: any[] = kwTask.result[0]?.items || [];
           const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '').toLowerCase();
 
-          // Filter out branded keywords and keep top 6 by volume
           const topKeywords = kwItems
             .filter((it: any) => {
               const kw = (it.keyword_data?.keyword || '').toLowerCase();
@@ -99,12 +110,46 @@ export async function runSEO(url: string): Promise<SEOResult> {
             }))
             .filter((kw) => kw.keyword);
 
-          if (topKeywords.length > 0) {
-            baseResult.topKeywords = topKeywords;
-          }
+          if (topKeywords.length > 0) baseResult.topKeywords = topKeywords;
         }
       }
-    } catch { /* non-fatal — topKeywords stays undefined */ }
+    } catch { /* non-fatal */ }
+
+    // ── Tier 3: top paid keywords (only when domain invests in ads) ──
+    if (paidKeywordsTotal > 0) {
+      try {
+        const pkRes = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+          body: JSON.stringify([{
+            target: domain,
+            location_code: 2724,
+            language_code: 'es',
+            filters: ['paid_etv', '>', 0],
+            order_by: ['paid_etv,desc'],
+            limit: 6,
+          }]),
+        });
+
+        if (pkRes.ok) {
+          const pkData = await pkRes.json();
+          const pkTask = pkData?.tasks?.[0];
+          if (pkTask?.status_code === 20000 && pkTask.result_count > 0) {
+            const pkItems: any[] = pkTask.result[0]?.items || [];
+            const topPaidKeywords = pkItems
+              .map((it: any) => ({
+                keyword: it.keyword_data?.keyword || '',
+                position: it.ranked_serp_element?.serp_item?.rank_absolute ?? 0,
+                volume: it.keyword_data?.keyword_info?.search_volume ?? 0,
+              }))
+              .filter((kw) => kw.keyword);
+
+            if (topPaidKeywords.length > 0) baseResult.paidTopKeywords = topPaidKeywords;
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
 
     return baseResult;
   } catch (err: any) {

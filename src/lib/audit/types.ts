@@ -19,7 +19,9 @@ export type AuditStep =
   | 'techstack'
   | 'conversion'
   | 'score'
-  | 'insights';
+  | 'insights'
+  | 'meta_ads'
+  | 'qa';
 
 export type AuditStepOrDone = AuditStep | 'done';
 export type AuditStatus = 'processing' | 'completed' | 'error';
@@ -29,6 +31,7 @@ export const STEP_ORDER: AuditStep[] = [
   'gbp', 'reputation', 'traffic', 'seo', 'seo_pages', 'content_cadence',
   'competitors', 'competitor_traffic', 'keyword_gap',
   'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights',
+  'meta_ads', 'qa',
 ];
 
 export const STEP_PROGRESS: Record<AuditStep, number> = {
@@ -52,7 +55,9 @@ export const STEP_PROGRESS: Record<AuditStep, number> = {
   techstack: 75,
   conversion: 81,
   score: 90,
-  insights: 100,
+  insights: 95,
+  meta_ads: 97,
+  qa: 100,
 };
 
 export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
@@ -76,7 +81,9 @@ export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
   techstack: 'conversion',
   conversion: 'score',
   score: 'insights',
-  insights: 'done',
+  insights: 'meta_ads',
+  meta_ads: 'qa',
+  qa: 'done',
 };
 
 export interface ModuleResult {
@@ -251,6 +258,9 @@ export interface CompetitorTrafficItem {
   organicTrafficEstimate?: number;
   estimatedAdsCost?: number;
   keywordsTop10?: number;
+  paidKeywordsTotal?: number;
+  paidTrafficEstimate?: number;
+  paidTrafficValue?: number;
 }
 
 export interface CompetitorTrafficResult extends ModuleResult {
@@ -343,17 +353,25 @@ export interface ConversionResult extends ModuleResult {
 
 // ── New: Pilar 2 enrichment — DataForSEO ─────────────────────────
 export interface SEOResult extends ModuleResult {
-  organicKeywordsTotal?: number;    // total keywords ranking
-  keywordsTop3?: number;            // positions 1-3
-  keywordsPos4to10?: number;        // positions 4-10 (quick wins)
-  keywordsTop10?: number;           // positions 1-10
-  keywordsTop30?: number;           // positions 1-30
-  organicTrafficEstimate?: number;  // estimated monthly organic visits
-  estimatedAdsCost?: number;        // Google Ads equivalent cost of organic traffic (€/mo)
-  trendUp?: number;                 // keywords gaining positions recently
-  trendDown?: number;               // keywords losing positions recently
-  trendLost?: number;               // keywords lost from top 100 recently
-  topKeywords?: Array<{ keyword: string; position: number; volume: number }>; // top non-branded keywords
+  // Organic
+  organicKeywordsTotal?: number;
+  keywordsTop3?: number;
+  keywordsPos4to10?: number;
+  keywordsTop10?: number;
+  keywordsTop30?: number;
+  organicTrafficEstimate?: number;
+  estimatedAdsCost?: number;
+  trendUp?: number;
+  trendDown?: number;
+  trendLost?: number;
+  topKeywords?: Array<{ keyword: string; position: number; volume: number }>;
+  // Paid (Google Ads)
+  paidKeywordsTotal?: number;
+  paidTrafficEstimate?: number;
+  paidTrafficValue?: number;
+  paidTop3Keywords?: number;
+  isInvestingPaid?: boolean;
+  paidTopKeywords?: Array<{ keyword: string; position: number; volume: number }>;
 }
 
 // ── New: SEO top pages ─────────────────────────────────────────────
@@ -378,6 +396,31 @@ export interface KeywordGapItem {
 export interface KeywordGapResult extends ModuleResult {
   competitor?: string;
   items?: KeywordGapItem[];
+}
+
+// ── New: Meta Ads Library ─────────────────────────────────────────
+export interface MetaAdsResult extends ModuleResult {
+  hasMetaAds?: boolean;
+  metaPageName?: string;
+  competitorsWithMetaAds?: number;
+  competitorDetails?: Array<{ name: string; url: string; hasMetaAds: boolean }>;
+}
+
+// ── New: QA Agent ─────────────────────────────────────────────────
+export interface QAIssue {
+  section: string;
+  current_text: string;
+  corrected_text: string;
+  reason: string;
+}
+
+export interface QAResult extends ModuleResult {
+  approved?: boolean;
+  issues?: QAIssue[];
+  suppressedSections?: string[];  // section keys to hide in the report
+  overallAssessment?: string;
+  qaTimestamp?: string;
+  qaBypassed?: boolean;
 }
 
 // ── New: Content cadence ──────────────────────────────────────────

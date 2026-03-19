@@ -51,7 +51,37 @@ const ts = (!r.techstack?.skipped && r.techstack) ? r.techstack : null;
 const cv = (!r.conversion?.skipped && r.conversion) ? r.conversion : null;
 const cc = (!r.content_cadence?.skipped && (r.content_cadence?.totalPosts ?? 0) >= 3) ? r.content_cadence : null;
 const rep = (!r.reputation?.skipped && r.reputation?.reputationLevel && r.reputation.reputationLevel !== 'no_data') ? r.reputation : null;
+const metaAds = (!r.meta_ads?.skipped && r.meta_ads) ? r.meta_ads : null;
+const qa = r.qa || null;
+const qaSuppressed: string[] = qa?.suppressedSections || [];
 const insights = r.insights || {};
+
+// ── Paid (Google Ads) computed data ──────────────────────────────
+const clientPaidKw = seo?.paidKeywordsTotal ?? 0;
+const clientPaidEtv = seo?.paidTrafficEstimate ?? 0;
+const compPaidItems: any[] = ctItems.filter((c: any) => (c.paidKeywordsTotal ?? 0) > 0);
+const anyoneInvestsPaid = clientPaidKw > 0 || compPaidItems.length > 0;
+const leaderPaid: any = compPaidItems.reduce((best: any, c: any) =>
+  (c.paidTrafficEstimate ?? 0) > (best?.paidTrafficEstimate ?? 0) ? c : best, null);
+const totalPaidEtv = clientPaidEtv + compPaidItems.reduce((s: number, c: any) => s + (c.paidTrafficEstimate ?? 0), 0);
+const clientSovPaid = totalPaidEtv > 0 ? Math.round((clientPaidEtv / totalPaidEtv) * 100) : null;
+const totalOrgEtv = (seo?.organicTrafficEstimate ?? 0) + ctItems.reduce((s: number, c: any) => s + (c.organicTrafficEstimate ?? 0), 0);
+const clientSovOrg = totalOrgEtv > 0 ? Math.round(((seo?.organicTrafficEstimate ?? 0) / totalOrgEtv) * 100) : null;
+
+// ── Impact projection computed data ──────────────────────────────
+const pos4to10 = seo?.keywordsPos4to10 ?? 0;
+const ownEtvForImpact = seo?.organicTrafficEstimate ?? 0;
+const ownPaidCostForImpact = seo?.estimatedAdsCost ?? 0;
+const projTrafficBase = pos4to10 > 0 ? pos4to10 * 150 : 0;
+const projTrafficMin = Math.round(projTrafficBase * 0.5);
+const projTrafficMax = Math.round(projTrafficBase * 1.5);
+const projAdsValue = (projTrafficBase > 0 && ownEtvForImpact > 0 && ownPaidCostForImpact > 0)
+  ? Math.round((projTrafficBase / ownEtvForImpact) * ownPaidCostForImpact) : null;
+const geoMissedQueries = geo?.queries?.filter((q: any) => !q.isBrandQuery && !q.mentioned).length ?? 0;
+const geoTotalQueries = geo?.queries?.filter((q: any) => !q.isBrandQuery).length ?? 0;
+const hasTrendLossImpact = seo != null && (seo.trendLost ?? 0) > (seo.trendUp ?? 0);
+const repTotalReviews = rep?.totalReviews ?? 0;
+const hasAnyImpactProjection = projTrafficBase > 0 || geoMissedQueries > 0 || (repTotalReviews > 0 && repTotalReviews < 50) || hasTrendLossImpact;
 const seoPages = (!r.seo_pages?.skipped && r.seo_pages?.pages?.length) ? r.seo_pages : null;
 const sector = r.sector?.sector || audit.sector || '';
 const linkedin = (!r.linkedin?.skipped && r.linkedin?.found) ? r.linkedin : null;
@@ -901,6 +931,117 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
 
     </div>
 
+    <!-- ── BLOQUE 3b: PUBLICIDAD ─────────────────────────────────── -->
+    {anyoneInvestsPaid && !qaSuppressed.includes('competitor_benchmark') && (
+      <div class="section">
+        <h2>📣 Publicidad en buscadores</h2>
+        <p style="color:#64748b;font-size:0.875rem;margin:0 0 1rem;">Actividad en Google Ads del dominio y sus competidores</p>
+
+        {/* Caso 1 — Cliente invierte */}
+        {clientPaidKw > 0 ? (
+          <>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:0.625rem;padding:1rem 1.25rem;margin-bottom:0.875rem;">
+              <p style="font-weight:700;color:#1d4ed8;margin:0 0 0.25rem;font-size:0.9rem;">
+                💰 Invirtiendo en Google Ads — {fmt(clientPaidKw)} keywords activas
+              </p>
+              <p style="font-size:0.85rem;color:#1e40af;margin:0;line-height:1.6;">
+                {seo?.paidTrafficValue != null && seo.paidTrafficValue > 0
+                  ? `Valor de tráfico equivalente: ~${fmt(seo.paidTrafficValue)}€/mes.`
+                  : 'Presencia activa en búsquedas de pago.'}
+                {clientSovPaid != null && clientSovOrg != null && clientSovPaid < clientSovOrg &&
+                  ` Tu share of voice en publicidad (${clientSovPaid}%) es inferior al orgánico (${clientSovOrg}%). Hay demanda comercial que los ads pueden cubrir ahora mientras el SEO madura.`}
+              </p>
+            </div>
+            {seo?.paidTopKeywords && seo.paidTopKeywords.length > 0 && (
+              <div style="margin-bottom:0.875rem;">
+                <p style="font-size:0.75rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Top keywords en Google Ads</p>
+                <table>
+                  <thead><tr><th>Keyword</th><th style="text-align:right;">Posición</th><th style="text-align:right;">Volumen/mes</th></tr></thead>
+                  <tbody>
+                    {seo.paidTopKeywords.map((kw: any) => (
+                      <tr>
+                        <td style="font-size:0.875rem;">{kw.keyword}</td>
+                        <td style="text-align:right;font-size:0.8rem;">{kw.position || '—'}</td>
+                        <td style="text-align:right;font-size:0.8rem;">{fmt(kw.volume)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {clientSovPaid != null && compPaidItems.length > 0 && (
+              <div style="margin-bottom:0.875rem;">
+                <p style="font-size:0.75rem;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Share of Voice paid (tráfico estimado)</p>
+                <div style="display:flex;flex-direction:column;gap:0.375rem;">
+                  {[{ label: `★ ${domain}`, etv: clientPaidEtv, isOwn: true },
+                    ...compPaidItems.map((c: any) => ({ label: c.domain, etv: c.paidTrafficEstimate ?? 0, isOwn: false }))
+                  ].map((row) => {
+                    const pct = totalPaidEtv > 0 ? Math.round((row.etv / totalPaidEtv) * 100) : 0;
+                    return (
+                      <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span style={`font-size:0.8rem;width:10rem;flex-shrink:0;${row.isOwn ? 'font-weight:700;color:#1A4B8C;' : 'color:#475569;'}`}>{row.label}</span>
+                        <div style="flex:1;background:#e2e8f0;border-radius:9999px;height:8px;">
+                          <div style={`height:8px;border-radius:9999px;background:${row.isOwn ? '#1d4ed8' : '#94a3b8'};width:${pct}%;`}></div>
+                        </div>
+                        <span style="font-size:0.75rem;color:#64748b;width:3rem;text-align:right;">{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* Caso 2 — Cliente no invierte pero competidores sí */
+          <>
+            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:0.625rem;padding:1rem 1.25rem;margin-bottom:0.875rem;">
+              <p style="font-weight:700;color:#c2410c;margin:0 0 0.25rem;font-size:0.9rem;">⚠️ Sin presencia en Google Ads</p>
+              <p style="font-size:0.85rem;color:#9a3412;margin:0;line-height:1.6;">
+                {leaderPaid ? `${leaderPaid.domain} está capturando la demanda de pago de tu sector. ` : ''}
+                Cada búsqueda comercial que no cubres es una oportunidad que se lleva la competencia.
+              </p>
+            </div>
+            <table>
+              <thead><tr><th>Competidor</th><th style="text-align:right;">Keywords paid</th><th style="text-align:right;">Valor est./mes</th></tr></thead>
+              <tbody>
+                {compPaidItems.map((c: any) => (
+                  <tr>
+                    <td style="font-size:0.875rem;">{c.domain}</td>
+                    <td style="text-align:right;font-size:0.8rem;">{fmt(c.paidKeywordsTotal)}</td>
+                    <td style="text-align:right;font-size:0.8rem;">{c.paidTrafficValue != null ? fmt(c.paidTrafficValue) + '€' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* Subsección Meta Ads */}
+        {metaAds && (metaAds.hasMetaAds || (metaAds.competitorsWithMetaAds ?? 0) > 0) && (
+          <div class="sub-section">
+            <h3>📱 Actividad en Meta Ads</h3>
+            {metaAds.hasMetaAds ? (
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:0.5rem;padding:0.75rem 1rem;">
+                <p style="font-size:0.875rem;color:#1e40af;margin:0;">
+                  ✅ Anuncios activos en Meta detectados{metaAds.metaPageName ? ` para ${metaAds.metaPageName}` : ''}.
+                </p>
+              </div>
+            ) : (
+              <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:0.5rem;padding:0.75rem 1rem;">
+                <p style="font-size:0.875rem;color:#9a3412;margin:0;">
+                  ⚠️ Sin anuncios detectados en Meta — {metaAds.competitorsWithMetaAds} de tus competidores sí tienen campañas activas en Facebook/Instagram.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <p style="font-size:0.7rem;color:#94a3b8;margin-top:0.875rem;padding-top:0.75rem;border-top:1px solid #f1f5f9;">
+          Análisis basado en Google Search Ads. No incluye Meta Ads, LinkedIn ni programática.
+        </p>
+      </div>
+    )}
+
     <!-- ── BLOQUE 4: EXPERIENCIA Y CONVERSIÓN ────────────────────── -->
     <div class="section">
       <h2>¿Qué pasa cuando llegan?</h2>
@@ -1241,6 +1382,72 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         </div>
       )}
     </div>
+
+    <!-- ── BLOQUE 6: PROYECCIÓN DE IMPACTO ───────────────────────── -->
+    {hasAnyImpactProjection && (
+      <div class="section">
+        <h2>📈 Tu potencial de crecimiento detectado</h2>
+        <p style="color:#64748b;font-size:0.875rem;margin:0 0 1.5rem;">Basado exclusivamente en los datos de este análisis, no en estimaciones genéricas.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.25rem;">
+
+          {/* Card tráfico orgánico */}
+          {projTrafficBase > 0 && (
+            <div style="border:1px solid #bfdbfe;border-radius:0.75rem;padding:1.25rem;background:#eff6ff;">
+              <p style="font-size:0.7rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 0.5rem;">Keywords a un paso de primera página</p>
+              <p style="font-size:0.875rem;color:#1e3a8a;margin:0 0 0.5rem;line-height:1.6;">
+                Tienes <strong>{fmt(pos4to10)} keywords en posición 4-10</strong>.<br/>
+                Optimizando su contenido: <strong>+{fmt(projTrafficMin)}–{fmt(projTrafficMax)} visitas/mes</strong> en 60-90 días.
+                {projAdsValue != null && projAdsValue > 0 && (
+                  <> Equivalente publicitario: <strong>~{fmt(projAdsValue)}€/mes</strong> en Google Ads.</>
+                )}
+              </p>
+              <p style="font-size:0.7rem;color:#3b82f6;margin:0;">Plazo: 60-90 días</p>
+            </div>
+          )}
+
+          {/* Card visibilidad en IA */}
+          {geoMissedQueries > 0 && (
+            <div style="border:1px solid #c7d2fe;border-radius:0.75rem;padding:1.25rem;background:#eef2ff;">
+              <p style="font-size:0.7rem;font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 0.5rem;">Invisibilidad en búsqueda por IA</p>
+              <p style="font-size:0.875rem;color:#3730a3;margin:0 0 0.5rem;line-height:1.6;">
+                No apareces en <strong>{geoMissedQueries} de {geoTotalQueries} consultas</strong> simuladas en ChatGPT para tu sector.<br/>
+                Con una estrategia de contenido GEO, estas {geoMissedQueries} consultas son alcanzables en 3-6 meses.
+              </p>
+              <p style="font-size:0.7rem;color:#6366f1;margin:0;">Plazo: 3-6 meses</p>
+            </div>
+          )}
+
+          {/* Card reputación */}
+          {repTotalReviews > 0 && repTotalReviews < 50 && (
+            <div style="border:1px solid #fde68a;border-radius:0.75rem;padding:1.25rem;background:#fffbeb;">
+              <p style="font-size:0.7rem;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 0.5rem;">Reputación por debajo del umbral de confianza</p>
+              <p style="font-size:0.875rem;color:#92400e;margin:0 0 0.5rem;line-height:1.6;">
+                Con <strong>{repTotalReviews} reseñas actuales</strong>, estás por debajo del mínimo para destacar en búsquedas locales.<br/>
+                Llegar a 50 reseñas te sitúa en el <strong>top 25%</strong> de visibilidad local de tu sector.
+              </p>
+              <p style="font-size:0.7rem;color:#d97706;margin:0;">Acción continua</p>
+            </div>
+          )}
+
+          {/* Card tendencia */}
+          {hasTrendLossImpact && seo && (
+            <div style="border:1px solid #fca5a5;border-radius:0.75rem;padding:1.25rem;background:#fef2f2;">
+              <p style="font-size:0.7rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 0.5rem;">Pérdida de visibilidad que se puede detener</p>
+              <p style="font-size:0.875rem;color:#991b1b;margin:0 0 0.5rem;line-height:1.6;">
+                <strong>{fmt(seo.trendLost)} keywords perdidas</strong> en los últimos meses vs {fmt(seo.trendUp)} ganadas.<br/>
+                Sin intervención, la tendencia continúa. Con optimización técnica y de contenido, reversible en 60 días.
+              </p>
+              <p style="font-size:0.7rem;color:#ef4444;margin:0;">Plazo: 60 días</p>
+            </div>
+          )}
+        </div>
+
+        <p style="font-size:0.7rem;color:#94a3b8;line-height:1.5;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.375rem;padding:0.625rem 0.875rem;">
+          Las proyecciones son estimaciones basadas en benchmarks del sector y en los datos específicos de este dominio. Los resultados reales dependen de la ejecución y de factores externos como cambios de algoritmo o movimientos de competidores.
+        </p>
+      </div>
+    )}
 
     <!-- ── CTA PERSONALIZADO ─────────────────────────────────────── -->
     <div class="no-print" style="padding:3.5rem 2.5rem;background:linear-gradient(135deg,#0B1B3D 0%,#1A4B8C 60%,#0e7490 100%);text-align:center;color:#fff;">

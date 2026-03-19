@@ -49,12 +49,16 @@ export async function runCompetitorTraffic(
       const labsItem = task.result[0]?.items?.[0];
       if (!labsItem) return { name: item.name, domain: item.domain, url: item.url };
       const m = labsItem.metrics?.organic;
+      const mp = labsItem.metrics?.paid;
       const kw10 = m ? (m.pos_1 ?? 0) + (m.pos_2_3 ?? 0) + (m.pos_4_10 ?? 0) : undefined;
       return {
         name: item.name, domain: item.domain, url: item.url,
         organicTrafficEstimate: m?.etv != null ? Math.round(m.etv) : undefined,
         estimatedAdsCost: m?.estimated_paid_traffic_cost != null ? Math.round(m.estimated_paid_traffic_cost) : undefined,
         keywordsTop10: kw10 || undefined,
+        paidKeywordsTotal: (mp?.count ?? 0) || undefined,
+        paidTrafficEstimate: mp?.etv != null ? Math.round(mp.etv) : undefined,
+        paidTrafficValue: mp?.estimated_paid_traffic_cost != null ? Math.round(mp.estimated_paid_traffic_cost) : undefined,
       };
     });
 
