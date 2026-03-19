@@ -17,6 +17,8 @@ import { runTechStack } from './modules/techstack';
 import { runConversion } from './modules/conversion';
 import { runScore } from './modules/score';
 import { runInsights } from './modules/insights';
+import { runContentCadence } from './modules/content-cadence';
+import { runReputation } from './modules/reputation';
 import { NEXT_STEP } from './types';
 import type { AuditStep, AuditStepOrDone, ModuleResult, AuditPageData, CrawlResult } from './types';
 
@@ -89,6 +91,10 @@ export async function executeStep(step: AuditStep, audit: AuditPageData): Promis
         result = await runGBP(url, results.crawl || {});
         break;
 
+      case 'reputation':
+        result = await runReputation(url, results.crawl || {}, results.gbp);
+        break;
+
       case 'traffic':
         result = await runTraffic(url);
         break;
@@ -99,6 +105,10 @@ export async function executeStep(step: AuditStep, audit: AuditPageData): Promis
 
       case 'seo_pages':
         result = await runSeoPages(url);
+        break;
+
+      case 'content_cadence':
+        result = await runContentCadence(url);
         break;
 
       case 'competitors': {

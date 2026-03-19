@@ -42,6 +42,8 @@ const ctItems: any[] = r.competitor_traffic?.items || [];
 const kg = (!r.keyword_gap?.skipped && r.keyword_gap?.items?.length) ? r.keyword_gap : null;
 const ts = (!r.techstack?.skipped && r.techstack) ? r.techstack : null;
 const cv = (!r.conversion?.skipped && r.conversion) ? r.conversion : null;
+const cc = (!r.content_cadence?.skipped && (r.content_cadence?.totalPosts ?? 0) >= 3) ? r.content_cadence : null;
+const rep = (!r.reputation?.skipped && r.reputation?.reputationLevel && r.reputation.reputationLevel !== 'no_data') ? r.reputation : null;
 const insights = r.insights || {};
 const seoPages = (!r.seo_pages?.skipped && r.seo_pages?.pages?.length) ? r.seo_pages : null;
 const sector = r.sector?.sector || audit.sector || '';
@@ -385,13 +387,23 @@ const stackItems = ts ? [
       <div class="diag-text">{diagSEO}</div>
 
       {hasTrendAlert && (
-        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.875rem;">
-          <p style="color:#dc2626;font-weight:700;margin:0 0 0.25rem;font-size:0.9rem;">📉 Trend: active organic visibility loss</p>
-          <p style="color:#991b1b;font-size:0.85rem;margin:0;line-height:1.6;">
-            In the recent period the domain has <strong>lost {fmt(seo!.trendLost)} keywords</strong> from its rankings vs only {fmt(seo!.trendUp)} gained.
-            If not addressed, this trend will translate into falling organic traffic and lost market share.
-          </p>
-        </div>
+        <>
+          <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.625rem;">
+            <p style="color:#dc2626;font-weight:700;margin:0 0 0.25rem;font-size:0.9rem;">📉 Trend: active organic visibility loss</p>
+            <p style="color:#991b1b;font-size:0.85rem;margin:0;line-height:1.6;">
+              In the recent period the domain has <strong>lost {fmt(seo!.trendLost)} keywords</strong> from its rankings vs only {fmt(seo!.trendUp)} gained.
+              If not addressed, this trend will translate into falling organic traffic and lost market share.
+            </p>
+          </div>
+          <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:0.625rem;padding:0.875rem 1.125rem;margin-bottom:0.875rem;display:flex;align-items:flex-start;gap:0.875rem;">
+            <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">⚡</span>
+            <div>
+              <p style="font-weight:700;color:#3730a3;margin:0 0 0.2rem;font-size:0.875rem;">AION Pulse</p>
+              <p style="font-size:0.825rem;color:#4338ca;margin:0 0 0.5rem;line-height:1.55;">With AION Pulse you would receive an automatic alert when you lose positions, before it impacts your business.</p>
+              <a href="mailto:hola@aiongrowth.studio?subject=AION Pulse — Demo" style="display:inline-block;background:#1A4B8C;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Request demo →</a>
+            </div>
+          </div>
+        </>
       )}
 
       {seo ? (
@@ -425,6 +437,25 @@ const stackItems = ts ? [
               <p style="margin:0;font-size:0.875rem;color:#0369a1;line-height:1.5;">
                 <strong>You have {fmt(seo.keywordsPos4to10)} keywords in positions 4-10</strong> — one push from page 1.
                 {' '}With moderate content optimisation, these keywords can drive new traffic without creating pages from scratch.
+              </p>
+            </div>
+          )}
+
+          {/* Content cadence — only when sitemap has ≥3 blog posts */}
+          {cc && (
+            <div style={`background:${cc.cadenceLevel === 'active' ? '#f0fdf4' : cc.cadenceLevel === 'irregular' ? '#fffbeb' : '#fef2f2'};border:1px solid ${cc.cadenceLevel === 'active' ? '#bbf7d0' : cc.cadenceLevel === 'irregular' ? '#fde68a' : '#fca5a5'};border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.875rem;`}>
+              <p style={`font-weight:700;margin:0 0 0.25rem;font-size:0.875rem;color:${cc.cadenceLevel === 'active' ? '#15803d' : cc.cadenceLevel === 'irregular' ? '#b45309' : '#dc2626'}`}>
+                {cc.cadenceLevel === 'active' && '✅ Healthy content cadence'}
+                {cc.cadenceLevel === 'irregular' && '⚠️ Irregular content cadence'}
+                {cc.cadenceLevel === 'inactive' && '🔴 Inactive blog'}
+              </p>
+              <p style={`font-size:0.85rem;margin:0;line-height:1.6;color:${cc.cadenceLevel === 'active' ? '#166534' : cc.cadenceLevel === 'irregular' ? '#92400e' : '#991b1b'}`}>
+                {cc.cadenceLevel === 'active' &&
+                  `${cc.postsLast90Days} publications in the last 90 days. The blog is active and contributing to organic rankings.`}
+                {cc.cadenceLevel === 'irregular' &&
+                  `Last post ${cc.daysSinceLastPost} days ago. Google rewards domains with consistent publishing. 2 posts per month would double your indexable surface.`}
+                {cc.cadenceLevel === 'inactive' &&
+                  `Last post ${cc.daysSinceLastPost} days ago. Stale content is one of the most common causes of ranking loss — this is a high-priority improvement.`}
               </p>
             </div>
           )}
@@ -511,6 +542,16 @@ const stackItems = ts ? [
               </tbody>
             </table>
             <div class="diag-text">{diagGEO}</div>
+            {geo.queries?.some((q: any) => !q.isBrandQuery && !q.mentioned) && (
+              <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:0.625rem;padding:0.875rem 1.125rem;margin-top:0.75rem;display:flex;align-items:flex-start;gap:0.875rem;">
+                <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">🤖</span>
+                <div>
+                  <p style="font-weight:700;color:#3730a3;margin:0 0 0.2rem;font-size:0.875rem;">AION — AI Visibility</p>
+                  <p style="font-size:0.825rem;color:#4338ca;margin:0 0 0.5rem;line-height:1.55;">AION builds the content plan to get you appearing in AI answers within 60 days.</p>
+                  <a href="mailto:hola@aiongrowth.studio?subject=AION GEO — AI content plan" style="display:inline-block;background:#1A4B8C;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Request demo →</a>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <p style="color:#94a3b8;font-size:0.875rem;">GEO data not available for this analysis.</p>
@@ -624,6 +665,18 @@ const stackItems = ts ? [
           </p>
         </div>
       ) : null}
+
+      {(hasEnoughCompetitorData || ctItems.length > 0) && (
+        <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:0.625rem;padding:0.875rem 1.125rem;margin-top:0.875rem;display:flex;align-items:flex-start;gap:0.875rem;">
+          <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">🎯</span>
+          <div>
+            <p style="font-weight:700;color:#3730a3;margin:0 0 0.2rem;font-size:0.875rem;">AION Radar</p>
+            <p style="font-size:0.825rem;color:#4338ca;margin:0 0 0.5rem;line-height:1.55;">Activate AION Radar to see the weekly movements of your 5 main competitors.</p>
+            <a href="mailto:hola@aiongrowth.studio?subject=AION Radar — Demo" style="display:inline-block;background:#1A4B8C;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Request demo →</a>
+          </div>
+        </div>
+      )}
+
       {kg && (
         <div class="sub-section">
           <h3>🔑 Keyword gap — ranking opportunities</h3>
@@ -680,6 +733,55 @@ const stackItems = ts ? [
             })}
           </div>
         </>
+      )}
+
+      <!-- Online Reputation -->
+      {rep && (
+        <div class="sub-section">
+          <h3>⭐ Online reputation</h3>
+          <div style={`background:${rep.reputationLevel === 'strong' ? '#f0fdf4' : rep.reputationLevel === 'moderate' ? '#fffbeb' : '#fef2f2'};border:1px solid ${rep.reputationLevel === 'strong' ? '#bbf7d0' : rep.reputationLevel === 'moderate' ? '#fde68a' : '#fca5a5'};border-radius:0.625rem;padding:1rem 1.25rem;margin-bottom:0.875rem;`}>
+            <p style={`font-weight:700;margin:0 0 0.3rem;font-size:0.9rem;color:${rep.reputationLevel === 'strong' ? '#15803d' : rep.reputationLevel === 'moderate' ? '#b45309' : '#dc2626'}`}>
+              {rep.reputationLevel === 'strong' &&
+                `✅ Strong reputation — ${rep.combinedRating}/5 average across ${rep.totalReviews} verified reviews.`}
+              {rep.reputationLevel === 'moderate' &&
+                `⚠️ Moderate reputation — ${rep.combinedRating}/5 with ${rep.totalReviews} reviews.`}
+              {rep.reputationLevel === 'weak' && rep.combinedRating != null && rep.combinedRating < 3.5 &&
+                `🔴 Below-average reputation — ${rep.combinedRating}/5.`}
+              {rep.reputationLevel === 'weak' && (rep.combinedRating == null || rep.combinedRating >= 3.5) &&
+                `🔴 Insufficient review presence — only ${rep.totalReviews} reviews found.`}
+            </p>
+            <p style={`font-size:0.85rem;margin:0;line-height:1.6;color:${rep.reputationLevel === 'strong' ? '#166534' : rep.reputationLevel === 'moderate' ? '#92400e' : '#991b1b'}`}>
+              {rep.reputationLevel === 'strong' &&
+                'Social proof is working in your favour.'}
+              {rep.reputationLevel === 'moderate' &&
+                'Companies with more than 50 reviews receive up to 3× more enquiries. There is significant room to improve.'}
+              {rep.reputationLevel === 'weak' && rep.combinedRating != null && rep.combinedRating < 3.5 &&
+                'Negative reviews without responses reduce conversion by up to 40%. This is an urgent management priority.'}
+              {rep.reputationLevel === 'weak' && (rep.combinedRating == null || rep.combinedRating >= 3.5) &&
+                'Without visible social proof, visitors have no evidence that others have trusted you. Missing reviews are a silent conversion barrier.'}
+            </p>
+          </div>
+          {(rep.gbpFound || rep.trustpilotFound) && (
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+              {rep.gbpFound && rep.gbpRating != null && (
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.625rem 0.875rem;display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;font-weight:600;color:#475569;">Google</span>
+                  <span style="font-size:1rem;font-weight:700;color:#f59e0b;">{'★'.repeat(Math.round(rep.gbpRating))}</span>
+                  <span style="font-size:0.85rem;font-weight:700;color:#0f172a;">{rep.gbpRating}/5</span>
+                  {rep.gbpReviews != null && <span style="font-size:0.75rem;color:#64748b;">({fmt(rep.gbpReviews)} reviews)</span>}
+                </div>
+              )}
+              {rep.trustpilotFound && rep.trustpilotRating != null && (
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.625rem 0.875rem;display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;font-weight:600;color:#475569;">Trustpilot</span>
+                  <span style="font-size:1rem;font-weight:700;color:#00b67a;">★</span>
+                  <span style="font-size:0.85rem;font-weight:700;color:#0f172a;">{rep.trustpilotRating}/5</span>
+                  {rep.trustpilotReviews != null && <span style="font-size:0.75rem;color:#64748b;">({fmt(rep.trustpilotReviews)} reviews)</span>}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <!-- Schema Markup -->

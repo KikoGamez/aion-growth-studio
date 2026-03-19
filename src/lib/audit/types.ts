@@ -8,9 +8,11 @@ export type AuditStep =
   | 'instagram'
   | 'linkedin'
   | 'gbp'
+  | 'reputation'
   | 'traffic'
   | 'seo'
   | 'seo_pages'
+  | 'content_cadence'
   | 'competitors'
   | 'competitor_traffic'
   | 'keyword_gap'
@@ -24,7 +26,8 @@ export type AuditStatus = 'processing' | 'completed' | 'error';
 
 export const STEP_ORDER: AuditStep[] = [
   'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo',
-  'gbp', 'traffic', 'seo', 'seo_pages', 'competitors', 'competitor_traffic', 'keyword_gap',
+  'gbp', 'reputation', 'traffic', 'seo', 'seo_pages', 'content_cadence',
+  'competitors', 'competitor_traffic', 'keyword_gap',
   'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights',
 ];
 
@@ -35,17 +38,19 @@ export const STEP_PROGRESS: Record<AuditStep, number> = {
   sector: 24,
   content: 30,
   geo: 36,
-  gbp: 42,
+  gbp: 41,
+  reputation: 44,
   traffic: 47,
   seo: 50,
   seo_pages: 54,
-  competitors: 57,
-  competitor_traffic: 60,
-  keyword_gap: 63,
-  instagram: 66,
-  linkedin: 69,
-  techstack: 74,
-  conversion: 80,
+  content_cadence: 56,
+  competitors: 58,
+  competitor_traffic: 61,
+  keyword_gap: 64,
+  instagram: 67,
+  linkedin: 70,
+  techstack: 75,
+  conversion: 81,
   score: 90,
   insights: 100,
 };
@@ -57,10 +62,12 @@ export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
   sector: 'content',
   content: 'geo',
   geo: 'gbp',
-  gbp: 'traffic',
+  gbp: 'reputation',
+  reputation: 'traffic',
   traffic: 'seo',
   seo: 'seo_pages',
-  seo_pages: 'competitors',
+  seo_pages: 'content_cadence',
+  content_cadence: 'competitors',
   competitors: 'competitor_traffic',
   competitor_traffic: 'keyword_gap',
   keyword_gap: 'instagram',
@@ -371,6 +378,33 @@ export interface KeywordGapItem {
 export interface KeywordGapResult extends ModuleResult {
   competitor?: string;
   items?: KeywordGapItem[];
+}
+
+// ── New: Content cadence ──────────────────────────────────────────
+export type ContentCadenceLevel = 'active' | 'irregular' | 'inactive';
+
+export interface ContentCadenceResult extends ModuleResult {
+  totalPosts?: number;
+  lastPostDate?: string;        // ISO date "YYYY-MM-DD"
+  daysSinceLastPost?: number;
+  avgDaysBetweenPosts?: number;
+  postsLast90Days?: number;
+  cadenceLevel?: ContentCadenceLevel;
+}
+
+// ── New: Online reputation ────────────────────────────────────────
+export type ReputationLevel = 'strong' | 'moderate' | 'weak' | 'no_data';
+
+export interface ReputationResult extends ModuleResult {
+  gbpRating?: number | null;
+  gbpReviews?: number | null;
+  gbpFound?: boolean;
+  trustpilotRating?: number | null;
+  trustpilotReviews?: number | null;
+  trustpilotFound?: boolean;
+  combinedRating?: number | null;
+  totalReviews?: number;
+  reputationLevel?: ReputationLevel;
 }
 
 export interface AuditPageData {

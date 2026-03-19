@@ -49,6 +49,8 @@ const competitors: any[] = r.competitors?.competitors || [];
 const kg = (!r.keyword_gap?.skipped && r.keyword_gap?.items?.length) ? r.keyword_gap : null;
 const ts = (!r.techstack?.skipped && r.techstack) ? r.techstack : null;
 const cv = (!r.conversion?.skipped && r.conversion) ? r.conversion : null;
+const cc = (!r.content_cadence?.skipped && (r.content_cadence?.totalPosts ?? 0) >= 3) ? r.content_cadence : null;
+const rep = (!r.reputation?.skipped && r.reputation?.reputationLevel && r.reputation.reputationLevel !== 'no_data') ? r.reputation : null;
 const insights = r.insights || {};
 const seoPages = (!r.seo_pages?.skipped && r.seo_pages?.pages?.length) ? r.seo_pages : null;
 const sector = r.sector?.sector || audit.sector || '';
@@ -467,13 +469,23 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
 
       {/* Trend alert — before the metrics if domain is losing visibility */}
       {hasTrendAlert && (
-        <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.875rem;">
-          <p style="color:#dc2626;font-weight:700;margin:0 0 0.25rem;font-size:0.9rem;">📉 Tendencia: pérdida de visibilidad orgánica activa</p>
-          <p style="color:#991b1b;font-size:0.85rem;margin:0;line-height:1.6;">
-            En el último período, el dominio ha <strong>perdido {fmt(seo!.trendLost)} keywords</strong> de posicionamiento frente a solo {fmt(seo!.trendUp)} ganadas.
-            Esta tendencia negativa, si no se corrige, se traduce en caída de tráfico orgánico y pérdida de cuota frente a competidores.
-          </p>
-        </div>
+        <>
+          <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.625rem;">
+            <p style="color:#dc2626;font-weight:700;margin:0 0 0.25rem;font-size:0.9rem;">📉 Tendencia: pérdida de visibilidad orgánica activa</p>
+            <p style="color:#991b1b;font-size:0.85rem;margin:0;line-height:1.6;">
+              En el último período, el dominio ha <strong>perdido {fmt(seo!.trendLost)} keywords</strong> de posicionamiento frente a solo {fmt(seo!.trendUp)} ganadas.
+              Esta tendencia negativa, si no se corrige, se traduce en caída de tráfico orgánico y pérdida de cuota frente a competidores.
+            </p>
+          </div>
+          <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:0.625rem;padding:0.875rem 1.125rem;margin-bottom:0.875rem;display:flex;align-items:flex-start;gap:0.875rem;">
+            <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">⚡</span>
+            <div>
+              <p style="font-weight:700;color:#3730a3;margin:0 0 0.2rem;font-size:0.875rem;">AION Pulse</p>
+              <p style="font-size:0.825rem;color:#4338ca;margin:0 0 0.5rem;line-height:1.55;">Con AION Pulse recibirías una alerta automática cuando pierdes posiciones, antes de que impacte en tu negocio.</p>
+              <a href="mailto:hola@aiongrowth.studio?subject=AION Pulse — Demo" style="display:inline-block;background:#1A4B8C;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Solicitar demo →</a>
+            </div>
+          </div>
+        </>
       )}
 
       {seo ? (
@@ -510,6 +522,25 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
               <p style="margin:0;font-size:0.875rem;color:#0369a1;line-height:1.5;">
                 <strong>Tienes {fmt(seo.keywordsPos4to10)} keywords en posiciones 4-10</strong> — a un empujón de la primera página.
                 {' '}Con optimización moderada de contenido, estas keywords pueden generar tráfico nuevo sin crear páginas desde cero.
+              </p>
+            </div>
+          )}
+
+          {/* Content cadence card — shown only when sitemap has ≥3 blog posts */}
+          {cc && (
+            <div style={`background:${cc.cadenceLevel === 'active' ? '#f0fdf4' : cc.cadenceLevel === 'irregular' ? '#fffbeb' : '#fef2f2'};border:1px solid ${cc.cadenceLevel === 'active' ? '#bbf7d0' : cc.cadenceLevel === 'irregular' ? '#fde68a' : '#fca5a5'};border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.875rem;`}>
+              <p style={`font-weight:700;margin:0 0 0.25rem;font-size:0.875rem;color:${cc.cadenceLevel === 'active' ? '#15803d' : cc.cadenceLevel === 'irregular' ? '#b45309' : '#dc2626'}`}>
+                {cc.cadenceLevel === 'active' && '✅ Cadencia de contenido saludable'}
+                {cc.cadenceLevel === 'irregular' && '⚠️ Cadencia de contenido irregular'}
+                {cc.cadenceLevel === 'inactive' && '🔴 Blog inactivo'}
+              </p>
+              <p style={`font-size:0.85rem;margin:0;line-height:1.6;color:${cc.cadenceLevel === 'active' ? '#166534' : cc.cadenceLevel === 'irregular' ? '#92400e' : '#991b1b'}`}>
+                {cc.cadenceLevel === 'active' &&
+                  `${cc.postsLast90Days} publicaciones en los últimos 90 días. El blog está activo y contribuye al posicionamiento orgánico.`}
+                {cc.cadenceLevel === 'irregular' &&
+                  `Última publicación hace ${cc.daysSinceLastPost} días. Google favorece dominios con publicación consistente. Una cadencia de 2 publicaciones/mes duplicaría tu superficie de indexación.`}
+                {cc.cadenceLevel === 'inactive' &&
+                  `Última publicación hace ${cc.daysSinceLastPost} días. El contenido estancado es una de las causas más frecuentes de pérdida de posiciones orgánicas. Es una prioridad de mejora alta.`}
               </p>
             </div>
           )}
@@ -618,6 +649,16 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
               <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:0.5rem;padding:0.75rem 1rem;margin-top:0.75rem;">
                 <p style="color:#dc2626;font-weight:600;margin:0 0 0.25rem;">⚠️ Nivel crítico de invisibilidad en IA</p>
                 <p style="color:#991b1b;font-size:0.8rem;margin:0;">Tus competidores están capturando demanda que antes pasaba por Google y que ahora se resuelve en ChatGPT, Perplexity y similares. Sin presencia en IA, no existes para un segmento creciente de búsquedas informacionales y de comparación.</p>
+              </div>
+            )}
+            {geo.queries?.some((q: any) => !q.isBrandQuery && !q.mentioned) && (
+              <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:0.625rem;padding:0.875rem 1.125rem;margin-top:0.75rem;display:flex;align-items:flex-start;gap:0.875rem;">
+                <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">🤖</span>
+                <div>
+                  <p style="font-weight:700;color:#3730a3;margin:0 0 0.2rem;font-size:0.875rem;">AION — Visibilidad en IA</p>
+                  <p style="font-size:0.825rem;color:#4338ca;margin:0 0 0.5rem;line-height:1.55;">AION genera el plan de contenido para que aparezcas en las respuestas de IA en 60 días.</p>
+                  <a href="mailto:hola@aiongrowth.studio?subject=AION GEO — Plan de contenido IA" style="display:inline-block;background:#1A4B8C;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Solicitar demo →</a>
+                </div>
               </div>
             )}
           </>
@@ -825,6 +866,17 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         </div>
       ) : null}
 
+      {(hasEnoughCompetitorData || ctItems.length > 0) && (
+        <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:0.625rem;padding:0.875rem 1.125rem;margin-top:0.875rem;display:flex;align-items:flex-start;gap:0.875rem;">
+          <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">🎯</span>
+          <div>
+            <p style="font-weight:700;color:#3730a3;margin:0 0 0.2rem;font-size:0.875rem;">AION Radar</p>
+            <p style="font-size:0.825rem;color:#4338ca;margin:0 0 0.5rem;line-height:1.55;">Activa AION Radar para ver los movimientos semanales de tus 5 competidores principales.</p>
+            <a href="mailto:hola@aiongrowth.studio?subject=AION Radar — Demo" style="display:inline-block;background:#1A4B8C;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Solicitar demo →</a>
+          </div>
+        </div>
+      )}
+
       <!-- Keyword gap -->
       {kg && (
         <div class="sub-section">
@@ -942,6 +994,56 @@ const trafficGap = Math.max(0, Math.round(avgETV - ownETV));
         {!crawl.hasSitemap && <span style="font-size:0.75rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">⚠️ Sin sitemap</span>}
         {crawl.hasRobots && <span style="font-size:0.75rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ robots.txt</span>}
       </div>
+
+      <!-- 4.1b Reputación online -->
+      {rep && (
+        <div class="sub-section">
+          <h3>⭐ Reputación online</h3>
+          <div style={`background:${rep.reputationLevel === 'strong' ? '#f0fdf4' : rep.reputationLevel === 'moderate' ? '#fffbeb' : '#fef2f2'};border:1px solid ${rep.reputationLevel === 'strong' ? '#bbf7d0' : rep.reputationLevel === 'moderate' ? '#fde68a' : '#fca5a5'};border-radius:0.625rem;padding:1rem 1.25rem;margin-bottom:0.875rem;`}>
+            <p style={`font-weight:700;margin:0 0 0.3rem;font-size:0.9rem;color:${rep.reputationLevel === 'strong' ? '#15803d' : rep.reputationLevel === 'moderate' ? '#b45309' : '#dc2626'}`}>
+              {rep.reputationLevel === 'strong' &&
+                `✅ Reputación sólida — ${rep.combinedRating}/5 de media con ${rep.totalReviews} reseñas verificadas.`}
+              {rep.reputationLevel === 'moderate' &&
+                `⚠️ Reputación moderada — ${rep.combinedRating}/5 con ${rep.totalReviews} reseñas.`}
+              {rep.reputationLevel === 'weak' && rep.combinedRating != null && rep.combinedRating < 3.5 &&
+                `🔴 Reputación bajo la media — ${rep.combinedRating}/5.`}
+              {rep.reputationLevel === 'weak' && (rep.combinedRating == null || rep.combinedRating >= 3.5) &&
+                `🔴 Presencia en reseñas insuficiente — solo ${rep.totalReviews} reseñas encontradas.`}
+            </p>
+            <p style={`font-size:0.85rem;margin:0;line-height:1.6;color:${rep.reputationLevel === 'strong' ? '#166534' : rep.reputationLevel === 'moderate' ? '#92400e' : '#991b1b'}`}>
+              {rep.reputationLevel === 'strong' &&
+                'La prueba social está trabajando a tu favor.'}
+              {rep.reputationLevel === 'moderate' &&
+                'Empresas con más de 50 reseñas reciben hasta 3× más contactos. Hay margen de mejora significativo.'}
+              {rep.reputationLevel === 'weak' && rep.combinedRating != null && rep.combinedRating < 3.5 &&
+                'Las reseñas negativas sin respuesta reducen la conversión hasta un 40%. Es una prioridad de gestión urgente.'}
+              {rep.reputationLevel === 'weak' && (rep.combinedRating == null || rep.combinedRating >= 3.5) &&
+                'Sin prueba social visible, el visitante no tiene evidencia de que otros han confiado en ti. La falta de reseñas es una barrera de conversión silenciosa.'}
+            </p>
+          </div>
+          {/* Source breakdown */}
+          {(rep.gbpFound || rep.trustpilotFound) && (
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+              {rep.gbpFound && rep.gbpRating != null && (
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.625rem 0.875rem;display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;font-weight:600;color:#475569;">Google</span>
+                  <span style="font-size:1rem;font-weight:700;color:#f59e0b;">{'★'.repeat(Math.round(rep.gbpRating))}</span>
+                  <span style="font-size:0.85rem;font-weight:700;color:#0f172a;">{rep.gbpRating}/5</span>
+                  {rep.gbpReviews != null && <span style="font-size:0.75rem;color:#64748b;">({fmt(rep.gbpReviews)} reseñas)</span>}
+                </div>
+              )}
+              {rep.trustpilotFound && rep.trustpilotRating != null && (
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;padding:0.625rem 0.875rem;display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;font-weight:600;color:#475569;">Trustpilot</span>
+                  <span style="font-size:1rem;font-weight:700;color:#00b67a;">★</span>
+                  <span style="font-size:0.85rem;font-weight:700;color:#0f172a;">{rep.trustpilotRating}/5</span>
+                  {rep.trustpilotReviews != null && <span style="font-size:0.75rem;color:#64748b;">({fmt(rep.trustpilotReviews)} reseñas)</span>}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <!-- 4.2 Schema Markup -->
       <div class="sub-section">
