@@ -11,41 +11,34 @@ const t = useTranslations(lang);
 const basePath = `/${lang}`;
 ---
 
-<section class="relative min-h-screen w-full overflow-hidden hero-section">
-  <!-- Background Image -->
-  <img
-    src="/hero-bg.jpg"
-    alt=""
-    class="absolute inset-0 w-full h-full object-cover z-0"
-    loading="eager"
-  />
-  <!-- Dark overlay for legibility -->
-  <div class="absolute inset-0 z-[1] bg-black/30"></div>
+<section class="relative min-h-screen w-full overflow-hidden bg-gradient-primary">
+  <!-- Subtle gradient overlay for depth -->
+  <div class="absolute inset-0 z-[1] bg-gradient-to-b from-transparent via-transparent to-primary/20"></div>
 
   <!-- Navigation -->
-  <nav class="relative z-50 flex items-start justify-between px-6 md:px-8 lg:px-16 py-5 md:py-6">
-    <!-- Logo 2x + tagline -->
-    <a href={`${basePath}/`} class="flex flex-col items-start">
+  <nav class="relative z-50 flex items-center justify-between px-6 md:px-8 lg:px-16 py-6">
+    <!-- Logo -->
+    <a href={`${basePath}/`} class="flex items-center">
       <img
-        src="/logo-aion-dark.png"
+        src="/logo-aion-outline.png"
         alt="AION Growth Studio"
-        class="w-[360px] md:w-[480px] h-auto drop-shadow-lg brightness-0 invert"
+        class="h-12 md:h-14 w-auto"
         loading="eager"
       />
     </a>
 
-    <!-- Desktop nav pills -->
-    <div class="hidden lg:flex items-center gap-2 mt-2">
+    <!-- Desktop nav pills - glassmorphism -->
+    <div class="hidden lg:flex items-center gap-1.5">
       <a href={`${basePath}/#soluciones`} class="nav-pill">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="nav-pill">{t('nav.casos')}</a>
       <a href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'} class="nav-pill">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="nav-pill">{t('nav.blog')}</a>
       <a href={`${basePath}/#contacto`} class="nav-pill">{t('nav.contacto')}</a>
 
-      <div class="flex items-center gap-1 ml-3 px-4 py-2.5 rounded-full bg-white/10 backdrop-blur-md">
-        <a href="/es/" class={`text-sm font-medium transition-colors ${lang === 'es' ? 'text-white' : 'text-white/60 hover:text-white'}`}>ES</a>
-        <span class="text-white/40 text-sm">|</span>
-        <a href="/en/" class={`text-sm font-medium transition-colors ${lang === 'en' ? 'text-white' : 'text-white/60 hover:text-white'}`}>EN</a>
+      <div class="flex items-center gap-1.5 ml-4 px-4 py-2.5 rounded-full nav-glass">
+        <a href="/es/" class={`text-sm font-medium transition-colors ${lang === 'es' ? 'text-white' : 'text-white/50 hover:text-white'}`}>ES</a>
+        <span class="text-white/30 text-sm">|</span>
+        <a href="/en/" class={`text-sm font-medium transition-colors ${lang === 'en' ? 'text-white' : 'text-white/50 hover:text-white'}`}>EN</a>
       </div>
     </div>
 
@@ -60,98 +53,168 @@ const basePath = `/${lang}`;
     </button>
   </nav>
 
-  <!-- Mobile menu -->
-  <div id="mobile-menu" class="lg:hidden hidden absolute top-[100px] left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-t border-white/10">
-    <div class="px-6 py-6 flex flex-col gap-2">
+  <!-- Mobile menu - glassmorphism -->
+  <div id="mobile-menu" class="lg:hidden hidden absolute top-[80px] left-4 right-4 z-50 nav-glass-mobile rounded-2xl">
+    <div class="px-6 py-6 flex flex-col gap-1">
       <a href={`${basePath}/#soluciones`} class="mobile-pill">{t('nav.soluciones')}</a>
       <a href={`${basePath}/#casos`} class="mobile-pill">{t('nav.casos')}</a>
       <a href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'} class="mobile-pill">{t('nav.diagnostico')}</a>
       <a href={`/${lang === 'es' ? '' : 'en/'}blog`} class="mobile-pill">{t('nav.blog')}</a>
       <a href={`${basePath}/#contacto`} class="mobile-pill">{t('nav.contacto')}</a>
       <div class="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
-        <a href="/es/" class={`text-sm font-medium ${lang === 'es' ? 'text-white' : 'text-white/60'}`}>ES</a>
-        <span class="text-white/30">|</span>
-        <a href="/en/" class={`text-sm font-medium ${lang === 'en' ? 'text-white' : 'text-white/60'}`}>EN</a>
+        <a href="/es/" class={`text-sm font-medium ${lang === 'es' ? 'text-white' : 'text-white/50'}`}>ES</a>
+        <span class="text-white/20">|</span>
+        <a href="/en/" class={`text-sm font-medium ${lang === 'en' ? 'text-white' : 'text-white/50'}`}>EN</a>
       </div>
     </div>
   </div>
 
   <!-- Hero Content -->
-  <div class="relative z-10 px-6 md:px-8 lg:px-36 pt-[18vh] md:pt-[calc(22vh-16px)]">
-    <!-- Text LEFT -->
-    <div class="max-w-[700px]">
-      <a
-        href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'}
-        class="inline-block px-8 py-4 bg-white text-[#0B1B3D] rounded-full font-semibold text-base hover:bg-cyan-300 hover:scale-105 transition-all duration-300 shadow-2xl mb-6"
-      >
-        {t('hero.cta')}
-      </a>
+  <div class="relative z-10 px-6 md:px-8 lg:px-16 pt-[16vh] md:pt-[20vh] pb-20">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <!-- Text LEFT -->
+        <div class="max-w-xl">
+          <!-- Label -->
+          <p class="text-tertiary-fixed text-xs font-semibold uppercase tracking-label mb-4">
+            Growth Infrastructure
+          </p>
 
-      <h1 class="hero-headline text-white">
-        {t('hero.title.1')}<br />
-        {t('hero.title.2')}
-      </h1>
+          <h1 class="hero-headline text-white mb-6">
+            {t('hero.title.1')}<br />
+            <span class="text-white/80">{t('hero.title.2')}</span>
+          </h1>
 
-      <p class="hero-subheadline text-white/60 max-w-[600px] font-bold">
-        {t('hero.subtitle')}
-      </p>
-    </div>
+          <p class="text-white/60 text-lg leading-relaxed mb-10 max-w-lg">
+            {t('hero.subtitle')}
+          </p>
 
-    <!-- Card RIGHT, bottom aligned with button -->
-    <div class="hidden lg:block absolute right-16 bottom-0 w-[280px] bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
-      <img
-        src="/projects-placeholder.jpg"
-        alt="Projects"
-        class="w-full h-[200px] object-cover rounded-xl mb-4"
-      />
-      <h3 class="text-2xl font-bold text-slate-900 mb-2">
-        {t('hero.card.label')}
-      </h3>
-      <p class="text-cyan-600 text-sm font-medium mb-1">{t('hero.card.project')}</p>
-      <p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-        {t('hero.card.title')}
-      </p>
+          <!-- CTA with gradient -->
+          <div class="flex flex-col sm:flex-row gap-4">
+            <a
+              href={lang === 'es' ? '/es/diagnostico' : '/en/diagnostic'}
+              class="cta-primary"
+            >
+              {t('hero.cta')}
+              <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </a>
+            <a
+              href={`${basePath}/#casos`}
+              class="cta-secondary"
+            >
+              {t('nav.casos')}
+            </a>
+          </div>
+        </div>
+
+        <!-- Card RIGHT - ambient shadow, no borders -->
+        <div class="hidden lg:block">
+          <div class="relative">
+            <!-- Main card -->
+            <div class="bg-white rounded-2xl p-8 shadow-ambient">
+              <div class="flex items-start gap-4 mb-6">
+                <div class="w-12 h-12 rounded-xl bg-surface flex items-center justify-center">
+                  <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-on-surface-variant text-xs font-medium uppercase tracking-label">{t('hero.card.label')}</p>
+                  <h3 class="text-on-surface text-xl font-semibold tracking-editorial mt-1">
+                    {t('hero.card.project')}
+                  </h3>
+                </div>
+              </div>
+              
+              <p class="text-on-surface-variant text-sm leading-relaxed mb-6">
+                {t('hero.card.title')}
+              </p>
+
+              <!-- Stats row -->
+              <div class="grid grid-cols-3 gap-4 pt-6 border-t border-outline-variant/20">
+                <div>
+                  <p class="text-2xl font-bold text-on-surface tracking-editorial">+340%</p>
+                  <p class="text-xs text-on-surface-variant mt-0.5">Organic Traffic</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-on-surface tracking-editorial">12x</p>
+                  <p class="text-xs text-on-surface-variant mt-0.5">Lead Quality</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-tertiary-fixed tracking-editorial">8 sem</p>
+                  <p class="text-xs text-on-surface-variant mt-0.5">Time to Results</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Floating decorative element -->
+            <div class="absolute -bottom-4 -right-4 w-32 h-32 bg-tertiary-fixed/10 rounded-full blur-3xl"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- Bottom accent line -->
+  <div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
 </section>
 
 <style>
-  .hero-section {
-    position: relative;
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, #000e41 0%, #001f70 100%);
   }
 
   .hero-headline {
-    font-size: 2.25rem;
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
     font-weight: 600;
-    line-height: 1.3;
-    margin-bottom: 0.3em;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
   }
 
-  .hero-subheadline {
-    font-size: 1.375rem;
-    font-weight: 700;
-    line-height: 1.3;
+  .tracking-editorial {
+    letter-spacing: -0.02em;
   }
 
+  .tracking-label {
+    letter-spacing: 0.08em;
+  }
+
+  /* Nav pills - glassmorphism */
   .nav-pill {
-    padding: 0.625rem 1.5rem;
+    padding: 0.625rem 1.25rem;
     border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    color: white;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 0.875rem;
     font-weight: 500;
     transition: all 0.2s ease;
   }
 
   .nav-pill:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+
+  .nav-glass {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .nav-glass-mobile {
+    background: rgba(0, 14, 65, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .mobile-pill {
     display: block;
-    padding: 0.75rem 1.25rem;
+    padding: 0.875rem 1rem;
     border-radius: 0.75rem;
     color: rgba(255, 255, 255, 0.8);
     font-size: 1rem;
@@ -160,8 +223,48 @@ const basePath = `/${lang}`;
   }
 
   .mobile-pill:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: white;
+  }
+
+  /* CTAs */
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 2rem;
+    background: white;
+    color: #000e41;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 12px 40px rgba(0, 29, 50, 0.15);
+  }
+
+  .cta-primary:hover {
+    background: #69ff87;
+    transform: translateY(-2px);
+    box-shadow: 0 16px 48px rgba(0, 29, 50, 0.2);
+  }
+
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 2rem;
+    background: transparent;
+    color: white;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+  }
+
+  .cta-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.3);
   }
 </style>
 
