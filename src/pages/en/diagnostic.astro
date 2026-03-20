@@ -5,244 +5,377 @@ const lang = 'en';
 ---
 
 <Layout title="Free Digital Visibility Diagnostic — AION" description="Analyze your digital presence for free in 2 minutes. Get a full report with score, AI visibility and real growth opportunities." lang={lang}>
-  <div class="diag-bg min-h-screen relative flex flex-col">
-    <div class="absolute inset-0 diag-dots pointer-events-none"></div>
 
-    <!-- Header -->
-    <nav class="relative z-10 flex items-center justify-between px-5 md:px-10 py-3">
-      <a href="/en/">
-        <img src="/logo-aion-dark.png" alt="AION Growth Studio" class="h-10 md:h-11 w-auto brightness-0 invert" />
-      </a>
-      <div class="flex items-center gap-2">
-        <a href="/es/diagnostico" class="text-sm font-medium text-white/60 hover:text-white transition-colors">ES</a>
-        <span class="text-white/40 text-sm">|</span>
-        <a href="/en/diagnostic" class="text-sm font-medium text-white">EN</a>
-      </div>
-    </nav>
-
-    <!-- Steps indicator -->
-    <div class="relative z-10 flex justify-center pt-4 pb-2">
-      <div class="flex items-center gap-2">
-        <div id="step-dot-1" class="step-dot active"></div>
-        <div class="w-8 h-px bg-white/20"></div>
-        <div id="step-dot-2" class="step-dot"></div>
-        <div class="w-8 h-px bg-white/20"></div>
-        <div id="step-dot-3" class="step-dot"></div>
-      </div>
-    </div>
-
-    <!-- Card container -->
-    <div class="relative z-10 flex-1 flex items-start justify-center px-4 py-6 md:py-10">
-      <div class="w-full max-w-md">
-
-        <!-- STEP 1: Only URL (low friction) -->
-        <div id="step-1" class="step-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 shadow-2xl">
-          <div class="text-center mb-8">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-400/20 rounded-full text-cyan-300 text-xs font-medium mb-4">
-              <span class="w-2 h-2 bg-cyan-400 rounded-full"></span>
-              Free · No signup · 2 minutes
-            </div>
-            <h1 class="text-2xl md:text-3xl font-bold text-white mb-3">Analyze your digital visibility</h1>
-            <p class="text-sm text-slate-200 leading-relaxed">Get a full report with score, web performance, AI visibility and real growth opportunities.</p>
-          </div>
-
-          <!-- Quick teaser of benefits -->
-          <div class="mb-6 grid grid-cols-2 gap-3">
-            <div class="p-3 bg-white/5 border border-white/10 rounded-lg text-center">
-              <svg class="w-6 h-6 mx-auto text-cyan-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <p class="text-xs text-slate-300">Digital Score</p>
-            </div>
-            <div class="p-3 bg-white/5 border border-white/10 rounded-lg text-center">
-              <svg class="w-6 h-6 mx-auto text-emerald-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <p class="text-xs text-slate-300">AI Visibility</p>
-            </div>
-            <div class="p-3 bg-white/5 border border-white/10 rounded-lg text-center">
-              <svg class="w-6 h-6 mx-auto text-blue-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10a4 4 0 11-8 0 4 4 0 018 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p class="text-xs text-slate-300">Web Performance</p>
-            </div>
-            <div class="p-3 bg-white/5 border border-white/10 rounded-lg text-center">
-              <svg class="w-6 h-6 mx-auto text-orange-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <p class="text-xs text-slate-300">Growth Ops</p>
-            </div>
-          </div>
-
-          <div class="space-y-4">
-            <div>
-              <label for="url" class="block text-sm font-medium text-slate-200 mb-2">Your website *</label>
-              <div class="relative">
-                <input type="text" id="url" name="url" required placeholder="example.com"
-                  class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400/50 focus:bg-white/10 transition-all"
-                  inputmode="url" autocomplete="url" />
-                <span id="url-status" class="absolute right-3 top-1/2 -translate-y-1/2 text-sm"></span>
-              </div>
-              <p id="url-feedback" class="text-xs text-slate-400 mt-1 hidden"></p>
-            </div>
-            <button id="btn-step1" type="button"
-              class="w-full py-3 bg-white text-[#0B1B3D] font-semibold text-sm rounded-xl hover:bg-cyan-300 hover:scale-[1.02] transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              aria-label="Analyze my website">
-              Analyze my website →
-            </button>
-          </div>
-
-          <div id="error-step1" class="hidden mt-4 p-4 bg-red-500/10 border border-red-400/20 rounded-xl text-sm text-red-300 text-center" role="alert"></div>
-
-          <p class="text-center text-xs text-slate-400 mt-5">
-            By continuing you accept our <a href="/en/" class="text-slate-300 underline hover:text-white transition-colors">privacy policy</a>
-          </p>
-        </div>
-
-        <!-- STEP 2: Name + Email (after showing value) -->
-        <div id="step-2" class="step-card hidden bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 shadow-2xl">
-          <div class="text-center mb-8">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-400/20 rounded-full text-blue-300 text-xs font-medium mb-4">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-              </svg>
-              Your website is being analyzed
-            </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-white mb-3">Get results via email</h2>
-            <p class="text-sm text-slate-200 leading-relaxed">We'll send you a detailed report with personalized recommendations. What's your name?</p>
-          </div>
-
-          <div class="space-y-4">
-            <div>
-              <label for="name" class="block text-sm font-medium text-slate-200 mb-2">Your name *</label>
-              <input type="text" id="name" name="name" required placeholder="John Smith"
-                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400/50 focus:bg-white/10 transition-all"
-                autocomplete="name" />
-            </div>
-            <div>
-              <label for="email" class="block text-sm font-medium text-slate-200 mb-2">Your email *</label>
-              <input type="email" id="email" name="email" required placeholder="john@company.com"
-                class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400/50 focus:bg-white/10 transition-all"
-                autocomplete="email" />
-              <p id="email-feedback" class="text-xs text-slate-400 mt-1 hidden"></p>
-            </div>
-            <button id="btn-step2" type="button"
-              class="w-full py-3 bg-white text-[#0B1B3D] font-semibold text-sm rounded-xl hover:bg-cyan-300 hover:scale-[1.02] transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              aria-label="Continue">
-              Continue →
-            </button>
-          </div>
-
-          <div id="error-step2" class="hidden mt-4 p-4 bg-red-500/10 border border-red-400/20 rounded-xl text-sm text-red-300 text-center" role="alert"></div>
-
-          <p class="text-center text-xs text-slate-400 mt-5">
-            By continuing you accept our <a href="/en/" class="text-slate-300 underline hover:text-white transition-colors">privacy policy</a>
-          </p>
-        </div>
-
-        <!-- STEP 3: Competitor selection with better copy -->
-        <div id="step-3" class="step-card hidden bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 shadow-2xl">
-          <div class="text-center mb-6">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-400/20 rounded-full text-emerald-300 text-xs font-medium mb-4">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-              </svg>
-              Data saved
-            </div>
-            <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Who is your competition?</h2>
-            <p class="text-sm text-slate-200 leading-relaxed">Add 1-3 competitors so we can show you how you compare in visibility, rankings and digital strategy. (Optional)</p>
-          </div>
-
-          <div id="competitor-list" class="space-y-2 mb-6"></div>
-
-          <!-- Manual competitors -->
-          <div class="mb-6 p-4 bg-white/3 border border-white/10 rounded-xl">
-            <label class="block text-sm font-medium text-slate-200 mb-3">Add competitors manually</label>
-            <div class="flex gap-2 mb-3">
-              <input type="text" id="manual-competitor-input" placeholder="competitor.com"
-                class="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400/50 focus:bg-white/10 transition-all"
-                inputmode="url" />
-              <button id="btn-add-competitor" type="button"
-                class="px-4 py-3 bg-white/10 border border-white/20 text-slate-200 font-medium text-sm rounded-xl hover:bg-white/20 transition-all shrink-0"
-                aria-label="Add competitor">
-                + Add
-              </button>
-            </div>
-            <div id="manual-competitors-list" class="flex flex-wrap gap-2"></div>
-          </div>
-
-          <div class="flex flex-col gap-3 sm:flex-row">
-            <button id="btn-start-audit" type="button"
-              class="flex-1 py-3 bg-white text-[#0B1B3D] font-semibold text-sm rounded-xl hover:bg-cyan-300 hover:scale-[1.02] transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              aria-label="Start analysis">
-              Start analysis →
-            </button>
-            <button id="btn-skip-step3" type="button"
-              class="flex-1 py-3 border border-white/20 text-slate-300 font-medium text-sm rounded-xl hover:bg-white/5 transition-all"
-              aria-label="Skip comparison">
-              Skip for now
-            </button>
-          </div>
-
-          <div id="error-step3" class="hidden mt-4 p-4 bg-red-500/10 border border-red-400/20 rounded-xl text-sm text-red-300 text-center" role="alert"></div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="relative z-10 text-center py-6 text-xs text-slate-500">
-      <a href="/en/" class="hover:text-slate-300 transition-colors">AION Growth Studio</a>
-      <span class="mx-2">·</span>
-      <a href="mailto:hola@aiongrowth.studio" class="hover:text-slate-300 transition-colors">hola@aiongrowth.studio</a>
-    </div>
-  </div>
-</Layout>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
 <style>
-  .diag-bg {
-    background: linear-gradient(160deg, #0B1B3D 0%, #1A5490 50%, #0B1B3D 100%);
+  :root {
+    --surface: #f7f9ff;
+    --surface-low: #edf4ff;
+    --surface-high: #d8eaff;
+    --primary: #000e41;
+    --primary-cont: #001f70;
+    --on-surface: #001d32;
+    --on-surface-var: #43474d;
+    --tertiary-fixed: #69ff87;
+    --shadow: 0 12px 40px rgba(0,29,50,0.06);
   }
-  .diag-dots {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 32px 32px;
+  *, *::before, *::after { box-sizing: border-box; }
+  body { background: var(--surface) !important; color: var(--on-surface); font-family: 'Inter', system-ui, sans-serif; margin: 0; }
+  .hidden { display: none !important; }
+
+  .audit-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+    background: var(--surface);
   }
-  .step-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: rgba(255,255,255,0.2); transition: all 0.3s;
+  .audit-sidebar {
+    background: var(--surface-low);
+    padding: 2rem 1.5rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
   }
-  .step-dot.active { background: #22d3ee; box-shadow: 0 0 8px #22d3ee88; }
-  .step-dot.done { background: #10b981; }
-  .bg-white\/3 { background-color: rgba(255,255,255,0.03); }
+  .audit-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3.5rem 3rem;
+    background: var(--surface);
+  }
+  .step-card {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 540px;
+  }
+  .step-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.375rem;
+    transition: background 0.2s;
+    cursor: default;
+  }
+  .step-nav-item.active { background: var(--surface-high); }
+  .step-nav-num {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: rgba(195,198,206,0.3);
+    color: var(--on-surface-var);
+    transition: background 0.2s, color 0.2s;
+  }
+  .step-nav-item.active .step-nav-num {
+    background: linear-gradient(135deg, var(--primary), var(--primary-cont));
+    color: #fff;
+  }
+  .step-nav-item.done .step-nav-num { background: #e6ffd4; color: #1a6b00; }
+  .field-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--on-surface);
+    margin-bottom: 0.5rem;
+  }
+  .field-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--surface-low);
+    border: none;
+    outline: none;
+    border-radius: 0.375rem;
+    font-size: 0.9375rem;
+    color: var(--on-surface);
+    font-family: inherit;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .field-input:focus { background: #fff; box-shadow: 0 0 0 2px rgba(0,14,65,0.4); }
+  .field-input::placeholder { color: #9ca3af; }
+  .btn-primary {
+    display: block;
+    width: 100%;
+    padding: 0.875rem;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-cont) 100%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-cta {
+    display: block;
+    width: 100%;
+    padding: 0.875rem;
+    background: var(--tertiary-fixed);
+    color: #001905;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .btn-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-cta:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    display: block;
+    width: 100%;
+    padding: 0.875rem;
+    background: transparent;
+    color: var(--primary);
+    font-weight: 500;
+    font-size: 0.9375rem;
+    border: 1px solid rgba(195,198,206,0.5);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+  }
+  .btn-ghost:hover { background: var(--surface-low); }
   .competitor-card {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0.5rem;
+    background: var(--surface-low);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
     margin-bottom: 8px;
   }
-  .competitor-card:hover { 
-    background: rgba(255,255,255,0.07);
-    border-color: rgba(255,255,255,0.15);
+  .competitor-card:hover { background: var(--surface-high); }
+  .competitor-card.selected { background: var(--surface-high); box-shadow: 0 0 0 2px var(--primary); }
+  .benefit-card {
+    padding: 1rem 0.75rem;
+    background: var(--surface-low);
+    border-radius: 0.5rem;
+    text-align: center;
   }
-  .competitor-card.selected {
-    background: rgba(34,211,238,0.08);
-    border-color: rgba(34,211,238,0.3);
+  .error-box {
+    display: none;
+    margin-top: 1rem;
+    padding: 0.875rem 1rem;
+    background: rgba(239,68,68,0.07);
+    border-left: 3px solid #ef4444;
+    border-radius: 0 0.375rem 0.375rem 0;
+    font-size: 0.875rem;
+    color: #b91c1c;
   }
-  .competitor-card .check-icon {
-    border-color: rgba(255,255,255,0.3);
-  }
-  .competitor-card.selected .check-icon {
-    background: rgb(34,211,238);
-    border-color: rgb(34,211,238);
+  @media (max-width: 768px) {
+    .audit-shell { grid-template-columns: 1fr; }
+    .audit-sidebar { height: auto; position: relative; padding: 1rem 1.25rem 0.75rem; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+    .sidebar-steps-nav { display: flex !important; flex-direction: row; gap: 0.375rem; }
+    .sidebar-bottom-note { display: none; }
+    .sidebar-brand { margin-bottom: 0 !important; }
+    .audit-main { padding: 1.5rem 1.25rem; }
+    .step-card { padding: 1.75rem 1.25rem; }
   }
 </style>
+
+  <div class="audit-shell">
+
+    <!-- ═══ LEFT SIDEBAR ═══ -->
+    <aside class="audit-sidebar">
+      <div class="sidebar-brand" style="margin-bottom:2.5rem;">
+        <a href="/en/" style="display:inline-block;margin-bottom:0.75rem;">
+          <img src="/logo-aion-dark.png" alt="AION Growth Studio" style="height:1.75rem;width:auto;" />
+        </a>
+        <p style="font-size:0.6875rem;font-weight:600;color:var(--on-surface-var);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.125rem;">Digital Audit</p>
+        <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;">Free analysis · 2 min</p>
+      </div>
+
+      <nav id="step-nav" class="sidebar-steps-nav" style="display:flex;flex-direction:column;">
+        <div class="step-nav-item active" id="step-nav-1" data-n="1">
+          <div class="step-nav-num" id="step-nav-num-1">1</div>
+          <div>
+            <p style="font-size:0.875rem;font-weight:600;color:var(--on-surface);margin:0 0 0.1rem;">Your website</p>
+            <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;">The URL to analyze</p>
+          </div>
+        </div>
+        <div class="step-nav-item" id="step-nav-2" data-n="2">
+          <div class="step-nav-num" id="step-nav-num-2">2</div>
+          <div>
+            <p style="font-size:0.875rem;font-weight:600;color:var(--on-surface);margin:0 0 0.1rem;">Your details</p>
+            <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;">Name and email</p>
+          </div>
+        </div>
+        <div class="step-nav-item" id="step-nav-3" data-n="3">
+          <div class="step-nav-num" id="step-nav-num-3">3</div>
+          <div>
+            <p style="font-size:0.875rem;font-weight:600;color:var(--on-surface);margin:0 0 0.1rem;">Competitors</p>
+            <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;">Optional</p>
+          </div>
+        </div>
+      </nav>
+
+      <div class="sidebar-bottom-note" style="margin-top:auto;padding-top:2rem;">
+        <p style="font-size:0.75rem;color:var(--on-surface-var);line-height:1.6;margin:0 0 1rem;">
+          No credit card.<br/>No spam.
+        </p>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <a href="/es/diagnostico" style="font-size:0.75rem;color:var(--on-surface-var);text-decoration:none;">ES</a>
+          <span style="color:var(--on-surface-var);font-size:0.75rem;">|</span>
+          <a href="/en/diagnostic" style="font-size:0.75rem;font-weight:700;color:var(--primary);text-decoration:none;">EN</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="audit-main">
+
+      <!-- STEP 1: URL -->
+      <div id="step-1" class="step-card">
+        <div style="margin-bottom:1.75rem;">
+          <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.35rem 0.875rem;background:var(--surface-high);border-radius:9999px;font-size:0.6875rem;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--primary);display:inline-block;flex-shrink:0;"></span>
+            Free · No signup · 2 minutes
+          </div>
+          <h1 style="font-size:1.625rem;font-weight:800;color:var(--primary);margin:0 0 0.75rem;line-height:1.2;">Analyze your digital visibility</h1>
+          <p style="font-size:0.9rem;color:var(--on-surface-var);line-height:1.65;margin:0;">Get a full report with score, web performance, AI visibility and growth opportunities.</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.75rem;">
+          <div class="benefit-card">
+            <svg width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="margin:0 auto 0.5rem;display:block;"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;font-weight:500;">Digital Score</p>
+          </div>
+          <div class="benefit-card">
+            <svg width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="margin:0 auto 0.5rem;display:block;"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;font-weight:500;">AI Visibility</p>
+          </div>
+          <div class="benefit-card">
+            <svg width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="margin:0 auto 0.5rem;display:block;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;font-weight:500;">Web Performance</p>
+          </div>
+          <div class="benefit-card">
+            <svg width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="margin:0 auto 0.5rem;display:block;"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;font-weight:500;">Opportunities</p>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1.25rem;">
+          <label for="url" class="field-label">Your website *</label>
+          <div style="position:relative;">
+            <input type="text" id="url" name="url" required placeholder="example.com"
+              class="field-input"
+              inputmode="url" autocomplete="url" />
+            <span id="url-status" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);font-size:0.875rem;font-weight:600;"></span>
+          </div>
+          <p id="url-feedback" style="font-size:0.75rem;margin-top:0.375rem;display:none;"></p>
+        </div>
+
+        <button id="btn-step1" type="button" class="btn-cta" aria-label="Analyze my website">
+          Analyze my website →
+        </button>
+
+        <div id="error-step1" class="error-box" role="alert"></div>
+
+        <p style="text-align:center;font-size:0.75rem;color:var(--on-surface-var);margin-top:1.25rem;">
+          By continuing you accept our <a href="/en/" style="color:var(--primary);text-decoration:underline;">privacy policy</a>
+        </p>
+      </div>
+
+      <!-- STEP 2: Name + Email -->
+      <div id="step-2" class="step-card hidden">
+        <div style="margin-bottom:1.75rem;">
+          <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.35rem 0.875rem;background:#e6ffd4;border-radius:9999px;font-size:0.6875rem;font-weight:600;color:#1a6b00;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;">
+            <svg width="12" height="12" fill="#1a6b00" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+            Your site is being analyzed
+          </div>
+          <h2 style="font-size:1.5rem;font-weight:800;color:var(--primary);margin:0 0 0.75rem;">Receive results by email</h2>
+          <p style="font-size:0.9rem;color:var(--on-surface-var);line-height:1.65;margin:0;">We'll send you a detailed report with personalized recommendations. What's your name?</p>
+        </div>
+
+        <div style="margin-bottom:1.25rem;">
+          <label for="name" class="field-label">Your name *</label>
+          <input type="text" id="name" name="name" required placeholder="John Smith"
+            class="field-input" autocomplete="name" />
+        </div>
+        <div style="margin-bottom:1.5rem;">
+          <label for="email" class="field-label">Your email *</label>
+          <input type="email" id="email" name="email" required placeholder="john@company.com"
+            class="field-input" autocomplete="email" />
+          <p id="email-feedback" style="font-size:0.75rem;margin-top:0.375rem;display:none;"></p>
+        </div>
+
+        <button id="btn-step2" type="button" class="btn-primary" aria-label="Continue">
+          Continue →
+        </button>
+
+        <div id="error-step2" class="error-box" role="alert"></div>
+
+        <p style="text-align:center;font-size:0.75rem;color:var(--on-surface-var);margin-top:1.25rem;">
+          By continuing you accept our <a href="/en/" style="color:var(--primary);text-decoration:underline;">privacy policy</a>
+        </p>
+      </div>
+
+      <!-- STEP 3: Competitors -->
+      <div id="step-3" class="step-card hidden">
+        <div style="margin-bottom:1.5rem;">
+          <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.35rem 0.875rem;background:#e6ffd4;border-radius:9999px;font-size:0.6875rem;font-weight:600;color:#1a6b00;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;">
+            <svg width="12" height="12" fill="#1a6b00" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+            Details saved
+          </div>
+          <h2 style="font-size:1.5rem;font-weight:800;color:var(--primary);margin:0 0 0.75rem;">Who do you compete with?</h2>
+          <p style="font-size:0.9rem;color:var(--on-surface-var);line-height:1.65;margin:0;">Add 1-3 competitors to see how you compare in visibility, rankings and digital strategy. (Optional)</p>
+        </div>
+
+        <div id="competitor-list" style="margin-bottom:1.25rem;"></div>
+
+        <div style="margin-bottom:1.25rem;padding:1.25rem;background:var(--surface-low);border-radius:0.625rem;">
+          <label class="field-label">Add competitors manually</label>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+            <input type="text" id="manual-competitor-input" placeholder="competitor.com"
+              class="field-input" style="flex:1;"
+              inputmode="url" />
+            <button id="btn-add-competitor" type="button"
+              style="padding:0.75rem 1rem;background:var(--primary);color:#fff;font-size:0.875rem;font-weight:600;border:none;border-radius:0.375rem;cursor:pointer;font-family:inherit;white-space:nowrap;"
+              aria-label="Add competitor">
+              + Add
+            </button>
+          </div>
+          <div id="manual-competitors-list" style="display:flex;flex-wrap:wrap;gap:0.5rem;"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          <button id="btn-start-audit" type="button" class="btn-cta" aria-label="Start analysis">
+            Start analysis →
+          </button>
+          <button id="btn-skip-step3" type="button" class="btn-ghost" aria-label="Skip comparison">
+            Skip for now
+          </button>
+        </div>
+
+        <div id="error-step3" class="error-box" role="alert"></div>
+      </div>
+
+    </main>
+  </div>
+
+</Layout>
 
 <script>
   let userData: { url: string; name: string; email: string } = { url: '', name: '', email: '' };
@@ -255,9 +388,9 @@ const lang = 'en';
     const list = document.getElementById('manual-competitors-list');
     if (!list) return;
     list.innerHTML = manualCompetitors.map(url => `
-      <div class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 border border-white/15 rounded-lg">
-        <span class="text-xs text-slate-200 truncate max-w-[160px]">${url}</span>
-        <button onclick="removeManualCompetitor('${url}')" class="text-slate-400 hover:text-white text-sm leading-none ml-1 shrink-0">×</button>
+      <div style="display:flex;align-items:center;gap:0.375rem;padding:0.375rem 0.75rem;background:#fff;border:1px solid rgba(195,198,206,0.4);border-radius:0.375rem;">
+        <span style="font-size:0.75rem;color:#001d32;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${url}</span>
+        <button onclick="removeManualCompetitor('${url}')" style="color:#9ca3af;background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;margin-left:0.125rem;padding:0;">×</button>
       </div>
     `).join('');
   }
@@ -281,27 +414,34 @@ const lang = 'en';
     if (e.key === 'Enter') { e.preventDefault(); addManualCompetitor(); }
   });
 
+  function updateStepNav(current: number) {
+    [1, 2, 3].forEach(n => {
+      const item = document.getElementById(`step-nav-${n}`);
+      const num = document.getElementById(`step-nav-num-${n}`);
+      if (!item || !num) return;
+      item.classList.remove('active', 'done');
+      if (n === current) { item.classList.add('active'); num.textContent = String(n); }
+      else if (n < current) { item.classList.add('done'); num.textContent = '✓'; }
+      else { num.textContent = String(n); }
+    });
+  }
+
   function showStep(n: number) {
+    updateStepNav(n);
     [1, 2, 3].forEach(i => {
       const el = document.getElementById(`step-${i}`);
       if (el) el.classList.toggle('hidden', i !== n);
-      const dot = document.getElementById(`step-dot-${i}`);
-      if (dot) {
-        dot.classList.remove('active', 'done');
-        if (i < n) dot.classList.add('done');
-        else if (i === n) dot.classList.add('active');
-      }
     });
   }
 
   function showError(id: string, msg: string) {
-    const el = document.getElementById(id);
-    if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+    const el = document.getElementById(id) as HTMLElement;
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
   }
 
   function hideError(id: string) {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
+    const el = document.getElementById(id) as HTMLElement;
+    if (el) el.style.display = 'none';
   }
 
   function setBtn(id: string, text: string, disabled: boolean) {
@@ -309,121 +449,80 @@ const lang = 'en';
     if (btn) { btn.textContent = text; btn.disabled = disabled; }
   }
 
-  // Real-time URL validation
   const urlInput = document.getElementById('url') as HTMLInputElement;
   if (urlInput) {
     urlInput.addEventListener('input', () => {
       const value = urlInput.value.trim();
-      const feedback = document.getElementById('url-feedback');
-      const status = document.getElementById('url-status');
-      
+      const feedback = document.getElementById('url-feedback') as HTMLElement;
+      const status = document.getElementById('url-status') as HTMLElement;
       if (value.length > 0) {
         const isValid = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value.replace(/^https?:\/\//, '').replace(/\/$/, ''));
-        if (feedback && status) {
-          if (isValid) {
-            feedback.textContent = '✓ Valid URL';
-            feedback.classList.add('text-emerald-400');
-            feedback.classList.remove('text-red-400', 'hidden');
-            status.textContent = '✓';
-            status.classList.add('text-emerald-400');
-            status.classList.remove('text-red-400');
-          } else {
-            feedback.textContent = 'Invalid format (e.g., example.com)';
-            feedback.classList.add('text-red-400');
-            feedback.classList.remove('text-emerald-400', 'hidden');
-            status.textContent = '✗';
-            status.classList.add('text-red-400');
-            status.classList.remove('text-emerald-400');
-          }
+        if (isValid) {
+          if (feedback) { feedback.textContent = '✓ Valid URL'; feedback.style.color = '#16a34a'; feedback.style.display = 'block'; }
+          if (status) { status.textContent = '✓'; status.style.color = '#16a34a'; }
+        } else {
+          if (feedback) { feedback.textContent = 'Incorrect format (e.g. example.com)'; feedback.style.color = '#dc2626'; feedback.style.display = 'block'; }
+          if (status) { status.textContent = '✗'; status.style.color = '#dc2626'; }
         }
       } else {
-        if (feedback) feedback.classList.add('hidden');
+        if (feedback) feedback.style.display = 'none';
         if (status) status.textContent = '';
       }
     });
   }
 
-  // STEP 1: Validate URL + move to Step 2
   document.getElementById('btn-step1')?.addEventListener('click', async () => {
     hideError('error-step1');
-
     const url = (document.getElementById('url') as HTMLInputElement).value.trim();
     if (!url) return showError('error-step1', 'Please enter your website URL.');
-    
-    // Validate basic format
     const isValid = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(url.replace(/^https?:\/\//, '').replace(/\/$/, ''));
-    if (!isValid) return showError('error-step1', 'Please enter a valid URL (e.g., example.com).');
-
+    if (!isValid) return showError('error-step1', 'Please enter a valid URL (e.g. example.com).');
     userData = { ...userData, url };
     showStep(2);
   });
 
-  // STEP 2: Validate name + email, then detect competitors + move to Step 3
   document.getElementById('btn-step2')?.addEventListener('click', async () => {
     hideError('error-step2');
-
     const name = (document.getElementById('name') as HTMLInputElement).value.trim();
     const email = (document.getElementById('email') as HTMLInputElement).value.trim();
-
     if (!name) return showError('error-step2', 'Please enter your name.');
     if (!email || !email.includes('@')) return showError('error-step2', 'Please enter a valid email.');
-
     userData = { ...userData, name, email };
     setBtn('btn-step2', 'Looking for competitors…', true);
 
-    // Start competitor detection in background
     const listEl = document.getElementById('competitor-list');
     if (listEl) {
       listEl.innerHTML = `
-        <div class="py-4">
-          <div class="space-y-3">
-            <div class="analysis-step flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-cyan-400/30" id="step-analyze">
-              <div class="w-5 h-5 rounded-full border-2 border-cyan-400 flex items-center justify-center animate-pulse">
-                <div class="w-2 h-2 rounded-full bg-cyan-400"></div>
+        <div style="padding:1rem 0;">
+          <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <div id="step-analyze" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;border-radius:0.5rem;background:var(--surface-low);">
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse-dot 1s infinite;"></div>
               </div>
-              <span class="text-sm text-white">Analyzing your website...</span>
+              <span style="font-size:0.875rem;color:var(--on-surface);">Analyzing your site...</span>
             </div>
-            <div class="analysis-step flex items-center gap-3 p-3 rounded-lg bg-white/3 border border-white/10 opacity-50" id="step-sector">
-              <div class="w-5 h-5 rounded-full border-2 border-white/30"></div>
-              <span class="text-sm text-slate-400">Identifying your industry</span>
+            <div id="step-sector" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;border-radius:0.5rem;background:var(--surface-low);opacity:0.4;">
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(195,198,206,0.5);"></div>
+              <span style="font-size:0.875rem;color:var(--on-surface-var);">Identifying your sector</span>
             </div>
-            <div class="analysis-step flex items-center gap-3 p-3 rounded-lg bg-white/3 border border-white/10 opacity-50" id="step-competitors">
-              <div class="w-5 h-5 rounded-full border-2 border-white/30"></div>
-              <span class="text-sm text-slate-400">Finding competitors</span>
+            <div id="step-competitors-anim" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;border-radius:0.5rem;background:var(--surface-low);opacity:0.4;">
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid rgba(195,198,206,0.5);"></div>
+              <span style="font-size:0.875rem;color:var(--on-surface-var);">Searching for competitors</span>
             </div>
           </div>
         </div>
       `;
-      
-      // Animate steps
       setTimeout(() => {
-        const step1 = document.getElementById('step-analyze');
-        const step2 = document.getElementById('step-sector');
-        if (step1) {
-          step1.classList.remove('border-cyan-400/30');
-          step1.classList.add('border-emerald-400/30');
-          step1.innerHTML = '<div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div><span class="text-sm text-emerald-300">Website analyzed</span>';
-        }
-        if (step2) {
-          step2.classList.remove('opacity-50', 'border-white/10', 'bg-white/3');
-          step2.classList.add('border-cyan-400/30', 'bg-white/5');
-          step2.innerHTML = '<div class="w-5 h-5 rounded-full border-2 border-cyan-400 flex items-center justify-center animate-pulse"><div class="w-2 h-2 rounded-full bg-cyan-400"></div></div><span class="text-sm text-white">Identifying your industry...</span>';
-        }
+        const s1 = document.getElementById('step-analyze');
+        const s2 = document.getElementById('step-sector');
+        if (s1) s1.innerHTML = '<div style="width:18px;height:18px;border-radius:50%;background:#e6ffd4;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" fill="#1a6b00" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div><span style="font-size:0.875rem;color:#1a6b00;font-weight:500;">Site analyzed</span>';
+        if (s2) { s2.style.opacity = '1'; s2.innerHTML = '<div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;"><div style="width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse-dot 1s infinite;"></div></div><span style="font-size:0.875rem;color:var(--on-surface);">Identifying your sector...</span>'; }
       }, 1200);
-      
       setTimeout(() => {
-        const step2 = document.getElementById('step-sector');
-        const step3 = document.getElementById('step-competitors');
-        if (step2) {
-          step2.classList.remove('border-cyan-400/30');
-          step2.classList.add('border-emerald-400/30');
-          step2.innerHTML = '<div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div><span class="text-sm text-emerald-300">Industry identified</span>';
-        }
-        if (step3) {
-          step3.classList.remove('opacity-50', 'border-white/10', 'bg-white/3');
-          step3.classList.add('border-cyan-400/30', 'bg-white/5');
-          step3.innerHTML = '<div class="w-5 h-5 rounded-full border-2 border-cyan-400 flex items-center justify-center animate-pulse"><div class="w-2 h-2 rounded-full bg-cyan-400"></div></div><span class="text-sm text-white">Finding competitors...</span>';
-        }
+        const s2 = document.getElementById('step-sector');
+        const s3 = document.getElementById('step-competitors-anim');
+        if (s2) s2.innerHTML = '<div style="width:18px;height:18px;border-radius:50%;background:#e6ffd4;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" fill="#1a6b00" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div><span style="font-size:0.875rem;color:#1a6b00;font-weight:500;">Sector identified</span>';
+        if (s3) { s3.style.opacity = '1'; s3.innerHTML = '<div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;"><div style="width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse-dot 1s infinite;"></div></div><span style="font-size:0.875rem;color:var(--on-surface);">Searching for competitors...</span>'; }
       }, 2400);
     }
 
@@ -434,15 +533,8 @@ const lang = 'en';
       body: JSON.stringify({ url: userData.url }),
     })
       .then(r => r.json())
-      .then(data => {
-        competitorsResult = data;
-        renderStep3();
-        return data;
-      })
-      .catch(() => {
-        competitorsResult = { competitors: [] };
-        renderStep3();
-      });
+      .then(data => { competitorsResult = data; renderStep3(); return data; })
+      .catch(() => { competitorsResult = { competitors: [] }; renderStep3(); });
 
     showStep(3);
   });
@@ -451,21 +543,20 @@ const lang = 'en';
     const competitors = competitorsResult?.competitors || [];
     const listEl = document.getElementById('competitor-list');
     selectedCompetitors = [];
-
     if (listEl) {
       if (competitors.length === 0) {
-        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No competitors were automatically detected. You can add one manually below.</p>`;
+        listEl.innerHTML = `<p style="font-size:0.8125rem;color:var(--on-surface-var);text-align:center;padding:1rem 0;">No competitors detected automatically. You can add one manually below.</p>`;
       } else {
         listEl.innerHTML = competitors.map((c: any, i: number) => `
           <div class="competitor-card" data-url="${c.url}" data-idx="${i}" onclick="toggleCompetitor(this)">
-            <div class="w-5 h-5 rounded border-2 border-white/30 flex items-center justify-center shrink-0 transition-all check-icon">
-              <svg class="w-3 h-3 text-white hidden check-mark" fill="currentColor" viewBox="0 0 20 20">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid rgba(195,198,206,0.5);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;" class="check-icon">
+              <svg class="check-mark" width="10" height="10" fill="var(--primary)" viewBox="0 0 20 20" style="display:none;">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
             </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-white truncate">${c.name}</p>
-              <p class="text-xs text-slate-400 truncate">${c.url}</p>
+            <div style="flex:1;min-width:0;">
+              <p style="font-size:0.875rem;font-weight:600;color:var(--on-surface);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</p>
+              <p style="font-size:0.75rem;color:var(--on-surface-var);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.url}</p>
             </div>
           </div>
         `).join('');
@@ -476,21 +567,17 @@ const lang = 'en';
   (window as any).toggleCompetitor = function(el: HTMLElement) {
     const url = el.getAttribute('data-url') || '';
     const isSelected = el.classList.contains('selected');
-    const checkIcon = el.querySelector('.check-icon');
-    const checkMark = el.querySelector('.check-mark');
-
+    const checkIcon = el.querySelector('.check-icon') as HTMLElement;
+    const checkMark = el.querySelector('.check-mark') as HTMLElement;
     if (isSelected) {
       el.classList.remove('selected');
-      if (checkIcon) checkIcon.classList.remove('bg-cyan-500', 'border-cyan-400');
-      if (checkMark) checkMark.classList.add('hidden');
+      if (checkIcon) { checkIcon.style.background = ''; checkIcon.style.borderColor = 'rgba(195,198,206,0.5)'; }
+      if (checkMark) checkMark.style.display = 'none';
       selectedCompetitors = selectedCompetitors.filter(u => u !== url);
     } else {
       el.classList.add('selected');
-      if (checkIcon) {
-        checkIcon.classList.add('bg-cyan-500', 'border-cyan-400');
-        checkIcon.classList.remove('border-white/30');
-      }
-      if (checkMark) checkMark.classList.remove('hidden');
+      if (checkIcon) { checkIcon.style.background = 'var(--surface-high)'; checkIcon.style.borderColor = 'var(--primary)'; }
+      if (checkMark) checkMark.style.display = 'block';
       if (!selectedCompetitors.includes(url)) selectedCompetitors.push(url);
     }
   };
@@ -499,25 +586,14 @@ const lang = 'en';
     hideError('error-step3');
     setBtn('btn-start-audit', 'Starting…', true);
     setBtn('btn-skip-step3', '…', true);
-
-    const allCompetitors = withCompetitors
-      ? [...selectedCompetitors, ...manualCompetitors]
-      : [];
-
+    const allCompetitors = withCompetitors ? [...selectedCompetitors, ...manualCompetitors] : [];
     try {
       const res = await fetch('/api/audit/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: userData.url,
-          email: userData.email,
-          name: userData.name,
-          selectedCompetitors: allCompetitors,
-        }),
+        body: JSON.stringify({ url: userData.url, email: userData.email, name: userData.name, selectedCompetitors: allCompetitors }),
       });
-
       const result = await res.json();
-
       if (res.ok && result.audit_id) {
         window.location.href = `/en/audit/${result.audit_id}`;
       } else {
