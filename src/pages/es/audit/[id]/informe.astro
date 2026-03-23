@@ -528,43 +528,80 @@ function cwvDot(value: number, good: number, poor: number): string {
               <span class="material-symbols-outlined">smart_toy</span>
               Visibilidad en Motores de IA (GEO)
             </h2>
-            <p class="text-sm text-secondary mt-1">Presencia de la marca en respuestas generadas por ChatGPT, Perplexity y Claude.</p>
+            <p class="text-sm text-secondary mt-1">Presencia de la marca en {geo.queries.length} consultas simuladas en ChatGPT{geo.crossModel && geo.crossModel.length > 1 ? ' y Perplexity' : ''}.</p>
           </div>
           <div class="bg-surface-container-low px-4 py-2 rounded-full flex items-center gap-2">
             <div class="w-2 h-2 rounded-full bg-tertiary-fixed"></div>
             <span class="text-[10px] font-bold uppercase tracking-widest text-primary">Consultas Simuladas</span>
           </div>
         </div>
+
+        {/* ── Metric cards row ── */}
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Mention Rate — hero metric */}
+          <div class="lg:col-span-1 bg-primary rounded-xl p-5 text-white flex flex-col gap-1">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-white/60">Mention Rate</p>
+            <p class="text-4xl font-black leading-none">{geo.mentionRate ?? Math.round(((geo.queries.filter((q: any) => q.mentioned).length) / geo.queries.length) * 100)}%</p>
+            <p class="text-xs text-white/60 mt-1">{geo.queries.filter((q: any) => q.mentioned).length} / {geo.queries.length} consultas</p>
+          </div>
+          {/* TOFU */}
+          <div class="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-1">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-secondary">TOFU · Sector</p>
+            <p class="text-3xl font-black text-primary leading-none">
+              {geo.funnelBreakdown ? geo.funnelBreakdown.tofu.mentioned : geo.queries.filter((q: any) => q.stage === 'tofu' && q.mentioned).length}
+              <span class="text-lg font-medium text-secondary"> / {geo.funnelBreakdown ? geo.funnelBreakdown.tofu.total : geo.queries.filter((q: any) => q.stage === 'tofu').length}</span>
+            </p>
+            <p class="text-xs text-secondary">Consultas de descubrimiento</p>
+          </div>
+          {/* MOFU */}
+          <div class="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-1">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-secondary">MOFU · Comparativa</p>
+            <p class="text-3xl font-black text-primary leading-none">
+              {geo.funnelBreakdown ? geo.funnelBreakdown.mofu.mentioned : geo.queries.filter((q: any) => q.stage === 'mofu' && q.mentioned).length}
+              <span class="text-lg font-medium text-secondary"> / {geo.funnelBreakdown ? geo.funnelBreakdown.mofu.total : geo.queries.filter((q: any) => q.stage === 'mofu').length}</span>
+            </p>
+            <p class="text-xs text-secondary">Consultas de evaluación</p>
+          </div>
+          {/* BOFU */}
+          <div class="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-1">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-secondary">BOFU · Decisión</p>
+            <p class="text-3xl font-black text-primary leading-none">
+              {geo.funnelBreakdown ? geo.funnelBreakdown.bofu.mentioned : geo.queries.filter((q: any) => q.stage === 'bofu' && q.mentioned).length}
+              <span class="text-lg font-medium text-secondary"> / {geo.funnelBreakdown ? geo.funnelBreakdown.bofu.total : geo.queries.filter((q: any) => q.stage === 'bofu').length}</span>
+            </p>
+            <p class="text-xs text-secondary">Consultas de alta intención</p>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <!-- Tabla de consultas -->
+          {/* ── Query table ── */}
           <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
             <table class="w-full text-left border-collapse">
               <thead>
                 <tr class="bg-surface-container-low">
-                  <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Consulta de Usuario</th>
-                  <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Sentimiento</th>
+                  <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Etapa</th>
+                  <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Consulta</th>
                   <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Presencia</th>
                 </tr>
               </thead>
               <tbody>
-                {geo.queries.slice(0, 6).map((q: any) => (
+                {geo.queries.map((q: any) => (
                   <tr class="border-t border-slate-50 hover:bg-surface-container-low transition-colors">
-                    <td class="p-4 text-sm font-semibold text-primary">
-                      {q.query}
-                      {q.isBrandQuery && (
-                        <span class="ml-2 px-1.5 py-0.5 rounded bg-surface-container text-secondary text-[9px] font-bold uppercase">marca</span>
-                      )}
-                    </td>
-                    <td class="p-4">
-                      {q.mentioned
-                        ? <span class="px-2 py-1 rounded bg-tertiary-fixed/20 text-on-tertiary-fixed-variant text-[10px] font-bold uppercase">Positivo</span>
-                        : <span class="px-2 py-1 rounded bg-surface-container-highest text-secondary text-[10px] font-bold uppercase">Neutral</span>
+                    <td class="p-3 pl-4">
+                      {q.isBrandQuery
+                        ? <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-surface-container text-secondary">Marca</span>
+                        : q.stage === 'tofu'
+                        ? <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-50 text-blue-700">TOFU</span>
+                        : q.stage === 'mofu'
+                        ? <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-violet-50 text-violet-700">MOFU</span>
+                        : <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-50 text-amber-700">BOFU</span>
                       }
                     </td>
-                    <td class="p-4">
+                    <td class="p-3 text-sm text-primary" style="max-width:320px">{q.query}</td>
+                    <td class="p-3">
                       {q.mentioned
-                        ? <span class="flex items-center gap-1 text-primary font-bold text-sm">
-                            <span class="material-symbols-outlined ms-filled text-[16px]" style="color:#3ce36a">star</span>
+                        ? <span class="flex items-center gap-1 text-emerald-700 font-bold text-sm whitespace-nowrap">
+                            <span class="material-symbols-outlined ms-filled text-[16px]">check_circle</span>
                             Mencionado
                           </span>
                         : <span class="text-slate-400 font-medium text-sm">No listado</span>
@@ -575,13 +612,28 @@ function cwvDot(value: number, good: number, poor: number): string {
               </tbody>
             </table>
           </div>
-          <!-- AI Insight panel -->
+
+          {/* ── Insight panel ── */}
           <div class="bg-primary p-8 rounded-xl text-white flex flex-col gap-6 relative overflow-hidden">
             <div class="absolute -right-10 -bottom-10 opacity-5">
               <span class="material-symbols-outlined" style="font-size:10rem;">bolt</span>
             </div>
             <h3 class="text-lg font-bold leading-tight">Diagnóstico IA</h3>
             <p class="text-sm text-white/70 leading-relaxed italic">"{diagGEO}"</p>
+
+            {/* Cross-model breakdown (if Perplexity was used) */}
+            {geo.crossModel && geo.crossModel.length > 1 && (
+              <div class="flex flex-col gap-2">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-white/50">Por motor de IA</p>
+                {geo.crossModel.map((m: any) => (
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs text-white/70">{m.name}</span>
+                    <span class="text-xs font-bold text-white">{m.mentioned}/{m.total}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div class="mt-auto">
               <span class="text-[10px] font-bold uppercase tracking-widest mb-2 block" style="color:#69ff87">
                 {geoMissedQueries}/{geoTotalQueries} consultas sin presencia
@@ -589,7 +641,7 @@ function cwvDot(value: number, good: number, poor: number): string {
               <p class="text-sm font-medium">
                 {geoMissedQueries === 0
                   ? 'Tu marca aparece en todas las consultas analizadas.'
-                  : 'Optimizar contenido con marcado semántico tipo Q&A para aparecer en fragmentos de IA.'}
+                  : 'Crea contenido Q&A con marcado semántico para aparecer en respuestas de IA.'}
               </p>
             </div>
           </div>

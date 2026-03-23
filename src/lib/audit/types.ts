@@ -169,12 +169,14 @@ export interface ContentResult extends ModuleResult {
 export interface GeoQuery {
   query: string;
   mentioned: boolean;
+  stage?: 'tofu' | 'mofu' | 'bofu';  // Funnel stage
   isBrandQuery?: boolean;
-  context?: string;     // First 180 chars of answer when mentioned
+  context?: string;     // First 200 chars of answer when mentioned
   answer?: string;      // First 150 chars of answer when NOT mentioned (for debugging)
-  level?: number;        // 1=sector, 2=value prop, 3=keywords, 4=direct brand
-  levelLabel?: string;  // Human-readable label for this funnel level
-  pts?: number;         // Points awarded at this level
+  level?: number;        // Legacy: 1=sector, 2=value prop, 3=keywords, 4=direct brand
+  levelLabel?: string;  // Legacy: Human-readable label for this funnel level
+  pts?: number;         // Legacy: Points awarded at this level
+  engines?: Array<{ name: string; mentioned: boolean; context?: string }>; // Per-engine results
 }
 
 export interface GeoResult extends ModuleResult {
@@ -182,6 +184,13 @@ export interface GeoResult extends ModuleResult {
   overallScore?: number;
   brandScore?: number;
   sectorScore?: number;
+  mentionRate?: number;   // 0-100: % of all queries where brand was mentioned
+  funnelBreakdown?: {
+    tofu: { mentioned: number; total: number };
+    mofu: { mentioned: number; total: number };
+    bofu: { mentioned: number; total: number };
+  };
+  crossModel?: Array<{ name: string; mentioned: number; total: number }>;
 }
 
 export interface InstagramPost {
