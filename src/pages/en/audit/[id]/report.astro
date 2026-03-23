@@ -240,16 +240,6 @@ const stackItems = ts ? [
 ] : [];
 
 // ── Display helpers ─────────────────────────────────────────────────────────────────
-function cwvColor(metric: string, value: number): string {
-  const thresholds: Record<string, [number, number]> = {
-    lcp: [2500, 4000], cls: [0.1, 0.25], fcp: [1800, 3000], ttfb: [800, 1800],
-  };
-  const [good, poor] = thresholds[metric] || [50, 90];
-  if (value <= good) return 'text-emerald-600';
-  if (value <= poor) return 'text-amber-500';
-  return 'text-red-500';
-}
-
 function cwvDot(value: number, good: number, poor: number): string {
   return value <= good ? '#10B981' : value <= poor ? '#F59E0B' : '#EF4444';
 }
@@ -263,777 +253,1053 @@ function cwvDot(value: number, good: number, poor: number): string {
   <meta name="robots" content="noindex,nofollow" />
   <title>Digital Growth Report — {domain} — AION Growth Studio</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
-  <script is:inline id="tailwind-config">
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            "outline": "#74777e",
-            "on-surface-variant": "#43474d",
-            "tertiary-container": "#00300e",
-            "surface-container-lowest": "#ffffff",
-            "tertiary-fixed": "#69ff87",
-            "on-primary": "#ffffff",
-            "tertiary": "#001905",
-            "primary": "#000e41",
-            "surface": "#f7f9ff",
-            "secondary": "#49607c",
-            "on-surface": "#001d32",
-            "on-primary-container": "#6888ff",
-            "secondary-container": "#c7dfff",
-            "error": "#ba1a1a",
-            "outline-variant": "#c3c6ce",
-            "primary-container": "#001f70",
-            "tertiary-fixed-dim": "#3ce36a",
-            "surface-container-low": "#edf4ff",
-            "surface-container": "#e3efff",
-            "surface-container-high": "#d8eaff",
-            "surface-container-highest": "#cee5ff",
-            "on-secondary-container": "#4b637e",
-            "error-container": "#ffdad6",
-            "on-error-container": "#93000a",
-            "on-tertiary-fixed-variant": "#00531e",
-            "on-tertiary-fixed": "#002108",
-          },
-          fontFamily: {
-            "sans": ["Inter", "system-ui", "sans-serif"],
-            "mono": ["DM Mono", "monospace"],
-          },
-        },
-      },
-    }
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    .material-symbols-outlined {
-      font-family: 'Material Symbols Outlined';
-      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-      font-style: normal;
-      font-size: inherit;
-      display: inline-block;
-      line-height: 1;
-      text-transform: none;
-      letter-spacing: normal;
-      white-space: nowrap;
-      direction: ltr;
-    }
-    .ms-filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'DM Sans', system-ui, sans-serif; background: #0A0F1E; color: #F9FAFB; margin: 0; }
+    .report { max-width: 860px; margin: 0 auto; background: #0A0F1E; }
+    .section { padding: 2rem 2.5rem; border-bottom: 1px solid #1F2937; }
+    .section:last-child { border-bottom: none; }
+    h2 { font-size: 1.125rem; font-weight: 700; color: #F9FAFB; margin: 0 0 0.25rem; display: flex; align-items: center; gap: 0.5rem; }
+    h3 { font-size: 0.9375rem; font-weight: 600; color: #E5E7EB; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.375rem; }
+    p { margin: 0 0 0.75rem; line-height: 1.65; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 0.5rem 0.75rem; background: #1C2333; color: #6B7280; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #1F2937; }
+    td { padding: 0.625rem 0.75rem; border-bottom: 1px solid #1F2937; vertical-align: middle; color: #D1D5DB; }
+    tr:last-child td { border-bottom: none; }
+    tr.own-row td { background: rgba(59,130,246,0.08); font-weight: 600; color: #F9FAFB; }
+    tr.avg-row td { color: #6B7280; font-style: italic; font-size: 0.8rem; }
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge-green { background: rgba(16,185,129,0.15); color: #10B981; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-amber { background: rgba(245,158,11,0.15); color: #F59E0B; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-red { background: rgba(239,68,68,0.15); color: #EF4444; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-blue { background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); }
+    .num { font-family: 'DM Mono', monospace; }
+    .pillar-score { font-size: 1.75rem; font-weight: 700; line-height: 1; font-family: 'DM Mono', monospace; }
+    .pillar-label { font-size: 0.68rem; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem; }
+    .sub-section { margin-top: 1.75rem; padding-top: 1.75rem; border-top: 1px solid #1F2937; }
+    .diag-text { font-size: 0.9rem; color: #9CA3AF; line-height: 1.75; background: #111827; border-left: 3px solid #3B82F6; padding: 0.875rem 1rem; border-radius: 0 0.5rem 0.5rem 0; margin: 0.75rem 0 1rem; }
+    .initiative-card { border: 1px solid #1F2937; border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem; background: #111827; }
+    .initiative-num { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 9999px; background: #3B82F6; color: #fff; font-size: 0.8rem; font-weight: 700; margin-right: 0.5rem; }
+    .check-row { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.375rem 0; border-bottom: 1px solid #1C2333; font-size: 0.875rem; color: #D1D5DB; }
+    .check-row:last-child { border-bottom: none; }
+    .check-ok { color: #10B981; font-size: 1rem; flex-shrink: 0; }
+    .check-no { color: #EF4444; font-size: 1rem; flex-shrink: 0; }
+    .bar-wrap { display: flex; align-items: center; gap: 0.5rem; }
+    .bar-bg { flex: 1; height: 6px; background: #1F2937; border-radius: 9999px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 9999px; transition: width 0.9s ease; }
+    .icon { flex-shrink: 0; }
+    .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.5s ease, transform 0.5s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    @media (max-width: 640px) { .section { padding: 1.5rem 1.25rem; } }
     @media print {
+      body { background: #fff !important; color: #000 !important; }
       .no-print { display: none !important; }
-      aside, header { display: none !important; }
-      main { margin: 0 !important; padding: 1.5rem !important; }
+      .report { max-width: 100%; }
+      .section { page-break-inside: avoid; }
+      .initiative-card { page-break-inside: avoid; }
     }
   </style>
 </head>
-<body class="font-sans text-on-surface bg-surface">
+<body>
+  <div class="no-print" style="background:#0A0F1E;padding:0.75rem 2rem;display:flex;align-items:center;justify-content:space-between;">
+    <a href={`/en/audit/${id}`} style="color:#9CA3AF;font-size:0.8rem;text-decoration:none;">← Back to analysis</a>
+    <button onclick="window.print()" style="background:#3B82F6;color:#fff;border:none;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:0.375rem;">
+      <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+      Print / PDF
+    </button>
+  </div>
 
-  <!-- ── SIDEBAR ── -->
-  <aside class="h-screen w-64 fixed left-0 top-0 flex flex-col bg-white border-r border-slate-100 z-50 no-print">
-    <div class="flex flex-col h-full p-4 gap-2">
-      <div class="mb-8 px-2 pt-2">
-        <img src="/logo-aion-dark.png" alt="AION Growth Studio" class="h-6 w-auto object-contain mb-1" />
-        <p class="text-[10px] text-secondary font-medium truncate">{domain}</p>
+  <div class="report">
+    <!-- ── HERO COMBINADO (Cover + Score) ──────────────────────────── -->
+    <div style="background:linear-gradient(135deg,#0A0F1E 0%,#1E3A5F 100%);color:#fff;padding:1.5rem 2rem 2rem;position:relative;overflow:hidden;">
+      <!-- Background glow -->
+      <div style={`position:absolute;inset:0;background:radial-gradient(ellipse at 80% 20%,${scoreColor(health.total)}15 0%,transparent 50%);pointer-events:none;`}></div>
+      
+      <!-- Header row: Logo + Date -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;position:relative;">
+        <img src="/logo-aion-dark.png" alt="AION Growth Studio" style="height:28px;filter:brightness(0) invert(1);opacity:0.9;" />
+        <span style="color:#9CA3AF;font-size:0.7rem;">{auditDate}</span>
       </div>
-      <nav class="flex-1 flex flex-col gap-0.5">
-        <a href="#visibility" class="flex items-center gap-3 px-3 py-2 text-secondary font-medium hover:bg-surface-container-low rounded-lg transition-colors text-sm">
-          <span class="material-symbols-outlined text-[18px]">visibility</span>
-          <span>Visibility</span>
-        </a>
-        <a href="#geo" class="flex items-center gap-3 px-3 py-2 text-secondary font-medium hover:bg-surface-container-low rounded-lg transition-colors text-sm">
-          <span class="material-symbols-outlined text-[18px]">smart_toy</span>
-          <span>Generative AI</span>
-        </a>
-        <a href="#competitive" class="flex items-center gap-3 px-3 py-2 text-secondary font-medium hover:bg-surface-container-low rounded-lg transition-colors text-sm">
-          <span class="material-symbols-outlined text-[18px]">leaderboard</span>
-          <span>Benchmark</span>
-        </a>
-        <a href="#performance" class="flex items-center gap-3 px-3 py-2 text-secondary font-medium hover:bg-surface-container-low rounded-lg transition-colors text-sm">
-          <span class="material-symbols-outlined text-[18px]">speed</span>
-          <span>Web Performance</span>
-        </a>
-        <a href="#action-plan" class="flex items-center gap-3 px-3 py-2 text-primary font-bold border-r-4 border-primary bg-surface-container-low rounded-l-lg text-sm">
-          <span class="material-symbols-outlined text-[18px]">assignment</span>
-          <span>Action Plan</span>
-        </a>
-      </nav>
-      <div class="mt-auto border-t border-slate-100 pt-4 px-2">
-        <p class="text-[10px] text-secondary">{auditDate}</p>
-        <p class="text-[10px] text-secondary mt-0.5">aiongrowth.studio</p>
-      </div>
-    </div>
-  </aside>
-
-  <!-- ── TOP HEADER ── -->
-  <header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/30 flex justify-between items-center h-16 px-8 no-print">
-    <div class="flex items-center gap-4">
-      <span class="text-sm font-bold uppercase tracking-wider text-primary">Digital Visibility Report</span>
-      {btLabel && <span class="bg-surface-container-low text-secondary text-xs font-medium px-3 py-1 rounded-full">{btLabel}</span>}
-    </div>
-    <div class="flex items-center gap-3">
-      <button onclick="window.print()" class="bg-primary text-white px-4 py-2 rounded-md text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity">
-        <span class="material-symbols-outlined text-[14px]">print</span>
-        Print
-      </button>
-      <a href={"/en/audit/" + id} class="text-secondary px-3 py-2 text-xs font-medium border border-outline-variant/30 rounded-md hover:bg-surface-container-low transition-all">
-        ← Back
-      </a>
-    </div>
-  </header>
-
-  <!-- ── MAIN CANVAS ── -->
-  <main class="ml-64 mt-16 p-8 min-h-screen">
-
-    <!-- ── 1. HERO: Executive summary ── -->
-    <section class="mb-12">
-      <div class="mb-8">
-        <h1 class="text-3xl font-extrabold tracking-tight text-primary mb-2">{domain}</h1>
-        <p class="text-secondary text-sm max-w-2xl leading-relaxed">Comprehensive analysis of organic visibility, generative AI presence and technical health of the digital ecosystem.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <!-- Visibility Score -->
-        <div class="bg-white p-6 rounded-xl shadow-sm relative overflow-hidden group">
-          <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <span class="material-symbols-outlined" style="font-size:4rem;">visibility</span>
-          </div>
-          <div class="flex flex-col gap-3 relative">
-            <span class="text-[10px] font-bold tracking-widest text-secondary uppercase">Visibility Score</span>
-            <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-extrabold text-primary font-mono">{health.visibilidad ?? '—'}</span>
-              {health.visibilidad !== null && <span class="text-secondary text-xs">/100</span>}
-            </div>
-            <div class="w-full bg-surface-container-low h-1.5 rounded-full overflow-hidden">
-              <div class="h-full rounded-full bg-primary" style={"width:" + (health.visibilidad ?? 0) + "%"}></div>
-            </div>
-          </div>
-        </div>
-        <!-- Competitors -->
-        <div class="bg-white p-6 rounded-xl shadow-sm relative overflow-hidden group">
-          <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <span class="material-symbols-outlined" style="font-size:4rem;">leaderboard</span>
-          </div>
-          <div class="flex flex-col gap-3 relative">
-            <span class="text-[10px] font-bold tracking-widest text-secondary uppercase">Sector Ranking</span>
-            <div class="flex items-baseline gap-2">
-              {totalPlayers > 1 ? (
-                <>
-                  <span class="text-4xl font-extrabold text-primary font-mono">#{ownRank}</span>
-                  <span class="text-secondary text-xs font-medium">of {totalPlayers}</span>
-                </>
-              ) : (
-                <span class="text-4xl font-extrabold text-primary font-mono">{ctItems.length > 0 ? ctItems.length : '—'}</span>
-              )}
-            </div>
-            <p class="text-xs text-secondary leading-tight">
-              {totalPlayers > 1
-                ? (ownRank <= Math.ceil(totalPlayers / 2) ? 'Above sector average' : 'Below sector average')
-                : ctItems.length > 0 ? ctItems.length + ' competitors analysed' : 'No competitive data'}
-            </p>
-          </div>
-        </div>
-        <!-- UX Experience -->
-        <div class="bg-white p-6 rounded-xl shadow-sm relative overflow-hidden group">
-          <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <span class="material-symbols-outlined" style="font-size:4rem;">speed</span>
-          </div>
-          <div class="flex flex-col gap-3 relative">
-            <span class="text-[10px] font-bold tracking-widest text-secondary uppercase">UX Experience</span>
-            <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-extrabold text-primary font-mono">{health.experiencia ?? '—'}</span>
-              {health.experiencia !== null && <span class="text-secondary text-xs">/100</span>}
-            </div>
-            <p class="text-xs text-secondary leading-tight">
-              {ps?.mobile?.performance != null
-                ? 'Mobile PageSpeed: ' + ps.mobile.performance + '/100'
-                : 'Web performance analysed'}
-            </p>
-          </div>
-        </div>
-        <!-- Conversion — dark card -->
-        <div class="bg-primary-container p-6 rounded-xl shadow-sm relative overflow-hidden text-white">
-          <div class="absolute top-0 right-0 p-4 opacity-10">
-            <span class="material-symbols-outlined" style="font-size:4rem;">ads_click</span>
-          </div>
-          <div class="flex flex-col gap-3 relative">
-            <span class="text-[10px] font-bold tracking-widest text-white/60 uppercase">Conversion</span>
-            <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-extrabold font-mono">{health.conversion ?? '—'}</span>
-              {health.conversion !== null && <span class="text-white/60 text-xs">/100</span>}
-            </div>
-            <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <div class="bg-tertiary-fixed h-full rounded-full" style={"width:" + (health.conversion ?? 0) + "%"}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── 2. AI / GEO VISIBILITY ── -->
-    {geo && geo.queries?.length > 0 && (
-      <section id="geo" class="mb-12">
-        <div class="flex items-center justify-between mb-6">
-          <div>
-            <h2 class="text-2xl font-bold text-primary flex items-center gap-2">
-              <span class="material-symbols-outlined">smart_toy</span>
-              AI Engine Visibility (GEO)
-            </h2>
-            <p class="text-sm text-secondary mt-1">Brand presence across {geo.queries.length} simulated queries in ChatGPT{geo.crossModel && geo.crossModel.length > 1 ? ' and Perplexity' : ''}.</p>
-          </div>
-          <div class="bg-surface-container-low px-4 py-2 rounded-full flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-tertiary-fixed"></div>
-            <span class="text-[10px] font-bold uppercase tracking-widest text-primary">Simulated Queries</span>
-          </div>
-        </div>
-
-        {/* ── Metric cards row ── */}
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* Mention Rate — hero metric */}
-          <div class="lg:col-span-1 bg-primary rounded-xl p-5 text-white flex flex-col gap-1">
-            <p class="text-[10px] font-bold uppercase tracking-widest text-white/60">Mention Rate</p>
-            <p class="text-4xl font-black leading-none">{geo.mentionRate ?? Math.round(((geo.queries.filter((q: any) => q.mentioned).length) / geo.queries.length) * 100)}%</p>
-            <p class="text-xs text-white/60 mt-1">{geo.queries.filter((q: any) => q.mentioned).length} / {geo.queries.length} queries</p>
-          </div>
-          {/* TOFU */}
-          <div class="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-1">
-            <p class="text-[10px] font-bold uppercase tracking-widest text-secondary">TOFU · Awareness</p>
-            <p class="text-3xl font-black text-primary leading-none">
-              {geo.funnelBreakdown ? geo.funnelBreakdown.tofu.mentioned : geo.queries.filter((q: any) => q.stage === 'tofu' && q.mentioned).length}
-              <span class="text-lg font-medium text-secondary"> / {geo.funnelBreakdown ? geo.funnelBreakdown.tofu.total : geo.queries.filter((q: any) => q.stage === 'tofu').length}</span>
-            </p>
-            <p class="text-xs text-secondary">Discovery queries</p>
-          </div>
-          {/* MOFU */}
-          <div class="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-1">
-            <p class="text-[10px] font-bold uppercase tracking-widest text-secondary">MOFU · Comparison</p>
-            <p class="text-3xl font-black text-primary leading-none">
-              {geo.funnelBreakdown ? geo.funnelBreakdown.mofu.mentioned : geo.queries.filter((q: any) => q.stage === 'mofu' && q.mentioned).length}
-              <span class="text-lg font-medium text-secondary"> / {geo.funnelBreakdown ? geo.funnelBreakdown.mofu.total : geo.queries.filter((q: any) => q.stage === 'mofu').length}</span>
-            </p>
-            <p class="text-xs text-secondary">Evaluation queries</p>
-          </div>
-          {/* BOFU */}
-          <div class="bg-white rounded-xl p-5 shadow-sm flex flex-col gap-1">
-            <p class="text-[10px] font-bold uppercase tracking-widest text-secondary">BOFU · Decision</p>
-            <p class="text-3xl font-black text-primary leading-none">
-              {geo.funnelBreakdown ? geo.funnelBreakdown.bofu.mentioned : geo.queries.filter((q: any) => q.stage === 'bofu' && q.mentioned).length}
-              <span class="text-lg font-medium text-secondary"> / {geo.funnelBreakdown ? geo.funnelBreakdown.bofu.total : geo.queries.filter((q: any) => q.stage === 'bofu').length}</span>
-            </p>
-            <p class="text-xs text-secondary">High-intent queries</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ── Query table ── */}
-          <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-surface-container-low">
-                  <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Stage</th>
-                  <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Query</th>
-                  <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Presence</th>
-                </tr>
-              </thead>
-              <tbody>
-                {geo.queries.map((q: any) => (
-                  <tr class="border-t border-slate-50 hover:bg-surface-container-low transition-colors">
-                    <td class="p-3 pl-4">
-                      {q.isBrandQuery
-                        ? <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-surface-container text-secondary">Brand</span>
-                        : q.stage === 'tofu'
-                        ? <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-50 text-blue-700">TOFU</span>
-                        : q.stage === 'mofu'
-                        ? <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-violet-50 text-violet-700">MOFU</span>
-                        : <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-50 text-amber-700">BOFU</span>
-                      }
-                    </td>
-                    <td class="p-3 text-sm text-primary" style="max-width:320px">{q.query}</td>
-                    <td class="p-3">
-                      {q.mentioned
-                        ? <span class="flex items-center gap-1 text-emerald-700 font-bold text-sm whitespace-nowrap">
-                            <span class="material-symbols-outlined ms-filled text-[16px]">check_circle</span>
-                            Mentioned
-                          </span>
-                        : <span class="text-slate-400 font-medium text-sm">Not listed</span>
-                      }
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* ── Insight panel ── */}
-          <div class="bg-primary p-8 rounded-xl text-white flex flex-col gap-6 relative overflow-hidden">
-            <div class="absolute -right-10 -bottom-10 opacity-5">
-              <span class="material-symbols-outlined" style="font-size:10rem;">bolt</span>
-            </div>
-            <h3 class="text-lg font-bold leading-tight">AI Diagnosis</h3>
-            <p class="text-sm text-white/70 leading-relaxed italic">"{diagGEO}"</p>
-
-            {/* Cross-model breakdown (if Perplexity was used) */}
-            {geo.crossModel && geo.crossModel.length > 1 && (
-              <div class="flex flex-col gap-2">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-white/50">By AI engine</p>
-                {geo.crossModel.map((m: any) => (
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs text-white/70">{m.name}</span>
-                    <span class="text-xs font-bold text-white">{m.mentioned}/{m.total}</span>
-                  </div>
-                ))}
-              </div>
+      
+      <!-- Main content: Left info + Right score -->
+      <div style="display:flex;align-items:flex-start;gap:2rem;position:relative;">
+        <!-- Left: Domain info -->
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:0.65rem;font-weight:600;color:#06B6D4;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.35rem;">Digital Visibility Report</p>
+          <h1 style="font-size:1.5rem;font-weight:800;margin:0 0 0.5rem;line-height:1.15;">{domain}</h1>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;">
+            {sector && <span style="color:#9CA3AF;font-size:0.75rem;">{sector}</span>}
+            {btLabel && (
+              <>
+                <span style="color:#9CA3AF;font-size:0.7rem;">|</span>
+                <span style="color:#9CA3AF;font-size:0.7rem;">{btLabel}</span>
+              </>
             )}
-
-            <div class="mt-auto">
-              <span class="text-[10px] font-bold uppercase tracking-widest mb-2 block" style="color:#69ff87">
-                {geoMissedQueries}/{geoTotalQueries} queries without presence
+          </div>
+          
+          <!-- Quick stats row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;">
+            <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;padding:0.6rem 0.75rem;">
+              <p style="font-size:0.6rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.15rem;">Est. Traffic</p>
+              <p style="font-size:1rem;font-weight:700;color:#fff;margin:0;font-family:'DM Mono',monospace;">{fmt(seo?.organicTrafficEstimate)}</p>
+            </div>
+            <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;padding:0.6rem 0.75rem;">
+              <p style="font-size:0.6rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.15rem;">Keywords Top10</p>
+              <p style="font-size:1rem;font-weight:700;color:#fff;margin:0;font-family:'DM Mono',monospace;">{fmt(seo?.keywordsTop10)}</p>
+            </div>
+            <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:0.5rem;padding:0.6rem 0.75rem;">
+              <p style="font-size:0.6rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.15rem;">Keywords Top 3</p>
+              <p style="font-size:1rem;font-weight:700;color:#fff;margin:0;font-family:'DM Mono',monospace;">{fmt(seo?.keywordsTop3)}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right: Score gauge -->
+        <div style="text-align:center;flex-shrink:0;">
+          <div style="position:relative;width:110px;height:110px;">
+            <svg viewBox="0 0 36 36" style="width:110px;height:110px;transform:rotate(-90deg);">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2.5"/>
+              <circle id="score-ring" cx="18" cy="18" r="15.9" fill="none" stroke={scoreColor(health.total)} stroke-width="2.5" stroke-linecap="round" stroke-dasharray="0, 100"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <span id="score-counter" style="font-size:2rem;font-weight:800;color:#fff;font-family:'DM Mono',monospace;line-height:1;">0</span>
+              <span style="font-size:0.6rem;color:#9CA3AF;">/100</span>
+            </div>
+          </div>
+          <p style="font-size:0.65rem;color:#06B6D4;text-transform:uppercase;letter-spacing:0.08em;margin:0.5rem 0 0;font-weight:600;">Digital Presence Score</p>
+          <!-- Pillar pills -->
+          <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:center;margin-top:0.625rem;">
+            {[
+              { label: 'Visibil.', value: health.visibilidad },
+              { label: 'Compet.', value: health.competitividad },
+              { label: 'Exp.', value: health.experiencia },
+              { label: 'Conv.', value: health.conversion },
+            ].map((p) => (
+              <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:9999px;padding:0.2rem 0.5rem;font-size:0.65rem;display:inline-flex;align-items:center;gap:0.3rem;">
+                <span style={`width:5px;height:5px;border-radius:50%;background:${p.value !== null ? scoreColor(p.value) : '#374151'};display:inline-block;flex-shrink:0;`}></span>
+                <span style="color:#9CA3AF;">{p.label}</span>
+                <strong style="font-family:'DM Mono',monospace;color:#F9FAFB;">{p.value ?? '—'}</strong>
               </span>
-              <p class="text-sm font-medium">
-                {geoMissedQueries === 0
-                  ? 'Your brand appears in all analysed queries.'
-                  : 'Create Q&A content with semantic markup to appear in AI-generated answers.'}
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      {hreflangAlts.length > 0 && (
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.375rem;padding:0.5rem 0.75rem;font-size:0.7rem;color:#9CA3AF;margin-top:1rem;">
+          This analysis covers {domain}. {hreflangAlts.length} additional versions detected: {hreflangAlts.slice(0, 3).map((a: any) => a.domain).join(', ')}.
+        </div>
+      )}
+    </div>
+
+    <!-- ── PILLAR STRIP ──────────────────────────────────────────────── -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #1F2937;">
+      {[
+        { label: 'Visibility', value: health.visibilidad, desc: 'Can they find you?' },
+        { label: 'Competitiveness', value: health.competitividad, desc: 'vs sector' },
+        { label: 'Experience', value: health.experiencia, desc: 'When they arrive' },
+        { label: 'Conversion', value: health.conversion, desc: 'Do they convert?' },
+      ].map((p, i) => (
+        <div style={`padding:1.25rem 1rem;text-align:center;${i < 3 ? 'border-right:1px solid #1F2937;' : ''}`}>
+          {p.value !== null ? (
+            <>
+              <div class="pillar-score" style={`color:${scoreColor(p.value)}`}>{p.value}</div>
+              <div class="pillar-label">{p.label}</div>
+              <div style="font-size:0.65rem;color:#9CA3AF;margin-top:0.125rem;">{p.desc}</div>
+            </>
+          ) : (
+            <>
+              <div class="pillar-score" style="color:#9CA3AF;">—</div>
+              <div class="pillar-label">{p.label}</div>
+              <div style="font-size:0.65rem;color:#9CA3AF;margin-top:0.125rem;">No data</div>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <!-- Executive summary -->
+    {(() => {
+      const NO_DATA_PREFIXES_EN = [
+        'No estimated traffic', 'Traffic data not available',
+        'Could not evaluate', 'No data available',
+        // ES strings in case insights are generated in Spanish
+        'No se pudieron', 'Este dominio no', 'No se dispone de datos',
+        'El volumen de tráfico es insuficiente', 'No se pudo evaluar',
+      ];
+      const summaryBullets = (insights.bullets || []).filter(
+        (t: string) => t && !NO_DATA_PREFIXES_EN.some((p) => t.startsWith(p))
+      );
+      if (!summaryBullets.length) return null;
+      return (
+        <div class="section" style="background:#111827;">
+          <h2 style="margin:0 0 1rem;">Executive Summary</h2>
+          <div style="display:flex;flex-direction:column;gap:0.125rem;">
+            {summaryBullets.map((b: string) => (
+              <div style="display:flex;align-items:flex-start;gap:0.75rem;padding:0.625rem 0;border-bottom:1px solid #1F2937;">
+                <span style="color:#3B82F6;font-weight:700;font-size:1rem;flex-shrink:0;margin-top:0.1rem;">→</span>
+                <p style="margin:0;font-size:0.9375rem;color:#D1D5DB;line-height:1.7;">{b}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    })()}
+
+    <!-- Block 2: Visibility -->
+    <div class="section">
+      <h2>Can people find you?</h2>
+      <p style="color:#6B7280;font-size:0.875rem;margin:0 0 1rem;">Visibility in search engines, AI assistants and acquisition channels</p>
+
+      <h3>🔗 Organic search (SEO)</h3>
+      <div class="diag-text">{diagSEO}</div>
+
+      {hasTrendAlert && (
+        <>
+          <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.3);border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.625rem;">
+            <p style="color:#EF4444;font-weight:700;margin:0 0 0.25rem;font-size:0.9rem;">📉 Trend: active organic visibility loss</p>
+            <p style="color:#FCA5A5;font-size:0.85rem;margin:0;line-height:1.6;">
+              In the recent period the domain has <strong>lost {fmt(seo!.trendLost)} keywords</strong> from its rankings vs only {fmt(seo!.trendUp)} gained.
+              If not addressed, this trend will translate into falling organic traffic and lost market share.
+            </p>
+          </div>
+          <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.25);border-radius:0.625rem;padding:0.875rem 1.125rem;margin-bottom:0.875rem;display:flex;align-items:flex-start;gap:0.875rem;">
+            <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">⚡</span>
+            <div>
+              <p style="font-weight:700;color:#A5B4FC;margin:0 0 0.2rem;font-size:0.875rem;">AION Pulse</p>
+              <p style="font-size:0.825rem;color:#A5B4FC;margin:0 0 0.5rem;line-height:1.55;">With AION Pulse you would receive an automatic alert when you lose positions, before it impacts your business.</p>
+              <a href="mailto:hola@aiongrowth.studio?subject=AION Pulse — Demo" style="display:inline-block;background:#3B82F6;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Request demo →</a>
+            </div>
+          </div>
+        </>
+      )}
+
+      {seo ? (
+        <>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:0.75rem;">
+            {[
+              { label: 'Keywords on page 1', value: fmt(seo.keywordsTop10), bench: sectorAvgKW != null ? `sector: ${fmt(sectorAvgKW)}` : null, above: sectorAvgKW != null ? (seo.keywordsTop10 ?? 0) >= sectorAvgKW : null },
+              { label: 'Est. organic traffic/mo', value: fmt(seo.organicTrafficEstimate), bench: avgETV > 0 ? `sector: ${fmt(Math.round(avgETV))}` : null, above: avgETV > 0 ? ownETV >= avgETV : null },
+              { label: 'Total indexed keywords', value: fmt(seo.organicKeywordsTotal), bench: null, above: null },
+            ].map((m) => (
+              <div style={`border-radius:0.5rem;padding:0.75rem;text-align:center;border:1px solid ${m.above === true ? 'rgba(16,185,129,0.3)' : m.above === false ? 'rgba(239,68,68,0.3)' : '#1F2937'};background:${m.above === true ? 'rgba(16,185,129,0.07)' : m.above === false ? 'rgba(239,68,68,0.07)' : '#111827'};`}>
+                <div style={`font-size:1.25rem;font-weight:700;color:${m.above === true ? '#10B981' : m.above === false ? '#EF4444' : '#F9FAFB'}`}>{m.value}</div>
+                <div style="font-size:0.7rem;color:#6B7280;margin-top:0.125rem;">{m.label}</div>
+                {m.bench && <div style="font-size:0.6rem;color:#9CA3AF;margin-top:0.2rem;">{m.bench}</div>}
+              </div>
+            ))}
+          </div>
+          {seo.estimatedAdsCost != null && seo.estimatedAdsCost > 0 && (
+            <div style="background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-radius:0.5rem;padding:0.625rem 0.875rem;margin-bottom:0.875rem;display:flex;align-items:center;gap:0.75rem;">
+              <span style="font-size:1.25rem;">💰</span>
+              <p style="margin:0;font-size:0.875rem;color:#10B981;line-height:1.5;">
+                <strong>Google Ads equivalent value: ~{fmt(seo.estimatedAdsCost)}€/mo.</strong>
+                {' '}That is the real value of the organic traffic you are generating without paying for it.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-    )}
+          )}
 
-    <!-- ── 3. SEO & ORGANIC VISIBILITY ── -->
-    <section id="visibility" class="mb-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <!-- Keywords -->
-      <div class="bg-surface-container-low p-8 rounded-2xl">
-        <h3 class="text-xl font-bold text-primary mb-6 flex items-center gap-2">
-          <span class="material-symbols-outlined">key</span>
-          Keyword Performance
-        </h3>
-        {seo?.topKeywords?.length > 0 ? (
-          <div class="space-y-3">
-            {seo.topKeywords.slice(0, 5).map((kw: any) => (
-              <div class="bg-white p-4 rounded-xl flex items-center justify-between shadow-sm">
+          {(seo.keywordsPos4to10 ?? 0) > 0 && (
+            <div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:0.5rem;padding:0.625rem 0.875rem;margin-bottom:0.875rem;display:flex;align-items:center;gap:0.75rem;">
+              <span style="font-size:1.25rem;">⚡</span>
+              <p style="margin:0;font-size:0.875rem;color:#60A5FA;line-height:1.5;">
+                <strong>You have {fmt(seo.keywordsPos4to10)} keywords in positions 4-10</strong> — one push from page 1.
+                {' '}With moderate content optimisation, these keywords can drive new traffic without creating pages from scratch.
+              </p>
+            </div>
+          )}
+
+          {/* Content cadence — only when sitemap has ≥3 blog posts */}
+          {cc && (
+            <div style={`background:${cc.cadenceLevel === 'active' ? 'rgba(16,185,129,0.07)' : cc.cadenceLevel === 'irregular' ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.07)'};border-left:3px solid ${cc.cadenceLevel === 'active' ? '#10B981' : cc.cadenceLevel === 'irregular' ? '#F59E0B' : '#EF4444'};border:1px solid ${cc.cadenceLevel === 'active' ? 'rgba(16,185,129,0.25)' : cc.cadenceLevel === 'irregular' ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'};border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.875rem;`}>
+              <p style={`font-weight:700;margin:0 0 0.25rem;font-size:0.875rem;color:${cc.cadenceLevel === 'active' ? '#10B981' : cc.cadenceLevel === 'irregular' ? '#F59E0B' : '#EF4444'}`}>
+                {cc.cadenceLevel === 'active' && '✅ Healthy content cadence'}
+                {cc.cadenceLevel === 'irregular' && '⚠️ Irregular content cadence'}
+                {cc.cadenceLevel === 'inactive' && '🔴 Inactive blog'}
+              </p>
+              <p style={`font-size:0.85rem;margin:0;line-height:1.6;color:${cc.cadenceLevel === 'active' ? '#6EE7B7' : cc.cadenceLevel === 'irregular' ? '#FCD34D' : '#FCA5A5'}`}>
+                {cc.cadenceLevel === 'active' &&
+                  `${cc.postsLast90Days} publications in the last 90 days. The blog is active and contributing to organic rankings.`}
+                {cc.cadenceLevel === 'irregular' &&
+                  `Last post ${cc.daysSinceLastPost} days ago. Google rewards domains with consistent publishing. 2 posts per month would double your indexable surface.`}
+                {cc.cadenceLevel === 'inactive' &&
+                  `Last post ${cc.daysSinceLastPost} days ago. Stale content is one of the most common causes of ranking loss — this is a high-priority improvement.`}
+              </p>
+            </div>
+          )}
+
+          {seo.keywordsTop10 != null && (
+            <p style="font-size:0.8rem;color:#9CA3AF;margin-bottom:0.875rem;line-height:1.6;">
+              {seo.keywordsTop10 >= 500
+                ? `With ${fmt(seo.keywordsTop10)} keywords on page 1, you have a solid organic presence — a real competitive base.`
+                : seo.keywordsTop10 >= 50
+                ? `${fmt(seo.keywordsTop10)} keywords on page 1 is a moderate ranking level — there is clear room to grow against sector leaders.`
+                : seo.keywordsTop10 >= 5
+                ? `${fmt(seo.keywordsTop10)} keywords on page 1. You have an initial presence but organic visibility is still limited.`
+                : `Very few keywords on page 1 of Google. Organic ranking is a priority growth opportunity.`}
+            </p>
+          )}
+          {totalPlayers > 1 && (
+            <p style="font-size:0.8rem;color:#6B7280;margin-bottom:1rem;">
+              📊 Organic traffic sector ranking: <strong style={`color:${ownRank <= Math.ceil(totalPlayers / 2) ? '#10B981' : '#EF4444'}`}>#{ownRank} of {totalPlayers}</strong>
+            </p>
+          )}
+        </>
+      ) : (
+        /* SEO skipped — empty state message + technical signals */
+        <>
+          <div style="background:#111827;border:1px solid #1F2937;border-radius:0.625rem;padding:1.25rem 1.5rem;margin-bottom:0.875rem;">
+            <p style="font-weight:600;color:#E5E7EB;margin:0 0 0.375rem;font-size:0.95rem;">This domain does not yet have enough history in search indexes</p>
+            <p style="font-size:0.875rem;color:#9CA3AF;margin:0;line-height:1.65;">Estimated organic traffic data could not be retrieved for this domain. This is common for recent domains, very local niches or sites with low organic activity — and it is precisely one of the opportunities AION can help you resolve.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-top:0.5rem;">
+            {[
+              { label: 'XML Sitemap', ok: crawl.hasSitemap, note: crawl.hasSitemap ? 'Present — Google can crawl the site' : 'Not detected — hinders indexation' },
+              { label: 'Canonical tag', ok: crawl.hasCanonical, note: crawl.hasCanonical ? 'Present — prevents duplicate content' : 'Not detected — duplicate content risk' },
+              { label: 'Structured data', ok: crawl.hasSchemaMarkup, note: crawl.hasSchemaMarkup ? `Schema.org detected (${(crawl.schemaTypes || []).slice(0,2).join(', ')})` : 'No Schema.org — lower visibility in rich results' },
+              { label: 'Content volume', ok: (crawl.wordCount || 0) >= 300, note: `${crawl.wordCount || 0} words on main page${(crawl.wordCount || 0) < 300 ? ' — thin content for SEO' : ' — acceptable content base'}` },
+              ...(ps?.mobile?.seo != null ? [{ label: 'SEO (Lighthouse)', ok: ps.mobile.seo >= 80, note: `Score ${ps.mobile.seo}/100${ps.mobile.seo < 80 ? ' — technical improvements needed' : ' — good technical health'}` }] : []),
+            ].map((item) => (
+              <div style={`display:flex;gap:0.625rem;align-items:flex-start;padding:0.75rem;border-radius:0.5rem;border:1px solid ${item.ok ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};background:${item.ok ? 'rgba(16,185,129,0.07)' : 'rgba(239,68,68,0.07)'};`}>
+                <span style={`font-size:1rem;flex-shrink:0;${item.ok ? 'color:#10B981' : 'color:#EF4444'}`}>{item.ok ? '✓' : '✗'}</span>
                 <div>
-                  <span class="text-xs font-bold text-secondary uppercase tracking-tighter">"{kw.keyword}"</span>
-                  <div class="flex items-center gap-2 mt-1">
-                    <span class="text-lg font-bold text-primary">Position #{kw.position}</span>
-                    {kw.position > 10
-                      ? <span class="text-[10px] bg-error-container text-on-error-container px-2 py-0.5 rounded-full font-bold">Page 2+</span>
-                      : kw.position > 3
-                      ? <span class="text-[10px] bg-surface-container text-secondary px-2 py-0.5 rounded-full font-bold">Page 1</span>
-                      : <span class="text-[10px] bg-tertiary-fixed/20 text-on-tertiary-fixed-variant px-2 py-0.5 rounded-full font-bold">Top 3</span>
-                    }
-                  </div>
-                </div>
-                <div class="text-right">
-                  <span class="text-xs text-secondary block">Searches/mo</span>
-                  <span class="text-sm font-bold text-primary font-mono">{kw.volume > 0 ? fmt(kw.volume) : '—'}</span>
+                  <div style="font-size:0.8rem;font-weight:600;color:#E5E7EB;">{item.label}</div>
+                  <div style="font-size:0.75rem;color:#6B7280;margin-top:0.125rem;">{item.note}</div>
                 </div>
               </div>
             ))}
           </div>
-        ) : seo ? (
-          <div class="bg-white p-6 rounded-xl text-center">
-            <p class="text-sm text-secondary">No keywords found in relevant positions.</p>
-            {seo.keywordsTop10 != null && (
-              <p class="text-2xl font-bold text-primary font-mono mt-2">{fmt(seo.keywordsTop10)} keywords on page 1</p>
-            )}
-          </div>
-        ) : (
-          <div class="bg-white p-6 rounded-xl">
-            <p class="text-sm text-secondary">SEO data not available for this domain.</p>
-          </div>
-        )}
-      </div>
-
-      <!-- Organic traffic stats -->
-      <div class="bg-white p-8 rounded-2xl shadow-sm flex flex-col">
-        <h3 class="text-xl font-bold text-primary mb-6">Organic Traffic vs Value</h3>
-        {seo ? (
-          <>
-            <!-- Channel bar chart -->
-            <div class="flex-grow flex items-end gap-2 mb-6" style="height:10rem;">
-              {channelSegments.length > 0 ? channelSegments.slice(0, 5).map((ch: any) => (
-                <div class="flex-1 flex flex-col items-center gap-1" title={ch.label + ": " + ch.pct + "%"}>
-                  <div class="w-full rounded-t-lg" style={"height:" + Math.max(ch.pct * 1.8, 8) + "px;background:" + ch.color}></div>
-                  <span class="text-[8px] text-secondary font-medium">{ch.label.slice(0,3)}</span>
-                </div>
-              )) : (
-                // Fallback: KW distribution bars
-                [
-                  { label: 'Top 10', val: seo.keywordsTop10 || 0 },
-                  { label: 'Top 3', val: seo.keywordsTop3 || 0 },
-                  { label: 'Pos 4-10', val: seo.keywordsPos4to10 || 0 },
-                ].map((bar: any) => {
-                  const max = Math.max(seo.keywordsTop10 || 1, 1);
-                  return (
-                    <div class="flex-1 bg-surface-container-low rounded-t-lg flex flex-col justify-end">
-                      <div class="w-full bg-primary-container rounded-t-lg" style={"height:" + Math.min(Math.round((bar.val/max)*140),140) + "px"}></div>
-                      <span class="text-[8px] text-secondary font-medium text-center mt-1">{bar.label}</span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            <div class="flex justify-between items-center pt-4 border-t border-slate-50">
-              <div>
-                <span class="text-[10px] font-bold text-secondary uppercase block">Est. Traffic/mo</span>
-                <span class="text-2xl font-bold text-primary font-mono">{fmt(seo.organicTrafficEstimate)}</span>
-              </div>
-              {seo.estimatedAdsCost != null && seo.estimatedAdsCost > 0 && (
-                <div class="text-right">
-                  <span class="text-[10px] font-bold text-secondary uppercase block">Ads equiv. value</span>
-                  <span class="text-2xl font-bold text-primary font-mono">{fmt(seo.estimatedAdsCost)}€</span>
-                </div>
-              )}
-              {seo.keywordsTop10 != null && (
-                <div class="text-right">
-                  <span class="text-[10px] font-bold text-secondary uppercase block">Page 1 Keywords</span>
-                  <span class="text-2xl font-bold text-primary font-mono">{fmt(seo.keywordsTop10)}</span>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div class="flex-grow flex items-center justify-center">
-            <p class="text-sm text-secondary text-center">No organic traffic data available.</p>
-          </div>
-        )}
-      </div>
-    </section>
-
-    <!-- ── 4. COMPETITIVE BENCHMARK ── -->
-    {hasEnoughCompetitorData && (
-      <section id="competitive" class="mb-12">
-        <h2 class="text-2xl font-bold text-primary mb-6 flex items-center gap-2">
-          <span class="material-symbols-outlined">compare_arrows</span>
-          Competitive Benchmark
-        </h2>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-surface-container-low">
-                <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Brand</th>
-                <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Org. Traffic/mo</th>
-                <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Ads equiv. value</th>
-                <th class="p-4 text-[10px] font-bold text-secondary uppercase tracking-wider">Top 10 Keywords</th>
-              </tr>
-            </thead>
+        </>
+      )}
+      {seoPages && (
+        <div style="margin-top:0.75rem;">
+          <p style="font-size:0.8rem;font-weight:600;color:#9CA3AF;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;">Top organic pages</p>
+          <table>
+            <thead><tr><th>Page</th><th style="text-align:right;">Est. traffic/mo</th><th style="text-align:right;">Keywords</th></tr></thead>
             <tbody>
-              {benchRows.map((row: any) => (
-                <tr class={"border-t border-slate-50 hover:bg-surface-container-low transition-colors " + (row.isOwn ? 'bg-surface-container-low/60' : '')}>
-                  <td class={"p-4 text-sm font-semibold " + (row.isOwn ? 'text-primary' : row.label === 'Sector average' ? 'text-secondary italic text-xs' : 'text-on-surface')}>
-                    {row.isOwn && <span class="text-primary mr-1">★</span>}
-                    {row.label}
+              {seoPages.pages.map((p: any) => (
+                <tr>
+                  <td style="font-size:0.8rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title={p.pageAddress}>
+                    {p.pageAddress.replace(/^https?:\/\/[^/]+/, '') || '/'}
                   </td>
-                  <td class="p-4">
-                    <div class="flex items-center gap-2">
-                      <div class="w-20 h-1.5 bg-surface-container rounded-full overflow-hidden">
-                        <div class="h-full rounded-full" style={"width:" + Math.round(((row.etv||0)/maxETV)*100) + "%;background:" + (row.isOwn ? '#000e41' : '#c3c6ce')}></div>
-                      </div>
-                      <span class="text-xs font-mono text-on-surface">{fmt(row.etv)}</span>
-                    </div>
-                  </td>
-                  <td class="p-4 text-xs font-mono text-on-surface">{row.ads != null ? fmt(row.ads) + '€' : '—'}</td>
-                  <td class="p-4 text-xs font-mono text-on-surface">{fmt(row.kw10)}</td>
+                  <td style="text-align:right;font-size:0.8rem;">{p.trafficEstimate != null ? fmt(p.trafficEstimate) + '/mo' : '—'}</td>
+                  <td style="text-align:right;font-size:0.8rem;">{p.keywords ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {kg && (
-          <div class="mt-6 bg-surface-container-low p-6 rounded-xl">
-            <h3 class="text-base font-bold text-primary mb-4 flex items-center gap-2">
-              <span class="material-symbols-outlined text-[18px]">key</span>
-              Keyword Gap — Positioning Opportunities
-            </h3>
-            <div class="bg-white rounded-xl overflow-hidden shadow-sm">
-              <table class="w-full text-left border-collapse">
-                <thead>
-                  <tr class="bg-surface-container-low">
-                    <th class="p-3 text-[10px] font-bold text-secondary uppercase tracking-wider">Keyword</th>
-                    <th class="p-3 text-[10px] font-bold text-secondary uppercase tracking-wider text-right">Searches/mo</th>
-                    <th class="p-3 text-[10px] font-bold text-secondary uppercase tracking-wider text-right">Competitor position</th>
+      )}
+
+      <!-- GEO -->
+      <div class="sub-section">
+        <h3>🤖 AI Visibility (GEO)</h3>
+        <p style="font-size:0.875rem;color:#6B7280;margin-bottom:0.75rem;">When someone asks ChatGPT or Perplexity about services like yours, do you appear in the answer? We simulated real queries.</p>
+        {geo && geo.queries?.length > 0 ? (
+          <>
+            <table style="margin-bottom:0.75rem;">
+              <thead><tr><th>Simulated query</th><th style="text-align:center;width:80px;">Appear?</th><th>Response context</th></tr></thead>
+              <tbody>
+                {geo.queries.slice(0, 5).map((q: any) => (
+                  <tr>
+                    <td style="font-size:0.8rem;color:#D1D5DB;max-width:220px;">
+                      {q.query}
+                      {q.isBrandQuery && <span class="badge badge-blue" style="margin-left:0.375rem;vertical-align:middle;">brand query</span>}
+                    </td>
+                    <td style="text-align:center;">
+                      {q.mentioned
+                        ? <svg width="18" height="18" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        : <svg width="18" height="18" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
+                    </td>
+                    <td style="font-size:0.78rem;color:#6B7280;max-width:240px;line-height:1.5;">
+                      {q.mentioned && q.context ? q.context.slice(0, 120) + '…' : (q.answer ? q.answer.slice(0, 100) + '…' : '—')}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {kg.items.slice(0, 8).map((item: any) => (
-                    <tr class="border-t border-slate-50 hover:bg-surface-container-low transition-colors">
-                      <td class="p-3 text-sm font-semibold text-primary">{item.keyword}</td>
-                      <td class="p-3 text-xs font-mono text-secondary text-right">{item.searchVolume != null ? fmt(item.searchVolume) : '—'}</td>
-                      <td class="p-3 text-xs font-mono text-secondary text-right">#{item.competitorPosition ?? '—'}</td>
+                ))}
+              </tbody>
+            </table>
+            <div class="diag-text">{diagGEO}</div>
+            {geo.queries?.some((q: any) => !q.isBrandQuery && !q.mentioned) && (
+              <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.25);border-radius:0.625rem;padding:0.875rem 1.125rem;margin-top:0.75rem;display:flex;align-items:flex-start;gap:0.875rem;">
+                <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">🤖</span>
+                <div>
+                  <p style="font-weight:700;color:#A5B4FC;margin:0 0 0.2rem;font-size:0.875rem;">AION — AI Visibility</p>
+                  <p style="font-size:0.825rem;color:#A5B4FC;margin:0 0 0.5rem;line-height:1.55;">AION builds the content plan to get you appearing in AI answers within 60 days.</p>
+                  <a href="mailto:hola@aiongrowth.studio?subject=AION GEO — AI content plan" style="display:inline-block;background:#3B82F6;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Request demo →</a>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <p style="color:#9CA3AF;font-size:0.875rem;">GEO data not available for this analysis.</p>
+        )}
+      </div>
+
+      <!-- GEO-SEO cross-analysis -->
+      {seo?.topKeywords?.length > 0 && geo && geo.queries?.some((q: any) => !q.isBrandQuery && !q.mentioned) && (
+        <div class="sub-section">
+          <h3>🔍 SEO → AI Gap: You rank on Google but not in ChatGPT</h3>
+          <p style="font-size:0.875rem;color:#D1D5DB;margin-bottom:0.875rem;line-height:1.65;">
+            Google already confirms your relevance for these searches — you appear on page 1.
+            Yet when a user asks the same question in ChatGPT or Perplexity, your brand does not appear in the answer.
+            This is the most actionable gap in your digital presence: authority already proven in search engines, not yet transferred to AI engines.
+          </p>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.875rem;">
+            {seo.topKeywords.slice(0, 5).map((kw: any) => (
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0.875rem;background:#111827;border:1px solid #1F2937;border-radius:0.5rem;">
+                <div style="flex:1;min-width:0;">
+                  <span style="font-size:0.875rem;font-weight:600;color:#E5E7EB;">{kw.keyword}</span>
+                  {kw.volume > 0 && <span style="font-size:0.75rem;color:#9CA3AF;margin-left:0.5rem;">{fmt(kw.volume)} searches/mo</span>}
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;flex-shrink:0;">
+                  <span style="font-size:0.7rem;background:#dcfce7;color:#10B981;border-radius:9999px;padding:0.15rem 0.5rem;font-weight:600;">Google #{kw.position}</span>
+                  <span style="font-size:0.7rem;background:rgba(239,68,68,0.07);color:#EF4444;border-radius:9999px;padding:0.15rem 0.5rem;font-weight:600;">AI ✗</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style="font-size:0.8rem;color:#6B7280;background:#111827beb;border:1px solid rgba(245,158,11,0.3);border-radius:0.375rem;padding:0.5rem 0.875rem;margin:0;line-height:1.5;">
+            💡 Improving your AI visibility for these terms is the highest-ROI GEO initiative: the search intent already exists, Google already captures the demand, and you are already relevant. You just need AI engines to know it.
+          </p>
+        </div>
+      )}
+
+      <!-- Traffic mix -->
+      {traffic && channelSegments.length > 0 && (
+        <div class="sub-section">
+          <h3>📊 Traffic channel mix</h3>
+          <div class="diag-text">{diagTraffic}</div>
+          <div style="display:flex;height:28px;border-radius:0.5rem;overflow:hidden;margin-bottom:0.75rem;">
+            {channelSegments.map((ch) => (
+              <div title={`${ch.label}: ${ch.pct}%`} style={`width:${ch.pct}%;background:${ch.color};`}></div>
+            ))}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+            {channelSegments.map((ch) => (
+              <div style="display:flex;align-items:center;gap:0.375rem;font-size:0.8rem;color:#9CA3AF;">
+                <span style={`width:10px;height:10px;border-radius:2px;background:${ch.color};display:inline-block;`}></span>
+                {ch.label} <strong>{ch.pct}%</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+
+    <!-- Block 3: Competitive benchmark -->
+    <div class="section">
+      <h2>How do you compare to competitors?</h2>
+      <p style="color:#6B7280;font-size:0.875rem;margin:0 0 1rem;">Relative positioning against detected competitors in your sector</p>
+      {diagGap && <div class="diag-text">{diagGap}</div>}
+      {hasEnoughCompetitorData ? (
+        <>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Brand</th><th>Org. traffic/mo</th><th>Est. Ads value/mo</th><th>Keywords top 10</th></tr></thead>
+              <tbody>
+                {benchRows.map((row) => {
+                  const avgRow = benchRows.find(r => r.label === 'Sector average');
+                  const etvAbove = avgRow?.etv != null && row.etv != null && row.isOwn ? row.etv >= avgRow.etv : null;
+                  const adsAbove = avgRow?.ads != null && row.ads != null && row.isOwn ? row.ads >= avgRow.ads : null;
+                  const kwAbove = avgRow?.kw10 != null && row.kw10 != null && row.isOwn ? row.kw10 >= avgRow.kw10 : null;
+                  return (
+                    <tr class={row.isOwn ? 'own-row' : row.label === 'Sector average' ? 'avg-row' : ''}>
+                      <td style={row.isOwn ? 'color:#3B82F6;font-weight:700;' : ''}>
+                        {row.isOwn && <span style="color:#3B82F6;margin-right:0.375rem;">●</span>}{row.label}
+                      </td>
+                      <td style={etvAbove === true ? 'color:#10B981;font-weight:600;' : etvAbove === false ? 'color:#EF4444;font-weight:600;' : ''}>
+                        <div class="bar-wrap">
+                          <div class="bar-bg"><div class="bar-fill" data-width={Math.round(((row.etv||0)/maxETV)*100)} style={`width:0%;background:${row.isOwn?'#3B82F6':'#374151'}`}></div></div>
+                          <span style="font-size:0.8rem;width:3rem;text-align:right;font-family:'DM Mono',monospace;">{fmt(row.etv)}</span>
+                        </div>
+                      </td>
+                      <td style={adsAbove === true ? 'color:#10B981;font-weight:600;' : adsAbove === false ? 'color:#EF4444;font-weight:600;' : ''}>
+                        <div class="bar-wrap">
+                          <div class="bar-bg"><div class="bar-fill" data-width={Math.round(((row.ads||0)/maxADS)*100)} style={`width:0%;background:${row.isOwn?'#3B82F6':'#374151'}`}></div></div>
+                          <span style="font-size:0.8rem;width:3.5rem;text-align:right;font-family:'DM Mono',monospace;">{row.ads != null ? fmt(row.ads) + '€' : '—'}</span>
+                        </div>
+                      </td>
+                      <td style={kwAbove === true ? 'color:#10B981;font-weight:600;' : kwAbove === false ? 'color:#EF4444;font-weight:600;' : ''}>
+                        <div class="bar-wrap">
+                          <div class="bar-bg"><div class="bar-fill" data-width={Math.round(((row.kw10||0)/maxKW)*100)} style={`width:0%;background:${row.isOwn?'#3B82F6':'#374151'}`}></div></div>
+                          <span style="font-size:0.8rem;width:3rem;text-align:right;font-family:'DM Mono',monospace;">{fmt(row.kw10)}</span>
+                        </div>
+                      </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p style="font-size:0.75rem;color:#9CA3AF;margin-top:0.5rem;">
+            "Est. Ads value" = estimated cost of that traffic in Google Ads. Cells in <span style="color:#10B981;font-weight:600;">green</span> = above sector average · <span style="color:#EF4444;font-weight:600;">red</span> = below. DataForSEO estimates.
+          </p>
+        </>
+      ) : ctItems.length > 0 ? (
+        <div style="background:#111827;border:1px solid #1F2937;border-radius:0.625rem;padding:1.25rem 1.5rem;margin-top:0.5rem;">
+          <p style="font-weight:600;color:#9CA3AF;margin:0 0 0.375rem;font-size:0.9rem;">Benchmarking data unavailable</p>
+          <p style="font-size:0.85rem;color:#6B7280;margin:0;line-height:1.6;">
+            Competitors were identified in your sector but DataForSEO does not have organic traffic metrics for these domains.
+            This is common in local sectors, specialised niches or recent domains. Your own domain metrics are available in the section above.
+          </p>
+        </div>
+      ) : null}
+
+      {(hasEnoughCompetitorData || ctItems.length > 0) && (
+        <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.25);border-radius:0.625rem;padding:0.875rem 1.125rem;margin-top:0.875rem;display:flex;align-items:flex-start;gap:0.875rem;">
+          <span style="font-size:1.25rem;line-height:1.2;flex-shrink:0;">🎯</span>
+          <div>
+            <p style="font-weight:700;color:#A5B4FC;margin:0 0 0.2rem;font-size:0.875rem;">AION Radar</p>
+            <p style="font-size:0.825rem;color:#A5B4FC;margin:0 0 0.5rem;line-height:1.55;">Activate AION Radar to see the weekly movements of your 5 main competitors.</p>
+            <a href="mailto:hola@aiongrowth.studio?subject=AION Radar — Demo" style="display:inline-block;background:#3B82F6;color:#fff;font-size:0.775rem;font-weight:600;padding:0.3rem 0.75rem;border-radius:9999px;text-decoration:none;">Request demo →</a>
+          </div>
+        </div>
+      )}
+
+      {kg && (
+        <div class="sub-section">
+          <h3>🔑 Keyword gap — ranking opportunities</h3>
+          <p style="font-size:0.875rem;color:#D1D5DB;margin-bottom:0.75rem;">Keywords in <strong>{kg.competitor}</strong>'s top 10 where you don't rank.</p>
+          <table>
+            <thead><tr><th>Keyword</th><th style="text-align:right;">Searches/mo</th><th style="text-align:right;">Competitor position</th></tr></thead>
+            <tbody>
+              {kg.items.map((item: any) => (
+                <tr>
+                  <td style="font-size:0.875rem;">{item.keyword}</td>
+                  <td style="text-align:right;font-size:0.8rem;">{item.searchVolume != null ? fmt(item.searchVolume)+'/mo' : '—'}</td>
+                  <td style="text-align:right;font-size:0.8rem;">{item.competitorPosition ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+
+    <!-- Block 3b: Advertising -->
+    {anyoneInvestsPaid && !qaSuppressed.includes('competitor_benchmark') && (
+      <div class="section">
+        <h2>📣 Search advertising</h2>
+        <p style="color:#6B7280;font-size:0.875rem;margin:0 0 1rem;">Google Ads activity for this domain and its competitors</p>
+
+        {clientPaidKw > 0 ? (
+          <>
+            <div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:0.625rem;padding:1rem 1.25rem;margin-bottom:0.875rem;">
+              <p style="font-weight:700;color:#60A5FA;margin:0 0 0.25rem;font-size:0.9rem;">
+                💰 Investing in Google Ads — {fmt(clientPaidKw)} active keywords
+              </p>
+              <p style="font-size:0.85rem;color:#93C5FD;margin:0;line-height:1.6;">
+                {seo?.paidTrafficValue != null && seo.paidTrafficValue > 0
+                  ? `Equivalent traffic value: ~${fmt(seo.paidTrafficValue)}€/mo.`
+                  : 'Active presence in paid search.'}
+                {clientSovPaid != null && clientSovOrg != null && clientSovPaid < clientSovOrg &&
+                  ` Your paid share of voice (${clientSovPaid}%) is lower than organic (${clientSovOrg}%). There is commercial demand that ads can capture now while SEO matures.`}
+              </p>
+            </div>
+            {seo?.paidTopKeywords && seo.paidTopKeywords.length > 0 && (
+              <div style="margin-bottom:0.875rem;">
+                <p style="font-size:0.75rem;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Top Google Ads keywords</p>
+                <table>
+                  <thead><tr><th>Keyword</th><th style="text-align:right;">Position</th><th style="text-align:right;">Volume/mo</th></tr></thead>
+                  <tbody>
+                    {seo.paidTopKeywords.map((kw: any) => (
+                      <tr>
+                        <td style="font-size:0.875rem;">{kw.keyword}</td>
+                        <td style="text-align:right;font-size:0.8rem;">{kw.position || '—'}</td>
+                        <td style="text-align:right;font-size:0.8rem;">{fmt(kw.volume)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {clientSovPaid != null && compPaidItems.length > 0 && (
+              <div style="margin-bottom:0.875rem;">
+                <p style="font-size:0.75rem;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Paid share of voice (estimated traffic)</p>
+                <div style="display:flex;flex-direction:column;gap:0.375rem;">
+                  {[{ label: `★ ${domain}`, etv: clientPaidEtv, isOwn: true },
+                    ...compPaidItems.map((c: any) => ({ label: c.domain, etv: c.paidTrafficEstimate ?? 0, isOwn: false }))
+                  ].map((row) => {
+                    const pct = totalPaidEtv > 0 ? Math.round((row.etv / totalPaidEtv) * 100) : 0;
+                    return (
+                      <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span style={`font-size:0.8rem;width:10rem;flex-shrink:0;${row.isOwn ? 'font-weight:700;color:#3B82F6;' : 'color:#9CA3AF;'}`}>{row.label}</span>
+                        <div style="flex:1;background:#1F2937;border-radius:9999px;height:8px;">
+                          <div style={`height:8px;border-radius:9999px;background:${row.isOwn ? '#3B82F6' : '#374151'};width:${pct}%;`}></div>
+                        </div>
+                        <span style="font-size:0.75rem;color:#6B7280;width:3rem;text-align:right;">{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style="background:#1118277ed;border:1px solid rgba(245,158,11,0.3);border-radius:0.625rem;padding:1rem 1.25rem;margin-bottom:0.875rem;">
+              <p style="font-weight:700;color:#F59E0B;margin:0 0 0.25rem;font-size:0.9rem;">⚠️ No presence in Google Ads</p>
+              <p style="font-size:0.85rem;color:#FCD34D;margin:0;line-height:1.6;">
+                {leaderPaid ? `${leaderPaid.domain} is capturing paid demand in your sector. ` : ''}
+                Every commercial search you're not covering is an opportunity your competitors take.
+              </p>
+            </div>
+            <table>
+              <thead><tr><th>Competitor</th><th style="text-align:right;">Paid keywords</th><th style="text-align:right;">Est. value/mo</th></tr></thead>
+              <tbody>
+                {compPaidItems.map((c: any) => (
+                  <tr>
+                    <td style="font-size:0.875rem;">{c.domain}</td>
+                    <td style="text-align:right;font-size:0.8rem;">{fmt(c.paidKeywordsTotal)}</td>
+                    <td style="text-align:right;font-size:0.8rem;">{c.paidTrafficValue != null ? fmt(c.paidTrafficValue) + '€' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {metaAds && (metaAds.hasMetaAds || (metaAds.competitorsWithMetaAds ?? 0) > 0) && (
+          <div class="sub-section">
+            <h3>📱 Meta Ads activity</h3>
+            {metaAds.hasMetaAds ? (
+              <div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:0.5rem;padding:0.75rem 1rem;">
+                <p style="font-size:0.875rem;color:#93C5FD;margin:0;">
+                  ✅ Active Meta ads detected{metaAds.metaPageName ? ` for ${metaAds.metaPageName}` : ''}.
+                </p>
+              </div>
+            ) : (
+              <div style="background:#1118277ed;border:1px solid rgba(245,158,11,0.3);border-radius:0.5rem;padding:0.75rem 1rem;">
+                <p style="font-size:0.875rem;color:#FCD34D;margin:0;">
+                  ⚠️ No Meta ads detected — {metaAds.competitorsWithMetaAds} of your competitors have active campaigns on Facebook/Instagram.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <p style="font-size:0.7rem;color:#9CA3AF;margin-top:0.875rem;padding-top:0.75rem;border-top:1px solid #1F2937;">
+          Analysis based on Google Search Ads. Does not include Meta Ads, LinkedIn or programmatic.
+        </p>
+      </div>
+    )}
+
+    <!-- Block 4: Experience & Conversion -->
+    <div class="section">
+      <h2>What happens when they arrive?</h2>
+      <p style="color:#6B7280;font-size:0.875rem;margin:0 0 1rem;">Web performance, tools and conversion capability</p>
+
+      {ps && ps.mobile && (
+        <>
+          <h3>⚡ Web performance (PageSpeed)</h3>
+          <div class="diag-text">{diagPS}</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem;">
+            {[
+              { label: 'Performance', value: ps.mobile.performance },
+              { label: 'Accessibility', value: ps.mobile.accessibility },
+              { label: 'SEO Lighthouse', value: ps.mobile.seo },
+              { label: 'Best Practices', value: ps.mobile.bestPractices },
+            ].map((g) => {
+              const color = g.value >= 90 ? '#10B981' : g.value >= 50 ? '#F59E0B' : '#EF4444';
+              return (
+                <div style="text-align:center;">
+                  <div style="position:relative;width:80px;height:80px;margin:0 auto;">
+                    <svg width="80" height="80" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
+                      <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1F2937" stroke-width="3"/>
+                      <circle cx="18" cy="18" r="15.9" fill="none" stroke={color}
+                        stroke-width="3" stroke-linecap="round" stroke-dasharray={`${g.value}, 100`} />
+                    </svg>
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                      <span style={`font-size:1rem;font-weight:800;color:${color}`}>{g.value}</span>
+                    </div>
+                  </div>
+                  <div style="font-size:0.7rem;color:#6B7280;font-weight:500;margin-top:0.25rem;">{g.label}</div>
+                  <div style="font-size:0.65rem;color:#9CA3AF;">Mobile</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <!-- Technical signals pills -->
+      {ssl && (
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.5rem 0 0.5rem;padding-top:0.25rem;">
+          {(() => {
+            const d = ssl.daysUntilExpiry;
+            if (!ssl.valid || d === 0) return <span style="font-size:0.75rem;background:rgba(239,68,68,0.07);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:600;">🔴 SSL expired — browsers are blocking your site now</span>;
+            if (d != null && d < 30) return <span style="font-size:0.75rem;background:rgba(239,68,68,0.07);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:600;">🔴 SSL expires in {d}d — URGENT: renew or browsers will block your site</span>;
+            if (d != null && d < 60) return <span style="font-size:0.75rem;background:#111827beb;color:#F59E0B;border:1px solid rgba(245,158,11,0.3);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">🟡 SSL valid but expiring soon · {d}d — renew before it expires</span>;
+            return <span style="font-size:0.75rem;background:rgba(16,185,129,0.07);color:#10B981;border:1px solid rgba(16,185,129,0.25);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ SSL valid{d ? ` · ${d}d` : ''}</span>;
+          })()}
+          {crawl.hasCanonical && <span style="font-size:0.75rem;background:rgba(16,185,129,0.07);color:#10B981;border:1px solid rgba(16,185,129,0.25);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ Canonical</span>}
+          {!crawl.hasCanonical && <span style="font-size:0.75rem;background:#1118277ed;color:#F59E0B;border:1px solid rgba(245,158,11,0.3);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">⚠️ No canonical</span>}
+          {crawl.hasSitemap && <span style="font-size:0.75rem;background:rgba(16,185,129,0.07);color:#10B981;border:1px solid rgba(16,185,129,0.25);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ Sitemap</span>}
+          {!crawl.hasSitemap && <span style="font-size:0.75rem;background:#1118277ed;color:#F59E0B;border:1px solid rgba(245,158,11,0.3);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">⚠️ No sitemap</span>}
+          {crawl.hasRobots && <span style="font-size:0.75rem;background:rgba(16,185,129,0.07);color:#10B981;border:1px solid rgba(16,185,129,0.25);border-radius:9999px;padding:0.2rem 0.625rem;font-weight:500;">✅ robots.txt</span>}
+        </div>
+      )}
+
+      <!-- Online Reputation -->
+      {rep && (
+        <div class="sub-section">
+          <h3>⭐ Online reputation</h3>
+          <div style={`background:${rep.reputationLevel === 'strong' ? 'rgba(16,185,129,0.07)' : rep.reputationLevel === 'moderate' ? 'rgba(245,158,11,0.07)' : 'rgba(239,68,68,0.07)'};border-left:3px solid ${rep.reputationLevel === 'strong' ? '#10B981' : rep.reputationLevel === 'moderate' ? '#F59E0B' : '#EF4444'};border:1px solid ${rep.reputationLevel === 'strong' ? 'rgba(16,185,129,0.25)' : rep.reputationLevel === 'moderate' ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'};border-radius:0.625rem;padding:1rem 1.25rem;margin-bottom:0.875rem;`}>
+            <p style={`font-weight:700;margin:0 0 0.3rem;font-size:0.9rem;color:${rep.reputationLevel === 'strong' ? '#10B981' : rep.reputationLevel === 'moderate' ? '#F59E0B' : '#EF4444'}`}>
+              {rep.reputationLevel === 'strong' &&
+                `✅ Strong reputation — ${rep.combinedRating}/5 average across ${rep.totalReviews} verified reviews.`}
+              {rep.reputationLevel === 'moderate' &&
+                `⚠️ Moderate reputation — ${rep.combinedRating}/5 with ${rep.totalReviews} reviews.`}
+              {rep.reputationLevel === 'weak' && rep.combinedRating != null && rep.combinedRating < 3.5 &&
+                `🔴 Below-average reputation — ${rep.combinedRating}/5.`}
+              {rep.reputationLevel === 'weak' && (rep.combinedRating == null || rep.combinedRating >= 3.5) &&
+                `🔴 Insufficient review presence — only ${rep.totalReviews} reviews found.`}
+            </p>
+            <p style={`font-size:0.85rem;margin:0;line-height:1.6;color:${rep.reputationLevel === 'strong' ? '#6EE7B7' : rep.reputationLevel === 'moderate' ? '#FCD34D' : '#FCA5A5'}`}>
+              {rep.reputationLevel === 'strong' &&
+                'Social proof is working in your favour.'}
+              {rep.reputationLevel === 'moderate' &&
+                'Companies with more than 50 reviews receive up to 3× more enquiries. There is significant room to improve.'}
+              {rep.reputationLevel === 'weak' && rep.combinedRating != null && rep.combinedRating < 3.5 &&
+                'Negative reviews without responses reduce conversion by up to 40%. This is an urgent management priority.'}
+              {rep.reputationLevel === 'weak' && (rep.combinedRating == null || rep.combinedRating >= 3.5) &&
+                'Without visible social proof, visitors have no evidence that others have trusted you. Missing reviews are a silent conversion barrier.'}
+            </p>
+          </div>
+          {(rep.gbpFound || rep.trustpilotFound) && (
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+              {rep.gbpFound && rep.gbpRating != null && (
+                <div style="background:#111827;border:1px solid #1F2937;border-radius:0.5rem;padding:0.625rem 0.875rem;display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;font-weight:600;color:#9CA3AF;">Google</span>
+                  <span style="font-size:1rem;font-weight:700;color:#F59E0B;">{'★'.repeat(Math.round(rep.gbpRating))}</span>
+                  <span style="font-size:0.85rem;font-weight:700;color:#F9FAFB;">{rep.gbpRating}/5</span>
+                  {rep.gbpReviews != null && <span style="font-size:0.75rem;color:#6B7280;">({fmt(rep.gbpReviews)} reviews)</span>}
+                </div>
+              )}
+              {rep.trustpilotFound && rep.trustpilotRating != null && (
+                <div style="background:#111827;border:1px solid #1F2937;border-radius:0.5rem;padding:0.625rem 0.875rem;display:flex;align-items:center;gap:0.5rem;">
+                  <span style="font-size:0.8rem;font-weight:600;color:#9CA3AF;">Trustpilot</span>
+                  <span style="font-size:1rem;font-weight:700;color:#10B981;">★</span>
+                  <span style="font-size:0.85rem;font-weight:700;color:#F9FAFB;">{rep.trustpilotRating}/5</span>
+                  {rep.trustpilotReviews != null && <span style="font-size:0.75rem;color:#6B7280;">({fmt(rep.trustpilotReviews)} reviews)</span>}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <!-- Schema Markup -->
+      <div class="sub-section">
+        <h3>🔖 Structured Data (Schema Markup)</h3>
+        <div class="diag-text">{diagSchema}</div>
+        {schemaTypes.length > 0 && (
+          <div style="margin-bottom:0.75rem;">
+            <p style="font-size:0.75rem;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Detected ({schemaTypes.length})</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.375rem;">
+              {schemaTypes.map((t: string) => (
+                <span style="font-size:0.7rem;background:rgba(16,185,129,0.07);color:#10B981;border:1px solid rgba(16,185,129,0.25);border-radius:0.375rem;padding:0.125rem 0.5rem;font-weight:500;">{t}</span>
+              ))}
             </div>
           </div>
         )}
-      </section>
-    )}
-
-    <!-- ── 5. PERFORMANCE & CORE WEB VITALS ── -->
-    {ps && ps.mobile && (
-      <section id="performance" class="mb-12">
-        <h2 class="text-2xl font-bold text-primary mb-6">Performance & Core Web Vitals</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <!-- Mobile -->
-          <div class="bg-white p-8 rounded-2xl flex items-center gap-8 shadow-sm">
-            <div class="relative flex-shrink-0" style="width:8rem;height:8rem;">
-              <svg style="width:100%;height:100%;transform:rotate(-90deg);" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#edf4ff" stroke-width="2.5"/>
-                <circle cx="18" cy="18" r="15.9" fill="none"
-                  stroke={ps.mobile.performance >= 90 ? '#10B981' : ps.mobile.performance >= 50 ? '#F59E0B' : '#EF4444'}
-                  stroke-width="2.5" stroke-linecap="round"
-                  stroke-dasharray={ps.mobile.performance + ", 100"} />
-              </svg>
-              <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="text-3xl font-extrabold text-primary font-mono">{ps.mobile.performance}</span>
-                <span class="text-[8px] font-bold uppercase text-secondary">Mobile</span>
-              </div>
-            </div>
-            <div class="flex-grow space-y-3">
-              {ps.mobile.lcp != null && (
-                <div class="flex justify-between items-center text-sm">
-                  <span class="text-secondary font-medium">LCP (Load)</span>
-                  <span class={"font-bold font-mono " + cwvColor('lcp', ps.mobile.lcp)}>{(ps.mobile.lcp/1000).toFixed(1)}s</span>
-                </div>
-              )}
-              {ps.mobile.cls != null && (
-                <div class="flex justify-between items-center text-sm">
-                  <span class="text-secondary font-medium">CLS (Stability)</span>
-                  <span class={"font-bold font-mono " + cwvColor('cls', ps.mobile.cls)}>{ps.mobile.cls.toFixed(2)}</span>
-                </div>
-              )}
-              {ps.mobile.fcp != null && (
-                <div class="flex justify-between items-center text-sm">
-                  <span class="text-secondary font-medium">FCP</span>
-                  <span class={"font-bold font-mono " + cwvColor('fcp', ps.mobile.fcp)}>{(ps.mobile.fcp/1000).toFixed(1)}s</span>
-                </div>
-              )}
-              {ps.mobile.ttfb != null && (
-                <div class="flex justify-between items-center text-sm">
-                  <span class="text-secondary font-medium">TTFB</span>
-                  <span class={"font-bold font-mono " + cwvColor('ttfb', ps.mobile.ttfb)}>{ps.mobile.ttfb}ms</span>
-                </div>
-              )}
+        {missingSchemas.length > 0 && (
+          <div>
+            <p style="font-size:0.75rem;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Recommended for your business type — not found</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.375rem;">
+              {missingSchemas.map((t: string) => (
+                <span style="font-size:0.7rem;background:#1118277ed;color:#F59E0B;border:1px solid rgba(245,158,11,0.3);border-radius:0.375rem;padding:0.125rem 0.5rem;font-weight:500;">✗ {t}</span>
+              ))}
             </div>
           </div>
-          <!-- Desktop -->
-          {ps.desktop?.performance != null ? (
-            <div class="bg-white p-8 rounded-2xl flex items-center gap-8 shadow-sm">
-              <div class="relative flex-shrink-0" style="width:8rem;height:8rem;">
-                <svg style="width:100%;height:100%;transform:rotate(-90deg);" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#edf4ff" stroke-width="2.5"/>
+        )}
+      </div>
+
+      {ts && (
+        <div class="sub-section">
+          <h3>🛠️ Tools detected in public code</h3>
+
+          {(ts.maturityScore ?? 0) > 0 ? (
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.875rem;">
+              <div style="position:relative;width:64px;height:64px;flex-shrink:0;">
+                <svg width="64" height="64" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1F2937" stroke-width="3"/>
                   <circle cx="18" cy="18" r="15.9" fill="none"
-                    stroke={ps.desktop.performance >= 90 ? '#10B981' : ps.desktop.performance >= 50 ? '#F59E0B' : '#EF4444'}
-                    stroke-width="2.5" stroke-linecap="round"
-                    stroke-dasharray={ps.desktop.performance + ", 100"} />
+                    stroke={scoreColor(ts.maturityScore ?? 0)}
+                    stroke-width="3" stroke-linecap="round"
+                    stroke-dasharray={`${ts.maturityScore ?? 0}, 100`} />
                 </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <span class="text-3xl font-extrabold text-primary font-mono">{ps.desktop.performance}</span>
-                  <span class="text-[8px] font-bold uppercase text-secondary">Desktop</span>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                  <span style={`font-size:0.85rem;font-weight:800;color:${scoreColor(ts.maturityScore ?? 0)}`}>{ts.maturityScore ?? 0}</span>
                 </div>
               </div>
-              <div class="flex-grow space-y-3">
-                {ps.desktop.lcp != null && (
-                  <div class="flex justify-between items-center text-sm">
-                    <span class="text-secondary font-medium">LCP (Load)</span>
-                    <span class={"font-bold font-mono " + cwvColor('lcp', ps.desktop.lcp)}>{(ps.desktop.lcp/1000).toFixed(1)}s</span>
-                  </div>
-                )}
-                {ps.desktop.cls != null && (
-                  <div class="flex justify-between items-center text-sm">
-                    <span class="text-secondary font-medium">CLS (Stability)</span>
-                    <span class={"font-bold font-mono " + cwvColor('cls', ps.desktop.cls)}>{ps.desktop.cls.toFixed(2)}</span>
-                  </div>
-                )}
-                {ps.desktop.fcp != null && (
-                  <div class="flex justify-between items-center text-sm">
-                    <span class="text-secondary font-medium">FCP</span>
-                    <span class={"font-bold font-mono " + cwvColor('fcp', ps.desktop.fcp)}>{(ps.desktop.fcp/1000).toFixed(1)}s</span>
-                  </div>
-                )}
-                {ps.desktop.ttfb != null && (
-                  <div class="flex justify-between items-center text-sm">
-                    <span class="text-secondary font-medium">TTFB</span>
-                    <span class={"font-bold font-mono " + cwvColor('ttfb', ps.desktop.ttfb)}>{ps.desktop.ttfb}ms</span>
-                  </div>
-                )}
+              <div>
+                <p style="font-weight:700;color:#F9FAFB;margin:0;font-size:0.95rem;">{(ts.maturityScore ?? 0) >= 70 ? 'Mature stack' : (ts.maturityScore ?? 0) >= 40 ? 'Basic setup' : 'Significant gaps'} — {ts.maturityScore ?? 0}/100</p>
+                {ts.cms && <p style="font-size:0.8rem;color:#6B7280;margin:0.25rem 0 0;">CMS detected: <strong>{ts.cms}</strong></p>}
               </div>
             </div>
-          ) : cv ? (
-            <div class="bg-white p-8 rounded-2xl shadow-sm">
-              <h3 class="text-lg font-bold text-primary mb-5 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px]">ads_click</span>
-                Conversion Capability — {cv.funnelScore ?? 0}/100
-              </h3>
-              <div class="space-y-2">
-                {cv && [
-                  { label: 'Contact form', ok: cv.hasContactForm },
-                  { label: 'Clear CTAs', ok: cv.hasCTA },
-                  { label: 'Lead magnet', ok: cv.hasLeadMagnet },
-                  { label: 'Testimonials / social proof', ok: cv.hasTestimonials },
-                  { label: 'Visible pricing', ok: cv.hasPricing },
-                  { label: 'Video content', ok: cv.hasVideo },
-                  { label: 'Live chat', ok: cv.hasChatWidget },
-                ].map((item) => (
-                  <div class="flex items-center gap-3 py-1 border-b border-slate-50">
-                    <span class={"w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 " + (item.ok ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500')}>
-                      {item.ok ? '✓' : '✗'}
-                    </span>
-                    <span class={"text-sm " + (item.ok ? 'text-on-surface' : 'text-secondary')}>{item.label}</span>
+          ) : (
+            <div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.25);border-radius:0.5rem;padding:0.75rem 1rem;margin-bottom:0.875rem;">
+              {ts.cms && <p style="font-size:0.8rem;font-weight:600;color:#60A5FA;margin:0 0 0.25rem;">CMS detected: {ts.cms}</p>}
+              <p style="font-size:0.875rem;color:#60A5FA;margin:0;line-height:1.6;">
+                No marketing tools were detected in the public HTML. This is common in corporate sites where tools are loaded dynamically (GTM, async JavaScript) or server-side. The analysis below reflects what is visible in the source code.
+              </p>
+            </div>
+          )}
+
+          <p style="font-size:0.75rem;color:#6B7280;background:#111827;border:1px solid #1F2937;border-radius:0.375rem;padding:0.5rem 0.75rem;margin-bottom:0.875rem;line-height:1.5;">
+            ℹ️ Analysis based on public HTML code. Tools loaded dynamically (GTM, async JS) or configured server-side may not appear here.
+          </p>
+
+          {stackItems.filter((s: any) => s.tools?.length > 0).length > 0 && (
+            <div style="margin-bottom:0.875rem;">
+              <p style="font-size:0.775rem;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">✅ What you have</p>
+              <div style="display:flex;flex-direction:column;gap:0.375rem;">
+                {stackItems.filter((s: any) => s.tools?.length > 0).map((s: any) => (
+                  <div style="font-size:0.875rem;color:#D1D5DB;">
+                    <span style="font-weight:600;">{s.label}:</span> <span style="color:#6B7280;">{s.tools.join(', ')}</span>
+                    <span style="color:#9CA3AF;font-size:0.8rem;"> — {s.presentNote}</span>
                   </div>
                 ))}
               </div>
             </div>
-          ) : null}
+          )}
+
+          {stackItems.filter((s: any) => !s.tools?.length).length > 0 && (
+            <div>
+              <p style="font-size:0.775rem;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">⚠️ Not detected in public HTML</p>
+              <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                {stackItems.filter((s: any) => !s.tools?.length).map((s: any) => (
+                  <div style="background:#111827beb;border:1px solid rgba(245,158,11,0.3);border-radius:0.375rem;padding:0.5rem 0.75rem;font-size:0.85rem;">
+                    <span style="font-weight:600;color:#FCD34D;">{s.label} not detected in public HTML:</span>
+                    <span style="color:#78350f;"> {s.missingNote}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+      )}
 
-        <!-- Reputation & Schema (if available) -->
-        {(rep || schemaTypes.length > 0) && (
-          <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {rep && (
-              <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-base font-bold text-primary mb-4 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-[18px]">grade</span>
-                  Online Reputation
-                </h3>
-                <div class={"p-4 rounded-xl mb-4 " + (rep.reputationLevel === 'strong' ? 'bg-green-50' : rep.reputationLevel === 'moderate' ? 'bg-amber-50' : 'bg-red-50')}>
-                  <p class={"font-bold text-sm " + (rep.reputationLevel === 'strong' ? 'text-green-700' : rep.reputationLevel === 'moderate' ? 'text-amber-700' : 'text-red-600')}>
-                    {rep.combinedRating != null ? rep.combinedRating + '/5' : '—'} · {rep.totalReviews ?? 0} reviews
-                  </p>
-                </div>
-                <div class="flex gap-3 flex-wrap">
-                  {rep.gbpFound && rep.gbpRating != null && (
-                    <div class="bg-surface-container-low px-3 py-2 rounded-lg text-center">
-                      <p class="text-xs text-secondary font-medium">Google</p>
-                      <p class="text-lg font-bold text-primary font-mono">{rep.gbpRating}/5</p>
-                      {rep.gbpReviews != null && <p class="text-[10px] text-secondary">{fmt(rep.gbpReviews)} reviews</p>}
-                    </div>
-                  )}
-                  {rep.trustpilotFound && rep.trustpilotRating != null && (
-                    <div class="bg-surface-container-low px-3 py-2 rounded-lg text-center">
-                      <p class="text-xs text-secondary font-medium">Trustpilot</p>
-                      <p class="text-lg font-bold text-primary font-mono">{rep.trustpilotRating}/5</p>
-                      {rep.trustpilotReviews != null && <p class="text-[10px] text-secondary">{fmt(rep.trustpilotReviews)} reviews</p>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {schemaTypes.length > 0 && (
-              <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-base font-bold text-primary mb-4 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-[18px]">bookmark</span>
-                  Schema Markup Detected
-                </h3>
-                <div class="flex flex-wrap gap-2 mb-4">
-                  {schemaTypes.map((t: string) => (
-                    <span class="text-[11px] bg-tertiary-fixed/15 text-on-tertiary-fixed-variant px-2 py-1 rounded-full font-semibold">{t}</span>
-                  ))}
-                </div>
-                {missingSchemas.length > 0 && (
-                  <>
-                    <p class="text-xs text-secondary font-semibold uppercase tracking-wider mb-2">Recommended — not found:</p>
-                    <div class="flex flex-wrap gap-2">
-                      {missingSchemas.map((t: string) => (
-                        <span class="text-[11px] bg-error-container text-on-error-container px-2 py-1 rounded-full font-semibold">✗ {t}</span>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+      {cv && (
+        <div class="sub-section">
+          <h3>🎯 Conversion capability</h3>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+            <span style={`font-size:1.5rem;font-weight:800;color:${scoreColor(cv.funnelScore ?? 0)}`}>{cv.funnelScore ?? 0}/100</span>
           </div>
-        )}
-      </section>
-    )}
-
-    <!-- ── 6. STRATEGIC ACTION PLAN ── -->
-    <section id="action-plan" class="bg-primary-container p-10 rounded-3xl text-white mb-12">
-      <div class="max-w-4xl mx-auto">
-        <h2 class="text-3xl font-bold mb-10 text-center">Strategic Action Plan</h2>
-        <div class="grid grid-cols-1 gap-4">
-          {(insights.initiatives?.length > 0 ? insights.initiatives : fallbackInitiatives).map((init: any, i: number) => (
-            <div class="bg-white/5 backdrop-blur hover:bg-white/10 transition-all p-6 rounded-xl border border-white/10 flex items-center justify-between group">
-              <div class="flex items-center gap-6">
-                <div class={"w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg flex-shrink-0 " + (i === 0 ? 'bg-tertiary-fixed text-on-tertiary-fixed' : 'bg-white/20 text-white')}>
-                  {i + 1}
-                </div>
-                <div>
-                  <h4 class="text-lg font-bold">{init.title || 'Improve: ' + init.label}</h4>
-                  <p class="text-sm text-white/60 mt-0.5 max-w-lg">{init.description || init.action}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-4 flex-shrink-0 ml-4">
-                {i === 0
-                  ? <span class="px-3 py-1 rounded-full bg-error-container text-on-error-container text-[10px] font-bold uppercase">High Impact</span>
-                  : i === 1
-                  ? <span class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase">Medium Impact</span>
-                  : <span class="px-3 py-1 rounded-full bg-surface-container-highest text-secondary text-[10px] font-bold uppercase">Maintenance</span>
-                }
-                <span class="material-symbols-outlined text-white/30 group-hover:text-white/70 transition-colors">chevron_right</span>
-              </div>
+          <div class="diag-text">{diagFunnel}</div>
+          {[
+            { label: 'Contact form', ok: cv.hasContactForm },
+            { label: 'Clear CTAs', ok: cv.hasCTA },
+            { label: 'Lead magnet', ok: cv.hasLeadMagnet },
+            { label: 'Testimonials / social proof', ok: cv.hasTestimonials },
+            { label: 'Visible pricing', ok: cv.hasPricing },
+            { label: 'Video content', ok: cv.hasVideo },
+            { label: 'Live chat', ok: cv.hasChatWidget },
+          ].map((c) => (
+            <div class="check-row">
+              <span class={c.ok ? 'check-ok' : 'check-no'}>{c.ok ? '✓' : '✗'}</span>
+              <span style="font-size:0.875rem;">{c.label}</span>
             </div>
           ))}
         </div>
-        <div class="mt-10 text-center">
-          <a href={"mailto:hola@aiongrowth.studio?subject=Action plan — " + domain}
-             class="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-bold hover:scale-105 transition-transform shadow-2xl"
-             style="background:#69ff87;color:#002108;">
-            <span class="material-symbols-outlined">rocket_launch</span>
-            Execute with AION
-          </a>
+      )}
+    </div>
+
+    <!-- Block 5: Action plan -->
+    <div class="section">
+      <h2>What to do, in what order?</h2>
+      <p style="color:#6B7280;font-size:0.875rem;margin:0 0 1.5rem;">Priority initiatives ordered by impact/effort ratio</p>
+      {insights.initiatives?.length > 0
+        ? insights.initiatives.map((init: any, i: number) => (
+            <div class="initiative-card">
+              <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem;">
+                <span class="initiative-num">{i + 1}</span>
+                <h3 style="margin:0;font-size:1rem;">{init.title}</h3>
+              </div>
+              <p style="font-size:0.9rem;color:#D1D5DB;line-height:1.65;margin:0 0 0.875rem;">{init.description}</p>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <span style={`font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:${i === 0 ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'};color:${i === 0 ? '#10B981' : '#F59E0B'};border:1px solid ${i === 0 ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'};`}>
+                  Impact {i === 0 ? '🟢 High' : i === 1 ? '🟡 Medium-high' : '🟡 Medium'}
+                </span>
+                <span style="font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:#1C2333;color:#9CA3AF;border:1px solid #1F2937;">
+                  Timeline {i === 0 ? '1-2 months' : i === 1 ? '2-4 months' : '3-6 months'}
+                </span>
+              </div>
+            </div>
+          ))
+        : fallbackInitiatives.map((item, i) => (
+            <div class="initiative-card">
+              <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem;">
+                <span class="initiative-num">{i + 1}</span>
+                <h3 style="margin:0;font-size:1rem;">Improve: {item.label} ({item.score}/100)</h3>
+              </div>
+              <p style="font-size:0.9rem;color:#D1D5DB;line-height:1.65;margin:0 0 0.875rem;">{item.action}</p>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <span style={`font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:${item.score < 40 ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'};color:${item.score < 40 ? '#EF4444' : '#F59E0B'};border:1px solid ${item.score < 40 ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'};`}>
+                  Impact {item.score < 40 ? '🟢 High' : '🟡 Medium'}
+                </span>
+                <span style="font-size:0.7rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:9999px;background:#1C2333;color:#9CA3AF;border:1px solid #1F2937;">
+                  Timeline {i === 0 ? '1-2 months' : '2-4 months'}
+                </span>
+              </div>
+            </div>
+          ))
+      }
+      {insights.bullets?.length > 0 && (
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #1F2937;">
+          <h3 style="margin-bottom:0.75rem;">Key diagnostic findings</h3>
+          <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.5rem;">
+            {insights.bullets.map((b: string) => (
+              <li style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.9rem;color:#D1D5DB;line-height:1.6;">
+                <span style="color:#3B82F6;font-weight:700;margin-top:0.1rem;flex-shrink:0;">→</span>
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
-    </section>
+      )}
+    </div>
 
-    <!-- ── FOOTER ── -->
-    <footer class="mt-4 py-6 border-t border-slate-100 flex justify-between items-center opacity-50">
-      <div class="flex items-center gap-3">
-        <img src="/logo-aion-dark.png" alt="AION Growth Studio" class="h-5 w-auto" />
-        <p class="text-xs font-medium text-secondary">Report generated {auditDate} · aiongrowth.studio</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <span class="text-xs font-bold text-primary uppercase tracking-wide">Status: Completed</span>
-        <div class="w-2 h-2 rounded-full" style="background:#69ff87;"></div>
-      </div>
-    </footer>
+    <!-- Block 6: Impact Projection -->
+    {hasAnyImpactProjection && (
+      <div class="section">
+        <h2>📈 Your detected growth potential</h2>
+        <p style="color:#6B7280;font-size:0.875rem;margin:0 0 1.5rem;">Based exclusively on the data in this analysis, not on generic estimates.</p>
 
-  </main>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.25rem;">
 
-  <script is:inline>
-    // Scroll-reveal for sections
-    const revealObs = new IntersectionObserver((entries) => {
+          {projTrafficBase > 0 && (
+            <div style="background:#111827;border:1px solid #1F2937;border-top:3px solid #3B82F6;border-radius:0.75rem;padding:1.25rem;">
+              <p style="font-size:0.65rem;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.625rem;">Keywords one step from page one</p>
+              <p style="font-family:'DM Mono',monospace;font-size:1.625rem;font-weight:500;color:#F9FAFB;margin:0 0 0.375rem;line-height:1;">+{fmt(projTrafficMin)}–{fmt(projTrafficMax)}</p>
+              <p style="font-size:0.8rem;color:#9CA3AF;margin:0 0 0.75rem;line-height:1.55;">
+                estimated visits/mo · {fmt(pos4to10)} keywords in positions 4-10
+                {projAdsValue != null && projAdsValue > 0 && <> · ~{fmt(projAdsValue)}€/mo ad equivalent</>}
+              </p>
+              <span style="display:inline-block;background:rgba(59,130,246,0.1);color:#60A5FA;border:1px solid rgba(59,130,246,0.25);border-radius:9999px;font-size:0.65rem;font-weight:600;padding:0.175rem 0.6rem;">60-90 days</span>
+            </div>
+          )}
+
+          {geoMissedQueries > 0 && (
+            <div style="background:#111827;border:1px solid #1F2937;border-top:3px solid #6366F1;border-radius:0.75rem;padding:1.25rem;">
+              <p style="font-size:0.65rem;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.625rem;">Invisible in AI search</p>
+              <p style="font-family:'DM Mono',monospace;font-size:1.625rem;font-weight:500;color:#F9FAFB;margin:0 0 0.375rem;line-height:1;">{geoMissedQueries}/{geoTotalQueries}</p>
+              <p style="font-size:0.8rem;color:#9CA3AF;margin:0 0 0.75rem;line-height:1.55;">
+                queries without your brand in ChatGPT · GEO strategy can close this gap
+              </p>
+              <span style="display:inline-block;background:rgba(99,102,241,0.1);color:#A5B4FC;border:1px solid rgba(99,102,241,0.25);border-radius:9999px;font-size:0.65rem;font-weight:600;padding:0.175rem 0.6rem;">3-6 months</span>
+            </div>
+          )}
+
+          {repTotalReviews > 0 && repTotalReviews < 50 && (
+            <div style="background:#111827;border:1px solid #1F2937;border-top:3px solid #F59E0B;border-radius:0.75rem;padding:1.25rem;">
+              <p style="font-size:0.65rem;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.625rem;">Reputation below trust threshold</p>
+              <p style="font-family:'DM Mono',monospace;font-size:1.625rem;font-weight:500;color:#F9FAFB;margin:0 0 0.375rem;line-height:1;">{repTotalReviews}/50</p>
+              <p style="font-size:0.8rem;color:#9CA3AF;margin:0 0 0.75rem;line-height:1.55;">
+                reviews — top 25% local visibility starts at 50 verified reviews
+              </p>
+              <span style="display:inline-block;background:rgba(245,158,11,0.1);color:#F59E0B;border:1px solid rgba(245,158,11,0.25);border-radius:9999px;font-size:0.65rem;font-weight:600;padding:0.175rem 0.6rem;">Ongoing</span>
+            </div>
+          )}
+
+          {hasTrendLossImpact && seo && (
+            <div style="background:#111827;border:1px solid #1F2937;border-top:3px solid #EF4444;border-radius:0.75rem;padding:1.25rem;">
+              <p style="font-size:0.65rem;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.625rem;">Visibility loss that can be stopped</p>
+              <p style="font-family:'DM Mono',monospace;font-size:1.625rem;font-weight:500;color:#F9FAFB;margin:0 0 0.375rem;line-height:1;">−{fmt(seo.trendLost)}</p>
+              <p style="font-size:0.8rem;color:#9CA3AF;margin:0 0 0.75rem;line-height:1.55;">
+                keywords lost vs {fmt(seo.trendUp)} gained · reversible with technical and content optimisation
+              </p>
+              <span style="display:inline-block;background:rgba(239,68,68,0.1);color:#FCA5A5;border:1px solid rgba(239,68,68,0.25);border-radius:9999px;font-size:0.65rem;font-weight:600;padding:0.175rem 0.6rem;">60 days</span>
+            </div>
+          )}
+        </div>
+
+        <p style="font-size:0.7rem;color:#9CA3AF;line-height:1.5;background:#111827;border:1px solid #1F2937;border-radius:0.375rem;padding:0.625rem 0.875rem;">
+          Projections are estimates based on industry benchmarks and the specific data of this domain. Actual results depend on execution and external factors such as algorithm changes or competitor movements.
+        </p>
+      </div>
+    )}
+
+    <!-- Personalized CTA -->
+    <div class="no-print" style="padding:3.5rem 2.5rem;background:linear-gradient(135deg,#0A0F1E 0%,#1E3A5F 100%);text-align:center;color:#fff;">
+      <p style="font-size:0.7rem;font-weight:600;color:#06B6D4;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 1rem;">Next step</p>
+      {trafficGap > 500 ? (
+        <h2 class="num" style="font-size:clamp(1.5rem,4vw,2.25rem);font-weight:700;margin:0 0 0.75rem;line-height:1.2;">
+          Your competitors get ~{fmt(trafficGap)} more visits/month than you.
+        </h2>
+      ) : (
+        <h2 class="num" style="font-size:clamp(1.5rem,4vw,2.25rem);font-weight:700;margin:0 0 0.75rem;line-height:1.2;">
+          Your business has clear digital growth opportunities.
+        </h2>
+      )}
+      <p style="font-size:1rem;color:rgba(255,255,255,0.75);max-width:480px;margin:0 auto 2rem;line-height:1.6;">
+        We can help you {btObjective} with a concrete action plan. No fluff.
+      </p>
+      <a
+        href="mailto:hola@aiongrowth.studio"
+        style="display:inline-flex;align-items:center;gap:0.5rem;background:#fff;color:#0A0F1E;font-weight:700;font-size:0.95rem;padding:0.875rem 2rem;border-radius:0.75rem;text-decoration:none;"
+      >
+        Talk to AION →
+      </a>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin:1rem 0 0;">No commitment · Response within 24h</p>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:1.5rem 2.5rem;background:#0A0F1E;color:#9CA3AF;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <img src="/logo-aion-dark.png" alt="AION Growth Studio" style="height:32px;filter:brightness(0) invert(1);margin-bottom:0.25rem;display:block;" />
+        <p style="font-size:0.7rem;margin:0;">Report generated {auditDate} · aiongrowth.studio</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:0.75rem;margin:0 0 0.25rem;">hola@aiongrowth.studio</p>
+      </div>
+    </div>
+  </div>
+
+  <script define:vars={{ scoreTotal: health.total }}>
+    // Score counter + ring animation
+    const counter = document.getElementById('score-counter');
+    const ring = document.getElementById('score-ring');
+    if (counter && scoreTotal > 0) {
+      const duration = 1400;
+      const start = performance.now();
+      const animate = (now) => {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(eased * scoreTotal);
+        counter.textContent = current;
+        if (ring) ring.setAttribute('stroke-dasharray', eased * scoreTotal + ', 100');
+        if (progress < 1) requestAnimationFrame(animate);
+      };
+      requestAnimationFrame(animate);
+    }
+
+    // Scroll reveal
+    const revealObserver = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.style.opacity = '1';
-          e.target.style.transform = 'translateY(0)';
-          revealObs.unobserve(e.target);
-        }
+        if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); }
       });
-    }, { threshold: 0.04 });
-    document.querySelectorAll('main > section').forEach((el) => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(20px)';
-      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-      revealObs.observe(el);
-    });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach((el) => revealObserver.observe(el));
 
-    // Bar fill animation on scroll
-    const barObs = new IntersectionObserver((entries) => {
+    // Bar fill animation (uses data-width attribute)
+    const barObserver = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) {
-          e.target.querySelectorAll('[data-width]').forEach((bar) => {
-            bar.style.width = bar.getAttribute('data-width') + '%';
+          e.target.querySelectorAll('.bar-fill').forEach((bar) => {
+            const w = bar.getAttribute('data-width') || '0';
+            bar.style.width = w + '%';
           });
-          barObs.unobserve(e.target);
+          barObserver.unobserve(e.target);
         }
       });
     }, { threshold: 0.2 });
-    document.querySelectorAll('table').forEach((t) => barObs.observe(t));
+    document.querySelectorAll('table').forEach((t) => barObserver.observe(t));
   </script>
-
 </body>
 </html>
