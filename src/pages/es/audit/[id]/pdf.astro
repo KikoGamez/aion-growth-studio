@@ -1,0 +1,908 @@
+---
+export const prerender = false;
+import { getAuditPage } from '../../../../lib/audit/notion';
+import { computeHealthScore, scoreColor, scoreLabel } from '../../../../lib/audit/report/health-score';
+
+const { id } = Astro.params;
+let audit: any = null;
+let error = '';
+try { audit = await getAuditPage(id!); } catch (e: any) { error = e.message || 'Error.'; }
+if (!audit || audit.status !== 'completed') { return Astro.redirect(`/es/audit/${id}`); }
+
+const r = audit.results;
+const domain = new URL(audit.url).hostname.replace(/^www\./, '');
+const auditDate = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+const health = computeHealthScore(r);
+
+// Data shortcuts
+const crawl = r.crawl || {};
+const seo = (!r.seo?.skipped && r.seo) ? r.seo : null;
+const geo = (!r.geo?.skipped && r.geo) ? r.geo : null;
+const traffic = (!r.traffic?.skipped && r.traffic) ? r.traffic : null;
+const ps = (!r.pagespeed?.skipped && r.pagespeed) ? r.pagespeed : null;
+const gbp = (!r.gbp?.skipped && r.gbp?.found) ? r.gbp : null;
+const ssl = (!r.ssl?.skipped && r.ssl) ? r.ssl : null;
+const ctItemsRaw: any[] = r.competitor_traffic?.items || [];
+const ctItems: any[] = ctItemsRaw.filter((c: any) => !c.apiError && (c.organicTrafficEstimate != null || c.keywordsTop10 != null));
+const hasCompetitorData = ctItems.length > 0;
+const kg = (!r.keyword_gap?.skipped && r.keyword_gap?.items?.length) ? r.keyword_gap : null;
+const ts = (!r.techstack?.skipped && r.techstack) ? r.techstack : null;
+const cv = (!r.conversion?.skipped && r.conversion) ? r.conversion : null;
+const metaAds = (!r.meta_ads?.skipped && r.meta_ads) ? r.meta_ads : null;
+const qa = r.qa || null;
+const qaSuppressed: string[] = qa?.suppressedSections || [];
+const insights = r.insights || {};
+const linkedin = (!r.linkedin?.skipped && r.linkedin?.found) ? r.linkedin : null;
+const instagram = (!r.instagram?.skipped && r.instagram?.found) ? r.instagram : null;
+const sector = r.sector?.sector || audit.sector || '';
+const businessType: string = crawl.businessType || 'unknown';
+const compPS = (r.competitor_pagespeed && !r.competitor_pagespeed?.skipped) ? r.competitor_pagespeed : null;
+const kwGap = kg;
+
+// Helpers
+function fmt(n: number | undefined | null): string {
+  if (n == null) return '—';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return Math.round(n / 1_000) + 'K';
+  return String(n);
+}
+
+type AreaStatus = 'good' | 'medium' | 'bad';
+const ss = (v: number): AreaStatus => v >= 60 ? 'good' : v >= 35 ? 'medium' : 'bad';
+
+function statusStyle(s: AreaStatus): { bg: string; fg: string; label: string } {
+  if (s === 'good') return { bg: '#E1F5EE', fg: '#085041', label: 'Bien' };
+  if (s === 'medium') return { bg: '#FAEEDA', fg: '#633806', label: 'Medio' };
+  return { bg: '#FCEBEB', fg: '#791F1F', label: 'Mal' };
+}
+
+// Semaphore
+const statusByArea: { area: string; status: AreaStatus; summary: string }[] = [
+  { area: 'SEO Orgánico', status: ss(health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visitas/mes` : 'Sin datos SEO' },
+  { area: 'Visibilidad IA', status: ss(geo?.mentionRate ?? 0), summary: geo ? `Mencionado en ${geo.mentionRate ?? 0}% de las consultas` : 'Sin datos GEO' },
+  { area: 'Publicidad', status: (seo?.paidKeywordsTotal ?? 0) > 0 ? 'good' : 'bad', summary: (seo?.paidKeywordsTotal ?? 0) > 0 ? `${fmt(seo?.paidKeywordsTotal)} kw patrocinadas` : 'Sin inversión publicitaria' },
+  { area: 'Benchmark', status: hasCompetitorData ? ss(health.competitividad ?? 0) : 'bad', summary: hasCompetitorData ? `${ctItems.length} competidores con datos` : 'Sin datos de competidores' },
+  { area: 'Web & Velocidad', status: ss(ps?.mobile?.performance ?? 0), summary: ps ? `Score móvil: ${ps.mobile?.performance ?? '—'}/100` : 'Sin datos PageSpeed' },
+  { area: 'Conversión', status: ss(cv?.funnelScore ?? health.conversion ?? 0), summary: cv ? `Funnel score: ${cv.funnelScore ?? '—'}/100` : 'Sin datos' },
+  { area: 'Medición', status: ss(ts?.maturityScore ?? health.measurement ?? 0), summary: ts ? (ts.analytics?.length ? ts.analytics.join(', ') : 'Sin analytics') : 'Sin datos' },
+];
+
+const heroStatus = statusStyle(ss(health.total));
+
+// Tech stack
+const techStackMapped = {
+  analytics: { detected: (ts?.analytics?.length ?? 0) > 0, tool: ts?.analytics?.[0] as string|undefined },
+  tagManager: { detected: (ts?.tagManager?.length ?? 0) > 0, tool: ts?.tagManager?.[0] as string|undefined },
+  metaPixel: { detected: ts?.conversionPixels?.some((p: string) => /meta|facebook|fbq/i.test(p)) ?? false },
+  googleAdsPixel: { detected: ts?.conversionPixels?.some((p: string) => /google.*ads|doubleclick/i.test(p)) ?? false },
+  chat: { detected: (ts?.chatSupport?.length ?? 0) > 0, tool: ts?.chatSupport?.[0] as string|undefined },
+  heatmaps: { detected: (ts?.heatmaps?.length ?? 0) > 0, tool: ts?.heatmaps?.[0] as string|undefined },
+};
+
+// Schema
+const schemaTypes: string[] = crawl.schemaTypes || [];
+const RECOMMENDED_SCHEMAS: Record<string, string[]> = {
+  ecommerce: ['Organization','WebSite','Product','Offer','BreadcrumbList'],
+  saas: ['Organization','WebSite','SoftwareApplication','FAQPage'],
+  b2b: ['Organization','WebSite','Service','FAQPage','BreadcrumbList'],
+  local: ['LocalBusiness','Organization','GeoCoordinates','OpeningHoursSpecification'],
+  media: ['Organization','WebSite','Article','BreadcrumbList'],
+  unknown: ['Organization','WebSite','BreadcrumbList'],
+};
+const recommendedSchemas = RECOMMENDED_SCHEMAS[businessType] || RECOMMENDED_SCHEMAS.unknown;
+const presentLower = schemaTypes.map((t: string) => t.toLowerCase());
+const missingSchemas = recommendedSchemas.filter(s => !presentLower.includes(s.toLowerCase()));
+
+// Keyword data
+const kwGapItems: any[] = kwGap?.items?.slice(0, 8) || [];
+const seoToAiGap: any[] = (seo?.topKeywords || []).slice(0, 5);
+
+// Paid
+const clientPaidKw = seo?.paidKeywordsTotal ?? 0;
+const compPaidItems: any[] = ctItems.filter((c: any) => (c.paidKeywordsTotal ?? 0) > 0);
+
+// Traffic
+const ownETV = seo?.organicTrafficEstimate || 0;
+const avgETV = hasCompetitorData ? ctItems.reduce((s: number, c: any) => s + (c.organicTrafficEstimate || 0), 0) / ctItems.length : 0;
+const trafficGap = hasCompetitorData ? Math.max(0, Math.round(avgETV - ownETV)) : 0;
+
+// Business type labels
+const btLabels: Record<string, string> = { ecommerce: 'E-commerce', saas: 'SaaS / Software', b2b: 'B2B · Leads', local: 'Negocio local', media: 'Media / Contenido' };
+const btLabel = btLabels[businessType] || '';
+const btLabelForSchema = businessType !== 'unknown' ? (btLabels[businessType] || businessType) : null;
+
+// CWV
+function cwvStatus(metric: string, value: number): { color: string; label: string } {
+  const t: Record<string, [number, number]> = { lcp: [2500, 4000], cls: [0.1, 0.25], fcp: [1800, 3000], ttfb: [800, 1800] };
+  const [good, poor] = t[metric] || [50, 90];
+  return value <= good ? { color: '#1D9E75', label: 'Bueno' } : value <= poor ? { color: '#BA7517', label: 'Mejorable' } : { color: '#E24B4A', label: 'Lento' };
+}
+
+// Quick wins / strategic
+const quickWins: string[] = insights?.bullets?.slice(0, 3) || [];
+const strategicActions: any[] = insights?.initiatives?.slice(0, 4) || [];
+interface QuickWin { title: string; problem: string; impact: 'alto' | 'medio'; }
+const fallbackQuickWins: QuickWin[] = [
+  !techStackMapped.analytics.detected ? { title: 'Instalar Google Analytics 4 y Tag Manager', problem: 'Sin medición activa no puedes saber qué funciona.', impact: 'alto' } : null,
+  ps && (ps.mobile?.performance || 0) < 50 ? { title: `Reducir tiempo de carga móvil (ahora ${ps.mobile?.lcp != null ? (ps.mobile.lcp / 1000).toFixed(1) + 's' : 'lento'})`, problem: 'Cada segundo de carga adicional reduce las conversiones entre un 10–20%.', impact: 'alto' } : null,
+  !crawl.hasRobotsTxt ? { title: 'Añadir robots.txt', problem: 'Sin robots.txt Google puede rastrear páginas innecesarias.', impact: 'medio' } : null,
+  !cv?.hasContactForm ? { title: 'Añadir formulario de contacto visible', problem: 'Sin formulario los visitantes no tienen camino para convertirse en leads.', impact: 'alto' } : null,
+  geo && (geo.mentionRate || 0) < 30 ? { title: 'Crear FAQ estructuradas para visibilidad en IA', problem: `Tu marca aparece en solo ${geo.mentionRate ?? 0}% de las consultas en IA.`, impact: 'medio' } : null,
+  missingSchemas.length > 0 ? { title: `Implementar Schema Markup (${missingSchemas.slice(0, 2).join(', ')})`, problem: 'Sin datos estructurados Google no muestra información enriquecida.', impact: 'medio' } : null,
+  seo && (seo.keywordsPos4to10 || 0) > 0 ? { title: `Optimizar ${fmt(seo.keywordsPos4to10)} keywords en posición 4–10`, problem: 'Estas keywords ya tienen tracción. Un artículo actualizado puede llevarlas al top 3.', impact: 'alto' } : null,
+].filter(Boolean) as QuickWin[];
+const displayQuickWins: QuickWin[] = quickWins.length > 0
+  ? quickWins.map((w: string) => ({ title: w, problem: '', impact: 'medio' as const }))
+  : fallbackQuickWins.slice(0, 4);
+const fallbackStrategic = [
+  { title: 'Estrategia de contenido SEO', description: 'Desarrolla un plan de contenido atacando las keywords del gap competitivo para capturar demanda orgánica incremental.' },
+  { title: 'Presencia en IA generativa', description: 'Optimiza tu contenido estructurado para que ChatGPT, Perplexity y Gemini te mencionen en las consultas clave de tu sector.' },
+  { title: 'Optimización del funnel de conversión', description: 'Mejora la tasa de conversión con CTAs más claros, prueba social visible y formulario de captación A/B testeado.' },
+  { title: 'Medición y atribución multicanal', description: 'Implementa GA4 + píxeles de conversión completos para medir el ROI real de cada canal.' },
+];
+const displayStrategic = strategicActions.length > 0 ? strategicActions : fallbackStrategic.slice(0, 4);
+
+// GEO engines
+const crossModel: any[] = geo?.crossModel || [];
+const geoEngines = [...new Set(crossModel.map((e: any) => e.name))];
+const geoEngineNames: string[] = geo?.queries?.[0]?.engines?.map((e: any) => e.name) || geoEngines;
+
+// Competitor all-zero GEO check
+const allCompGeoZero = (geo?.competitorMentions?.length ?? 0) > 0 && geo.competitorMentions.every((cm: any) => (cm.mentionRate ?? 0) === 0);
+
+// SVG builder functions
+function polarXY(cx: number, cy: number, r: number, angleDeg: number): [number, number] {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function buildGauge(score: number, size: 'large' | 'small' = 'large'): string {
+  const s = size === 'large' ? 100 : 72;
+  const cx = s / 2, cy = s / 2, r = size === 'large' ? 36 : 26, sw = size === 'large' ? 8 : 6;
+  const color = score >= 60 ? '#1D9E75' : score >= 35 ? '#BA7517' : '#E24B4A';
+  const startDeg = 135, totalArc = 270;
+  const filledEnd = startDeg + (score / 100) * totalArc;
+  function arc(from: number, to: number): string {
+    const [x1, y1] = polarXY(cx, cy, r, from);
+    const [x2, y2] = polarXY(cx, cy, r, to);
+    const large = (to - from) > 180 ? 1 : 0;
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+  }
+  const fs = size === 'large' ? 22 : 15;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><path d="${arc(startDeg, startDeg + totalArc)}" fill="none" stroke="#E5E7EB" stroke-width="${sw}" stroke-linecap="round"/>${score > 0 ? `<path d="${arc(startDeg, filledEnd)}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"/>` : ''}
+<text x="${cx}" y="${cy + fs * 0.38}" text-anchor="middle" font-size="${fs}" font-weight="600" fill="#1A1A2E" font-family="Inter,sans-serif">${score}</text></svg>`;
+}
+
+function buildRadarChart(labels: string[], datasets: Array<{ label: string; color: string; values: number[] }>): string {
+  const cx = 110, cy = 110, size = 220, maxR = 76, n = labels.length;
+  function pt(value: number, i: number): [number, number] {
+    return polarXY(cx, cy, (value / 100) * maxR, (i / n) * 360);
+  }
+  let gridSvg = '';
+  for (const level of [20, 40, 60, 80, 100]) {
+    const pts = Array.from({ length: n }, (_, i) => { const [x, y] = polarXY(cx, cy, (level / 100) * maxR, (i / n) * 360); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(' ');
+    gridSvg += `<polygon points="${pts}" fill="none" stroke="#E5E7EB" stroke-width="0.8"/>`;
+  }
+  let axesSvg = '';
+  for (let i = 0; i < n; i++) {
+    const [x, y] = polarXY(cx, cy, maxR, (i / n) * 360);
+    axesSvg += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#E5E7EB" stroke-width="0.8"/>`;
+  }
+  let labelSvg = '';
+  for (let i = 0; i < n; i++) {
+    const [x, y] = polarXY(cx, cy, maxR + 16, (i / n) * 360);
+    labelSvg += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="#5A6478" font-family="Inter,sans-serif">${labels[i]}</text>`;
+  }
+  let dataSvg = '';
+  for (const ds of datasets) {
+    const pts = ds.values.map((v, i) => { const [x, y] = pt(Math.min(v, 100), i); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(' ');
+    dataSvg += `<polygon points="${pts}" fill="${ds.color}22" stroke="${ds.color}" stroke-width="1.5" opacity="0.9"/>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${gridSvg}${axesSvg}${labelSvg}${dataSvg}</svg>`;
+}
+
+// Radar data
+const maxKW = Math.max(seo?.keywordsTop10 || 0, ...ctItems.map((c: any) => c.keywordsTop10 || 0), 1);
+const maxFollowers = Math.max(linkedin?.followers || 0, instagram?.followers || 0, ...(linkedin?.competitors || []).map((c: any) => c.followers || 0), ...(instagram?.competitors || []).map((c: any) => c.followers || 0), 1);
+const radarColors = ['#1A4B8C', '#D85A30', '#888780'];
+const radarDatasets = [
+  {
+    label: domain, color: radarColors[0], values: [
+      Math.round(((seo?.keywordsTop10 || 0) / maxKW) * 100),
+      geo?.mentionRate ?? 0,
+      (seo?.paidKeywordsTotal || 0) > 0 ? 80 : 20,
+      Math.round((Math.max(linkedin?.followers || 0, instagram?.followers || 0) / maxFollowers) * 100),
+      ps?.mobile?.performance ?? 0,
+    ]
+  },
+  ...ctItems.slice(0, 2).map((ct: any, idx: number) => ({
+    label: ct.name || ct.domain,
+    color: radarColors[idx + 1],
+    values: [
+      Math.round(((ct.keywordsTop10 || 0) / maxKW) * 100),
+      geo?.competitorMentions?.[idx]?.mentionRate ?? 0,
+      (ct.paidKeywordsTotal || 0) > 0 ? 80 : 20,
+      Math.round((Math.max((linkedin?.competitors || [])[idx]?.followers || 0, (instagram?.competitors || [])[idx]?.followers || 0) / maxFollowers) * 100),
+      compPS?.items?.[idx]?.mobileScore ?? 0,
+    ],
+  })),
+];
+const radarSvg = buildRadarChart(['SEO', 'GEO/IA', 'Paid', 'Social', 'Web'], radarDatasets);
+
+// Gauge SVGs
+const psGaugeMobile = ps ? buildGauge(ps.mobile?.performance ?? 0, 'small') : '';
+const psGaugeDesktop = ps ? buildGauge(ps.desktop?.performance ?? 0, 'small') : '';
+const scoreSvg = buildGauge(health.total, 'large');
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Informe PDF — {domain}</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',sans-serif;font-size:9pt;color:#1A1A2E;background:#fff;line-height:1.4;}
+    @page{size:A4 portrait;margin:15mm 18mm 12mm 18mm;}
+    .page{min-height:247mm;padding-bottom:8mm;position:relative;}
+    .page-break{page-break-before:always;}
+    .no-break{page-break-inside:avoid;}
+
+    /* Header */
+    .doc-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid #1A4B8C;padding-bottom:5px;margin-bottom:12px;}
+    .doc-header-brand{font-size:10pt;font-weight:700;color:#1A4B8C;letter-spacing:0.04em;}
+    .doc-header-meta{font-size:7.5pt;color:#5A6478;text-align:right;}
+    .doc-footer{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;border-top:0.5px solid #E5E7EB;padding-top:4px;font-size:7pt;color:#9CA3AF;}
+
+    /* Typography */
+    h1{font-size:14pt;font-weight:700;color:#1A1A2E;margin-bottom:4px;}
+    h2{font-size:11pt;font-weight:700;color:#1A1A2E;margin-bottom:4px;margin-top:12px;}
+    h3{font-size:9pt;font-weight:700;color:#1A4B8C;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;}
+    p{font-size:8.5pt;color:#5A6478;line-height:1.5;}
+
+    /* Layout helpers */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+    .flex-row{display:flex;gap:10px;align-items:flex-start;}
+
+    /* Cards */
+    .card{background:#F8F9FB;border-radius:6px;border:0.5px solid #E5E7EB;padding:10px;}
+    .metric-card{background:#fff;border-radius:6px;border:0.5px solid #E5E7EB;padding:8px 10px;}
+    .metric-val{font-size:18pt;font-weight:600;color:#1A4B8C;line-height:1.1;}
+    .metric-lbl{font-size:7.5pt;color:#5A6478;margin-top:2px;}
+
+    /* Status badges */
+    .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:7.5pt;font-weight:600;}
+    .badge-good{background:#E1F5EE;color:#085041;}
+    .badge-medium{background:#FAEEDA;color:#633806;}
+    .badge-bad{background:#FCEBEB;color:#791F1F;}
+    .tag{display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:7.5pt;font-weight:500;}
+
+    /* Tables */
+    table{width:100%;border-collapse:collapse;font-size:8pt;}
+    th{text-align:left;padding:5px 7px;font-size:7pt;text-transform:uppercase;letter-spacing:0.05em;background:#F8F9FB;color:#5A6478;border-bottom:1px solid #E5E7EB;}
+    td{padding:5px 7px;border-bottom:1px solid #F0F0F0;color:#1A1A2E;vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    tr.own-row td{background:#EBF2FF;font-weight:600;color:#1A4B8C;}
+
+    /* Callouts */
+    .callout{padding:8px 10px;border-radius:5px;font-size:7.5pt;line-height:1.5;}
+    .callout-blue{background:#EBF2FF;border-left:2px solid #4A7FD4;color:#1A4B8C;}
+    .callout-green{background:#E1F5EE;border-left:2px solid #1D9E75;color:#1D9E75;}
+    .callout-amber{background:#FAEEDA;border-left:2px solid #BA7517;color:#BA7517;}
+    .callout-red{background:#FCEBEB;border-left:2px solid #E24B4A;color:#E24B4A;}
+
+    /* Section separator */
+    .sep{border:none;border-top:0.5px solid #E5E7EB;margin:8px 0;}
+
+    /* Tech items */
+    .tech-row{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#F8F9FB;border-radius:4px;border:0.5px solid #E5E7EB;font-size:7.5pt;}
+    .tech-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+    /* Checklist items */
+    .check-row{display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:#fff;border-radius:4px;border:0.5px solid #E5E7EB;}
+
+    /* Plan cards */
+    .plan-card{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:#F8F9FB;border-radius:6px;border:0.5px solid #E5E7EB;}
+    .plan-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8pt;font-weight:700;flex-shrink:0;}
+
+    /* Cover elements */
+    .cover-score-row{display:flex;gap:20px;align-items:center;margin-bottom:12px;}
+    .verdict-box{flex:1;}
+    .section-bar{width:3px;height:14px;border-radius:2px;display:inline-block;margin-right:6px;vertical-align:middle;}
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 1 — COVER
+══════════════════════════════════════════════════ -->
+<div class="page no-break">
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-header-brand">AION Growth Studio</div>
+    <div class="doc-header-meta">
+      <div style="font-weight:600;color:#1A1A2E;">{domain}</div>
+      <div>Informe de Presencia Digital · {auditDate}</div>
+    </div>
+  </div>
+
+  <!-- Cover title -->
+  <div style="margin-bottom:14px;">
+    <div style="font-size:7.5pt;font-weight:600;color:#5A6478;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">INFORME DE DIAGNÓSTICO DIGITAL</div>
+    <h1 style="font-size:16pt;">{domain}</h1>
+    {sector && <span class="tag" style="background:#EBF2FF;color:#1A4B8C;margin-right:4px;">{sector}</span>}
+    {btLabel && <span class="tag" style="background:#F3F4F6;color:#5A6478;">{btLabel}</span>}
+  </div>
+
+  <!-- Score + Verdict -->
+  <div class="cover-score-row no-break">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
+      <div set:html={scoreSvg} />
+      <div style="font-size:7pt;font-weight:600;color:#5A6478;text-align:center;">Score de Presencia</div>
+      <span class={`badge badge-${heroStatus.fg === '#085041' ? 'good' : heroStatus.fg === '#633806' ? 'medium' : 'bad'}`}>{heroStatus.label}</span>
+    </div>
+    <div class="verdict-box">
+      <div style="font-size:11pt;font-weight:700;color:#1A1A2E;margin-bottom:4px;line-height:1.3;">{scoreLabel(health.total)} — {domain}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px;">
+        <div class="metric-card"><div class="metric-val" style="font-size:14pt;">{health.visibilidad ?? 0}</div><div class="metric-lbl">Visibilidad</div></div>
+        <div class="metric-card"><div class="metric-val" style="font-size:14pt;">{health.competitividad ?? '—'}</div><div class="metric-lbl">Benchmark</div></div>
+        <div class="metric-card"><div class="metric-val" style="font-size:14pt;">{health.experiencia ?? 0}</div><div class="metric-lbl">Experiencia</div></div>
+        <div class="metric-card"><div class="metric-val" style="font-size:14pt;">{health.total}</div><div class="metric-lbl">Score Global</div></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="sep" />
+
+  <!-- Semaphore table -->
+  <div class="no-break">
+    <h3 style="margin-bottom:8px;">Estado por área</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:120px;">Área</th>
+          <th style="width:70px;">Estado</th>
+          <th>Resumen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {statusByArea.map(area => {
+          const st = statusStyle(area.status);
+          return (
+            <tr>
+              <td style="font-weight:600;">{area.area}</td>
+              <td><span class="badge" style={`background:${st.bg};color:${st.fg};`}>{st.label}</span></td>
+              <td style="font-size:7.5pt;color:#5A6478;">{area.summary}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="sep" style="margin-top:10px;" />
+
+  <!-- Transparency note -->
+  <div style="font-size:7pt;color:#9CA3AF;line-height:1.4;font-style:italic;border-left:2px solid #E5E7EB;padding-left:8px;">
+    Este diagnóstico analiza datos observables públicamente (SEO, velocidad web, Schema Markup, redes sociales). Para datos reales de tráfico y rendimiento de campañas, necesitamos acceso a tus herramientas.
+  </div>
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>AION Growth Studio · Informe confidencial</span>
+    <span>Página 1 de 5</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 2 — SEO ORGÁNICO
+══════════════════════════════════════════════════ -->
+<div class="page page-break">
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-header-brand">AION Growth Studio</div>
+    <div class="doc-header-meta">
+      <div style="font-weight:600;color:#1A1A2E;">{domain}</div>
+      <div>Visibilidad Digital · SEO Orgánico</div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:0;">
+    <span class="section-bar" style="background:#1A4B8C;"></span>
+    SEO Orgánico
+  </h2>
+
+  {seo ? (
+    <div>
+      <div class="grid-4 no-break" style="margin-bottom:10px;">
+        <div class="metric-card"><div class="metric-val">{fmt(seo.keywordsTop10)}</div><div class="metric-lbl">Keywords Top 10</div></div>
+        <div class="metric-card"><div class="metric-val">{fmt(seo.keywordsTop3)}</div><div class="metric-lbl">Keywords Top 3</div></div>
+        <div class="metric-card"><div class="metric-val">{fmt(seo.organicTrafficEstimate)}</div><div class="metric-lbl">Visitas orgán./mes</div></div>
+        <div class="metric-card"><div class="metric-val">{seo.keywordsPos4to10 ?? '—'}</div><div class="metric-lbl">Kw posición 4–10</div></div>
+      </div>
+
+      {(seo.estimatedAdsCost ?? 0) > 0 && (
+        <div class="callout callout-blue no-break" style="margin-bottom:8px;">
+          Tus keywords top 10 equivalen a ~<strong>{fmt(seo.estimatedAdsCost)}€/mes</strong> en Google Ads.
+        </div>
+      )}
+
+      {(seo.topKeywords?.length ?? 0) > 0 && (
+        <div class="no-break" style="margin-bottom:10px;">
+          <h3>Top keywords orgánicas</h3>
+          <table>
+            <thead><tr><th>Keyword</th><th>Posición</th><th>Volumen/mes</th></tr></thead>
+            <tbody>
+              {seo.topKeywords.slice(0, 6).map((kw: any) => (
+                <tr>
+                  <td style="font-weight:500;">{kw.keyword}</td>
+                  <td><span style={`font-weight:600;color:${kw.position <= 3 ? '#1D9E75' : kw.position <= 10 ? '#BA7517' : '#5A6478'};`}>#{kw.position}</span></td>
+                  <td>{fmt(kw.volume)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {kwGapItems.length > 0 && (
+        <div class="no-break" style="margin-bottom:10px;">
+          <h3>Gap de keywords vs competencia</h3>
+          <table>
+            <thead><tr><th>Keyword</th><th>Volumen</th><th>Tu posición</th><th>Competidor</th></tr></thead>
+            <tbody>
+              {kwGapItems.slice(0, 8).map((kw: any) => (
+                <tr>
+                  <td style="font-weight:500;">{kw.keyword}</td>
+                  <td>{fmt(kw.volume)}</td>
+                  <td style="color:#E24B4A;">{kw.clientPosition ? `#${kw.clientPosition}` : 'No posicionado'}</td>
+                  <td style="color:#1D9E75;">{kw.competitorPosition ? `#${kw.competitorPosition}` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {(clientPaidKw > 0 || compPaidItems.length > 0) && (
+        <div class="no-break" style="margin-top:8px;">
+          <hr class="sep" />
+          <h2><span class="section-bar" style="background:#D85A30;"></span>Publicidad</h2>
+          <div class="grid-2" style="margin-bottom:8px;">
+            <div class="metric-card">
+              <div class="metric-val" style={`color:${clientPaidKw > 0 ? '#1D9E75' : '#E24B4A'};font-size:14pt;`}>{fmt(clientPaidKw)}</div>
+              <div class="metric-lbl">Keywords en Google Ads</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val" style={`color:${metaAds?.active ? '#1D9E75' : '#E24B4A'};font-size:14pt;`}>{metaAds ? (metaAds.active ? 'Activa' : 'Inactiva') : '—'}</div>
+              <div class="metric-lbl">Meta Ads</div>
+            </div>
+          </div>
+          {clientPaidKw === 0 && compPaidItems.length > 0 && (
+            <div class="callout callout-red">{compPaidItems.length} competidores invierten en Google Ads y tú no. Están capturando clientes que buscan tus servicios.</div>
+          )}
+          {compPaidItems.length > 0 && (
+            <table style="margin-top:8px;">
+              <thead><tr><th>Competidor</th><th>Kw patrocinadas</th><th>Tráfico paid est.</th></tr></thead>
+              <tbody>
+                {compPaidItems.slice(0, 4).map((c: any) => (
+                  <tr><td style="font-weight:500;">{c.name || c.domain}</td><td>{fmt(c.paidKeywordsTotal)}</td><td>{fmt(c.paidTrafficEstimate)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  ) : (
+    <div class="callout callout-amber">No se han podido obtener datos de SEO orgánico para este dominio.</div>
+  )}
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>AION Growth Studio · Informe confidencial · {domain}</span>
+    <span>Página 2 de 5</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 3 — GEO / IA
+══════════════════════════════════════════════════ -->
+<div class="page page-break">
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-header-brand">AION Growth Studio</div>
+    <div class="doc-header-meta">
+      <div style="font-weight:600;color:#1A1A2E;">{domain}</div>
+      <div>Visibilidad en IA Generativa</div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:0;">
+    <span class="section-bar" style="background:#7c3aed;"></span>
+    Visibilidad en IA
+  </h2>
+
+  {!qaSuppressed.includes('geo_analysis') && geo ? (
+    <div>
+      <div class="grid-2 no-break" style="margin-bottom:10px;">
+        <div class="metric-card">
+          <div class="metric-val" style={`font-size:18pt;color:${geo.mentionRate >= 60 ? '#1D9E75' : geo.mentionRate >= 30 ? '#BA7517' : '#E24B4A'};`}>{geo.mentionRate ?? 0}%</div>
+          <div class="metric-lbl">Tasa de mención en IA</div>
+          <div style="font-size:7pt;color:#5A6478;margin-top:2px;">
+            {geo.mentionRate >= 60 ? 'Buena visibilidad' : geo.mentionRate >= 30 ? 'Visibilidad parcial — mejorable' : 'Baja presencia en IA generativa'}
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="font-size:18pt;">{geoEngines.length > 0 ? geoEngines.length : '—'}</div>
+          <div class="metric-lbl">Motores analizados</div>
+          <div style="font-size:7pt;color:#5A6478;margin-top:2px;">{geoEngines.slice(0, 4).join(', ')}</div>
+        </div>
+      </div>
+
+      {(geo.queries?.length ?? 0) > 0 && (
+        <div class="no-break" style="margin-bottom:10px;">
+          <h3>Consultas analizadas en IA — Matriz por motor</h3>
+          <table style="font-size:7.5pt;">
+            <thead>
+              <tr>
+                <th style="width:50px;">Etapa</th>
+                <th>Consulta</th>
+                {geoEngineNames.slice(0, 4).map((name: string) => (
+                  <th style="text-align:center;width:60px;">{name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {geo.queries.slice(0, 9).map((q: any) => (
+                <tr>
+                  <td>
+                    <span class="tag" style={`background:${q.stage === 'tofu' ? '#EBF2FF' : q.stage === 'mofu' ? '#FAEEDA' : '#E1F5EE'};color:${q.stage === 'tofu' ? '#1A4B8C' : q.stage === 'mofu' ? '#BA7517' : '#1D9E75'};`}>
+                      {q.stage?.toUpperCase() ?? '—'}
+                    </span>
+                  </td>
+                  <td style="font-size:7.5pt;">{q.query}</td>
+                  {geoEngineNames.slice(0, 4).map((name: string) => {
+                    const eng = q.engines?.find((e: any) => e.name === name);
+                    const mentioned = eng?.mentioned ?? false;
+                    return (
+                      <td style="text-align:center;">
+                        <span style={`font-size:8pt;font-weight:700;color:${mentioned ? '#1D9E75' : '#E24B4A'};`}>{mentioned ? '✓' : '✗'}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {seoToAiGap.length > 0 && (
+        <div class="no-break" style="margin-bottom:10px;">
+          <h3>Gap SEO → IA: posicionas en Google pero no en IA</h3>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            {seoToAiGap.map((kw: any) => (
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:4px 0;border-bottom:0.5px solid #F0F0F0;">
+                <span style="font-size:8pt;font-weight:600;color:#1A1A2E;min-width:150px;">{kw.keyword}</span>
+                {(kw.volume ?? 0) > 0 && <span class="tag" style="background:#F3F4F6;color:#5A6478;">{fmt(kw.volume)}/mes</span>}
+                <span class="tag" style="background:#E1F5EE;color:#1D9E75;">Google #{kw.position}</span>
+                <span class="tag" style="background:#FCEBEB;color:#A32D2D;">IA ✗</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(geo.competitorMentions?.length ?? 0) > 0 && !allCompGeoZero && (
+        <div class="no-break" style="margin-bottom:10px;">
+          <h3>Menciones de la competencia en IA</h3>
+          <table>
+            <thead><tr><th>Competidor</th><th>Tasa mención</th><th>vs. Tú ({geo.mentionRate ?? 0}%)</th></tr></thead>
+            <tbody>
+              {geo.competitorMentions.slice(0, 5).map((cm: any) => (
+                <tr>
+                  <td style="font-weight:500;">{cm.name || cm.domain}</td>
+                  <td><span style={`font-weight:600;color:${(cm.mentionRate ?? 0) >= 60 ? '#1D9E75' : (cm.mentionRate ?? 0) >= 30 ? '#BA7517' : '#E24B4A'};`}>{cm.mentionRate ?? 0}%</span></td>
+                  <td style={`font-size:7.5pt;color:${(cm.mentionRate ?? 0) > (geo.mentionRate ?? 0) ? '#E24B4A' : '#1D9E75'};`}>
+                    {(cm.mentionRate ?? 0) > (geo.mentionRate ?? 0) ? `▲ +${(cm.mentionRate ?? 0) - (geo.mentionRate ?? 0)}pp` : (cm.mentionRate ?? 0) < (geo.mentionRate ?? 0) ? `▼ −${(geo.mentionRate ?? 0) - (cm.mentionRate ?? 0)}pp` : '= igual'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {allCompGeoZero && (
+        <div class="callout callout-green no-break">Ninguno de tus competidores aparece en IA. Primera posición disponible.</div>
+      )}
+
+      {(geo.mentionRate ?? 0) < 30 && (
+        <div class="callout callout-amber no-break" style="margin-top:6px;">Crea contenido estructurado con FAQs y casos de uso para mejorar tu visibilidad en ChatGPT y Perplexity.</div>
+      )}
+    </div>
+  ) : (
+    <div class="callout callout-amber">No se han podido obtener datos de visibilidad en IA para este dominio.</div>
+  )}
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>AION Growth Studio · Informe confidencial · {domain}</span>
+    <span>Página 3 de 5</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 4 — BENCHMARK COMPETITIVO
+══════════════════════════════════════════════════ -->
+<div class="page page-break">
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-header-brand">AION Growth Studio</div>
+    <div class="doc-header-meta">
+      <div style="font-weight:600;color:#1A1A2E;">{domain}</div>
+      <div>Benchmark Competitivo</div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:0;">
+    <span class="section-bar" style="background:#1A4B8C;"></span>
+    Benchmark Competitivo
+  </h2>
+
+  {qaSuppressed.includes('competitor_benchmark') ? (
+    <div class="callout callout-amber">No hay suficientes datos de competidores para un benchmark fiable.</div>
+  ) : (
+    <div>
+      <!-- Color legend -->
+      {ctItems.length > 0 && (
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:4px;font-size:8pt;font-weight:600;color:#1A1A2E;">
+            <span style="width:10px;height:10px;border-radius:2px;background:#1A4B8C;display:inline-block;"></span>{domain}
+          </div>
+          {ctItems.slice(0, 2).map((ct: any, idx: number) => (
+            <div style="display:flex;align-items:center;gap:4px;font-size:8pt;color:#5A6478;">
+              <span style={`width:10px;height:10px;border-radius:2px;background:${idx === 0 ? '#D85A30' : '#888780'};display:inline-block;`}></span>{ct.name || ct.domain}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <!-- Comparison table -->
+      {ctItems.length > 0 && (
+        <div class="no-break" style="margin-bottom:12px;">
+          <h3>Datos comparativos</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Dominio</th>
+                <th>Kw Top 10</th>
+                <th>Tráfico orgán.</th>
+                <th>Kw paid</th>
+                <th>Score móvil</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="own-row">
+                <td>{domain}</td>
+                <td>{fmt(seo?.keywordsTop10)}</td>
+                <td>{fmt(seo?.organicTrafficEstimate)}</td>
+                <td>{fmt(clientPaidKw)}</td>
+                <td>{ps?.mobile?.performance ?? '—'}/100</td>
+              </tr>
+              {ctItems.slice(0, 4).map((ct: any) => (
+                <tr>
+                  <td style="font-weight:500;">{ct.name || ct.domain}</td>
+                  <td>{fmt(ct.keywordsTop10)}</td>
+                  <td>{fmt(ct.organicTrafficEstimate)}</td>
+                  <td>{fmt(ct.paidKeywordsTotal)}</td>
+                  <td>{compPS?.items?.find((p: any) => p.domain === ct.domain)?.mobileScore ?? '—'}/100</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <!-- Radar chart + dimensions -->
+      <div class="flex-row no-break">
+        <div style="flex-shrink:0;">
+          <div set:html={radarSvg} />
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          <!-- 5 dimension cards -->
+          {[
+            { label: 'SEO Orgánico', color: '#1A4B8C', st: ss(health.visibilidad ?? 0), desc: seo ? `${fmt(seo.keywordsTop10)} kw top 10, ~${fmt(seo.organicTrafficEstimate)} visitas/mes${hasCompetitorData && ownETV < avgETV ? `. Gap: ${fmt(trafficGap)} visitas/mes.` : ''}` : 'Sin datos SEO.' },
+            { label: 'GEO / IA', color: '#7c3aed', st: ss(geo?.mentionRate ?? 0), desc: geo ? `Tasa mención IA: ${geo.mentionRate ?? 0}%${allCompGeoZero ? ' — Ningún competidor en IA.' : ''}` : 'Sin datos IA.' },
+            { label: 'Publicidad', color: '#D85A30', st: clientPaidKw > 0 ? 'good' as AreaStatus : 'bad' as AreaStatus, desc: clientPaidKw > 0 ? `${fmt(clientPaidKw)} kw de pago activas.` : compPaidItems.length > 0 ? `${compPaidItems.length} competidores invierten en paid y tú no.` : 'Ni tú ni competidores invierten en paid.' },
+            { label: 'Social', color: '#0891b2', st: (linkedin || instagram) ? 'good' as AreaStatus : 'medium' as AreaStatus, desc: linkedin || instagram ? `${linkedin ? `LinkedIn: ${fmt(linkedin.followers)} seg.` : ''}${linkedin && instagram ? ' / ' : ''}${instagram ? `Instagram: ${fmt(instagram.followers)} seg.` : ''}` : 'Sin presencia social detectada.' },
+            { label: 'Web & Velocidad', color: '#1A4B8C', st: ss(ps?.mobile?.performance ?? 0), desc: ps ? `Score móvil: ${ps.mobile?.performance ?? '—'}/100.${(ps.mobile?.performance ?? 0) < 50 ? ' Velocidad crítica.' : ''}` : 'Sin datos PageSpeed.' },
+          ].map(dim => {
+            const stStyle = statusStyle(dim.st);
+            return (
+              <div style={`display:flex;gap:0;border-radius:5px;border:0.5px solid #E5E7EB;overflow:hidden;`}>
+                <div style={`width:4px;background:${stStyle.fg};flex-shrink:0;`}></div>
+                <div style="padding:6px 8px;flex:1;">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                    <span style={`font-size:8pt;font-weight:700;color:${dim.color};`}>{dim.label}</span>
+                    <span class="badge" style={`background:${stStyle.bg};color:${stStyle.fg};font-size:6.5pt;padding:1px 5px;`}>{stStyle.label}</span>
+                  </div>
+                  <p style="font-size:7.5pt;">{dim.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>AION Growth Studio · Informe confidencial · {domain}</span>
+    <span>Página 4 de 5</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 5 — WEB & CONVERSIÓN + PLAN DE ACCIÓN
+══════════════════════════════════════════════════ -->
+<div class="page page-break">
+  <!-- Header -->
+  <div class="doc-header">
+    <div class="doc-header-brand">AION Growth Studio</div>
+    <div class="doc-header-meta">
+      <div style="font-weight:600;color:#1A1A2E;">{domain}</div>
+      <div>Web & Conversión · Plan de Acción</div>
+    </div>
+  </div>
+
+  <!-- PageSpeed -->
+  {ps && (
+    <div class="no-break" style="margin-bottom:10px;">
+      <h2 style="margin-top:0;"><span class="section-bar" style="background:#1A4B8C;"></span>Web & Velocidad</h2>
+      <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:8px;">
+        <div style="display:flex;gap:12px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div set:html={psGaugeMobile} />
+            <div style="font-size:7pt;color:#5A6478;font-weight:600;">Móvil</div>
+            <span class="badge" style={`background:${statusStyle(ss(ps.mobile?.performance ?? 0)).bg};color:${statusStyle(ss(ps.mobile?.performance ?? 0)).fg};font-size:6.5pt;`}>{statusStyle(ss(ps.mobile?.performance ?? 0)).label}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div set:html={psGaugeDesktop} />
+            <div style="font-size:7pt;color:#5A6478;font-weight:600;">Escritorio</div>
+            <span class="badge" style={`background:${statusStyle(ss(ps.desktop?.performance ?? 0)).bg};color:${statusStyle(ss(ps.desktop?.performance ?? 0)).fg};font-size:6.5pt;`}>{statusStyle(ss(ps.desktop?.performance ?? 0)).label}</span>
+          </div>
+        </div>
+        {(ps.mobile?.lcp != null || ps.mobile?.cls != null || ps.mobile?.fcp != null) && (
+          <div style="flex:1;">
+            <div style="font-size:7.5pt;font-weight:600;color:#5A6478;margin-bottom:4px;">Core Web Vitals (Móvil)</div>
+            <div class="grid-3">
+              {ps.mobile?.lcp != null && (() => { const st = cwvStatus('lcp', ps.mobile.lcp); return <div class="metric-card" style={`border-left:2px solid ${st.color};padding:5px 7px;`}><div style={`font-size:11pt;font-weight:600;color:${st.color};`}>{(ps.mobile.lcp / 1000).toFixed(1)}s</div><div style="font-size:6.5pt;color:#5A6478;">LCP</div><div style={`font-size:6.5pt;color:${st.color};`}>{st.label}</div></div>; })()}
+              {ps.mobile?.cls != null && (() => { const st = cwvStatus('cls', ps.mobile.cls); return <div class="metric-card" style={`border-left:2px solid ${st.color};padding:5px 7px;`}><div style={`font-size:11pt;font-weight:600;color:${st.color};`}>{ps.mobile.cls.toFixed(3)}</div><div style="font-size:6.5pt;color:#5A6478;">CLS</div><div style={`font-size:6.5pt;color:${st.color};`}>{st.label}</div></div>; })()}
+              {ps.mobile?.fcp != null && (() => { const st = cwvStatus('fcp', ps.mobile.fcp); return <div class="metric-card" style={`border-left:2px solid ${st.color};padding:5px 7px;`}><div style={`font-size:11pt;font-weight:600;color:${st.color};`}>{(ps.mobile.fcp / 1000).toFixed(1)}s</div><div style="font-size:6.5pt;color:#5A6478;">FCP</div><div style={`font-size:6.5pt;color:${st.color};`}>{st.label}</div></div>; })()}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+
+  <!-- Technical checklist + Tech stack (2 col) -->
+  <div class="grid-2 no-break" style="margin-bottom:10px;gap:10px;">
+    <!-- Checklist -->
+    <div>
+      <h3>Checklist técnico SEO</h3>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        {[
+          { ok: ssl?.valid, yes: '✓ SSL activo', no: '✗ SSL no detectado' },
+          { ok: crawl.hasRobotsTxt, yes: '✓ robots.txt', no: '✗ robots.txt no encontrado' },
+          { ok: crawl.hasSitemap, yes: '✓ Sitemap XML', no: '✗ Sitemap no encontrado' },
+          { ok: crawl.hasCanonical, yes: '✓ Canonical tags', no: '? Canonical no verificadas' },
+          { ok: (ps?.mobile?.performance ?? 0) >= 50, yes: '✓ Mobile friendly', no: '✗ Problemas en móvil' },
+          { ok: !!gbp, yes: '✓ Google Business', no: '— Google Business no detectado' },
+        ].map(item => (
+          <div class="check-row" style={`border-left:2px solid ${item.ok ? '#1D9E75' : '#E24B4A'};`}>
+            <span style={`font-size:7.5pt;font-weight:600;color:${item.ok ? '#1D9E75' : '#E24B4A'};`}>{item.ok ? item.yes : item.no}</span>
+          </div>
+        ))}
+        {schemaTypes.length > 0 && (
+          <div style="margin-top:4px;font-size:7pt;color:#5A6478;">Schema detectados: {schemaTypes.slice(0, 4).join(', ')}</div>
+        )}
+        {missingSchemas.length > 0 && (
+          <div style="font-size:7pt;color:#E24B4A;">Faltantes: {missingSchemas.join(', ')}</div>
+        )}
+      </div>
+    </div>
+    <!-- Tech stack -->
+    <div>
+      <h3>Stack de medición</h3>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        {[
+          { label: 'Analytics', detected: techStackMapped.analytics.detected, tool: techStackMapped.analytics.tool },
+          { label: 'Tag Manager', detected: techStackMapped.tagManager.detected, tool: techStackMapped.tagManager.tool },
+          { label: 'Meta Pixel', detected: techStackMapped.metaPixel.detected, tool: undefined },
+          { label: 'Google Ads Pixel', detected: techStackMapped.googleAdsPixel.detected, tool: undefined },
+          { label: 'Chat / Soporte', detected: techStackMapped.chat.detected, tool: techStackMapped.chat.tool },
+          { label: 'Heatmaps / CRO', detected: techStackMapped.heatmaps.detected, tool: techStackMapped.heatmaps.tool },
+        ].map(item => (
+          <div class="tech-row">
+            <div class="tech-dot" style={`background:${item.detected ? '#1D9E75' : '#E24B4A'};`}></div>
+            <span style="font-weight:600;">{item.label}</span>
+            {item.detected && item.tool && <span style="color:#1D9E75;margin-left:4px;">{item.tool}</span>}
+            {!item.detected && <span style="color:#9CA3AF;margin-left:4px;">No detectado</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <hr class="sep" />
+
+  <!-- Action Plan -->
+  <h2><span class="section-bar" style="background:#1D9E75;"></span>Plan de Acción</h2>
+
+  <div class="grid-2 no-break" style="gap:10px;">
+    <!-- Quick wins -->
+    <div>
+      <h3 style="color:#1D9E75;">Quick Wins — 30 días</h3>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        {displayQuickWins.slice(0, 4).map((win: any, idx: number) => (
+          <div class="plan-card">
+            <div class="plan-num" style="background:#E1F5EE;color:#085041;">{idx + 1}</div>
+            <div style="flex:1;">
+              <div style="font-size:8pt;font-weight:700;color:#1A1A2E;margin-bottom:2px;">{typeof win === 'string' ? win : win.title}</div>
+              {typeof win !== 'string' && win.problem && <div style="font-size:7pt;color:#5A6478;line-height:1.4;">{win.problem}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+    <!-- Strategic -->
+    <div>
+      <h3 style="color:#1A4B8C;">Estratégico — 90 días</h3>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        {displayStrategic.slice(0, 4).map((action: any, idx: number) => (
+          <div class="plan-card">
+            <div class="plan-num" style="background:#EBF2FF;color:#1A4B8C;">{idx + 1}</div>
+            <div style="flex:1;">
+              <div style="font-size:8pt;font-weight:700;color:#1A1A2E;margin-bottom:2px;">{action.title}</div>
+              <div style="font-size:7pt;color:#5A6478;line-height:1.4;">{action.description}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA box -->
+  <div style="border:1px solid #4A7FD4;border-radius:6px;padding:10px 14px;background:#F0F6FF;margin-top:10px;" class="no-break">
+    <div style="font-size:9pt;font-weight:700;color:#1A4B8C;margin-bottom:3px;">¿Quieres que monitorizemos esto cada mes?</div>
+    <p style="font-size:7.5pt;color:#5A6478;">Con <strong style="color:#1A4B8C;">Radar</strong>, recibirás un informe mensual con la evolución de todos estos indicadores, alertas cuando algo cambie, y una llamada de revisión con tu Growth Advisor.</p>
+  </div>
+
+  <!-- Footer -->
+  <div class="doc-footer">
+    <span>AION Growth Studio · Informe confidencial · {domain} · {auditDate}</span>
+    <span>Página 5 de 5</span>
+  </div>
+</div>
+
+<script>
+  document.fonts.ready.then(() => {
+    setTimeout(() => window.print(), 500);
+  });
+</script>
+</body>
+</html>

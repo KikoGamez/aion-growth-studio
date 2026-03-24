@@ -105,30 +105,6 @@ const lang = 'es';
   .btn-ghost:hover { background: rgba(255,255,255,0.05); color: #fff; }
   .btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  /* Step chips */
-  .step-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.3125rem 0.875rem;
-    border-radius: 9999px;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    background: rgba(255,255,255,0.07);
-    color: rgba(255,255,255,0.28);
-    transition: background 0.3s, color 0.3s;
-  }
-  .step-chip.active {
-    background: #00300e;
-    color: #3ce36a;
-  }
-  .step-chip.done {
-    background: rgba(0,48,14,0.5);
-    color: rgba(60,227,106,0.55);
-  }
-
   /* Error box */
   .error-box {
     display: none;
@@ -199,154 +175,74 @@ const lang = 'es';
   <!-- CONTENT AREA -->
   <div style="max-width:64rem;margin:0 auto;padding:1.5rem 2rem 5rem;">
 
-    <!-- STEP CHIPS ROW (persistent) -->
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:3.5rem;">
-      <div class="step-chip active" id="chip-1">
-        <span class="material-symbols-outlined" style="font-size:12px;">language</span>
-        01 — Tu web
-      </div>
-      <div class="step-chip" id="chip-2">
-        <span class="material-symbols-outlined" style="font-size:12px;">person</span>
-        02 — Tus datos
-      </div>
-      <div class="step-chip" id="chip-3">
-        <span class="material-symbols-outlined" style="font-size:12px;">groups</span>
-        03 — Competidores
-      </div>
-    </div>
-
-    <!-- ═══ STEP 1: URL ═══ -->
+    <!-- ═══ STEP 1: URL + Nombre + Email (above the fold) ═══ -->
     <div id="step-1">
 
-      <!-- Hero label (like code.html "Next-Gen Infrastructure" chip) -->
+      <!-- Hero badge -->
       <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.375rem 0.875rem;border-radius:9999px;background:#00300e;color:#3ce36a;font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:2rem;">
         <span class="material-symbols-outlined" style="font-size:14px;color:#3ce36a;">bolt</span>
         Gratis · Sin registro · 2 minutos
       </div>
 
-      <!-- Big headline (like code.html h1) -->
+      <!-- Big headline -->
       <h1 style="font-size:clamp(2.25rem,5vw,3.75rem);font-weight:800;color:#fff;letter-spacing:-0.03em;line-height:1.08;margin:0 0 1.25rem;max-width:36rem;">
         Analiza tu presencia digital.<br/>
         <span style="color:#69ff87;">Conoce tu score<br/>en minutos.</span>
       </h1>
 
-      <!-- Subtitle (like code.html p.text-primary-fixed) -->
-      <p style="font-size:1.0625rem;color:rgba(221,225,255,0.6);line-height:1.75;max-width:36rem;margin:0 0 3rem;font-weight:300;">
+      <!-- Subtitle -->
+      <p style="font-size:1.0625rem;color:rgba(221,225,255,0.6);line-height:1.75;max-width:36rem;margin:0 0 2rem;font-weight:300;">
         Informe completo con puntuación de salud digital, visibilidad en ChatGPT y Perplexity, rendimiento web y oportunidades de crecimiento reales.
       </p>
 
-      <!-- 2×2 Bento benefit cards (like code.html bento grid) -->
-      <div class="benefit-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.875rem;max-width:52rem;margin-bottom:2.75rem;">
+      <!-- ─── Merged form card (URL + name + email + CTA) ─── -->
+      <div class="glass-card" style="max-width:44rem;padding:2rem;">
 
-        <!-- Card 1: Score Digital -->
-        <div class="glass-card" style="padding:1.375rem;">
-          <div style="width:2.5rem;height:2.5rem;background:rgba(105,255,135,0.1);border-radius:0.375rem;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
-            <span class="material-symbols-outlined" style="color:#69ff87;font-size:20px;">analytics</span>
-          </div>
-          <p style="font-size:0.875rem;font-weight:700;color:#fff;margin:0 0 0.25rem;line-height:1.2;">Score Digital</p>
-          <p style="font-size:0.725rem;color:rgba(255,255,255,0.4);margin:0;line-height:1.4;">Puntuación 0–100</p>
+        <!-- URL field -->
+        <div style="margin-bottom:1.25rem;">
+          <label for="url" class="field-label">Tu web *</label>
+          <input type="text" id="url" name="url" required
+            placeholder="tu-empresa.com"
+            class="field-input"
+            inputmode="url" autocomplete="url"
+            style="font-size:1rem;" />
+          <div id="url-feedback-row" style="display:none;font-size:0.75rem;margin-top:0.375rem;"></div>
         </div>
 
-        <!-- Card 2: Visibilidad IA (dark accent like code.html dark card) -->
-        <div class="glass-card-accent" style="padding:1.375rem;">
-          <div style="width:2.5rem;height:2.5rem;background:rgba(105,255,135,0.12);border-radius:0.375rem;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
-            <span class="material-symbols-outlined" style="color:#69ff87;font-size:20px;">smart_toy</span>
+        <!-- Name + Email side by side -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+          <div>
+            <label for="name" class="field-label">Tu nombre *</label>
+            <input type="text" id="name" name="name" required placeholder="García"
+              class="field-input" autocomplete="name" />
           </div>
-          <p style="font-size:0.875rem;font-weight:700;color:#fff;margin:0 0 0.25rem;line-height:1.2;">Visibilidad IA</p>
-          <p style="font-size:0.725rem;color:rgba(105,255,135,0.55);margin:0;line-height:1.4;">ChatGPT · Perplexity</p>
+          <div>
+            <label for="email" class="field-label">Tu email *</label>
+            <input type="email" id="email" name="email" required placeholder="maria@empresa.com"
+              class="field-input" autocomplete="email" />
+          </div>
         </div>
 
-        <!-- Card 3: Rendimiento Web -->
-        <div class="glass-card" style="padding:1.375rem;">
-          <div style="width:2.5rem;height:2.5rem;background:rgba(183,196,255,0.12);border-radius:0.375rem;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
-            <span class="material-symbols-outlined" style="color:#b7c4ff;font-size:20px;">speed</span>
-          </div>
-          <p style="font-size:0.875rem;font-weight:700;color:#fff;margin:0 0 0.25rem;line-height:1.2;">Rendimiento Web</p>
-          <p style="font-size:0.725rem;color:rgba(255,255,255,0.4);margin:0;line-height:1.4;">Core Web Vitals</p>
-        </div>
-
-        <!-- Card 4: Oportunidades -->
-        <div class="glass-card" style="padding:1.375rem;">
-          <div style="width:2.5rem;height:2.5rem;background:rgba(183,196,255,0.12);border-radius:0.375rem;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;">
-            <span class="material-symbols-outlined" style="color:#b7c4ff;font-size:20px;">trending_up</span>
-          </div>
-          <p style="font-size:0.875rem;font-weight:700;color:#fff;margin:0 0 0.25rem;line-height:1.2;">Oportunidades</p>
-          <p style="font-size:0.725rem;color:rgba(255,255,255,0.4);margin:0;line-height:1.4;">Plan de acción</p>
-        </div>
-
-      </div>
-
-      <!-- URL input + CTA (like code.html CTA section) -->
-      <div class="url-input-row" style="display:flex;gap:0.75rem;max-width:44rem;margin-bottom:0.875rem;align-items:stretch;">
-        <input type="text" id="url" name="url" required
-          placeholder="tu-empresa.com"
-          class="field-input"
-          inputmode="url" autocomplete="url"
-          style="flex:1;font-size:1rem;" />
-        <button id="btn-step1" type="button" class="btn-cta" aria-label="Analizar mi web">
+        <!-- CTA button -->
+        <button id="btn-step1" type="button" class="btn-cta btn-cta-full" style="padding:1rem;" aria-label="Analizar mi web">
           Analizar mi web →
         </button>
+
+        <div id="error-step1" class="error-box" style="margin-top:0.875rem;"></div>
+
+        <p style="text-align:center;font-size:0.6875rem;color:rgba(255,255,255,0.2);margin-top:1rem;letter-spacing:0.02em;">
+          🔒 Sin spam · Resultado en 3 minutos · <a href="/es/" style="color:rgba(255,255,255,0.35);text-decoration:underline;">Privacidad</a>
+        </p>
       </div>
-
-      <div id="url-feedback-row" style="display:none;font-size:0.75rem;margin-bottom:0.5rem;max-width:44rem;"></div>
-      <div id="error-step1" class="error-box" style="max-width:44rem;"></div>
-
-      <p style="font-size:0.6875rem;color:rgba(255,255,255,0.2);margin-top:1.25rem;letter-spacing:0.02em;">
-        Al continuar aceptas nuestra <a href="/es/" style="color:rgba(255,255,255,0.35);text-decoration:underline;">política de privacidad</a>
-      </p>
 
     </div><!-- /step-1 -->
 
-    <!-- ═══ STEP 2: Nombre + Email ═══ -->
+    <!-- ═══ STEP 2: Competidores ═══ -->
     <div id="step-2" class="hidden">
 
       <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.375rem 0.875rem;border-radius:9999px;background:#00300e;color:#3ce36a;font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:2rem;">
         <span class="material-symbols-outlined" style="font-size:14px;color:#3ce36a;">check_circle</span>
-        Tu web se está analizando
-      </div>
-
-      <h2 style="font-size:clamp(1.875rem,4vw,3rem);font-weight:800;color:#fff;letter-spacing:-0.03em;line-height:1.1;margin:0 0 1.125rem;max-width:32rem;">
-        Recibe el informe<br/>
-        <span style="color:#69ff87;">completo por email.</span>
-      </h2>
-
-      <p style="font-size:1rem;color:rgba(221,225,255,0.55);line-height:1.75;max-width:32rem;margin:0 0 2.5rem;font-weight:300;">
-        Análisis detallado con recomendaciones personalizadas. Solo necesitamos tu nombre y email de empresa.
-      </p>
-
-      <!-- Glass form card -->
-      <div class="glass-card" style="max-width:36rem;padding:2rem 2rem;">
-        <div style="margin-bottom:1.25rem;">
-          <label for="name" class="field-label">Tu nombre *</label>
-          <input type="text" id="name" name="name" required placeholder="María García"
-            class="field-input" autocomplete="name" />
-        </div>
-        <div style="margin-bottom:1.75rem;">
-          <label for="email" class="field-label">Email de empresa *</label>
-          <input type="email" id="email" name="email" required placeholder="maria@empresa.com"
-            class="field-input" autocomplete="email" />
-          <p id="email-feedback" style="font-size:0.75rem;margin-top:0.375rem;display:none;color:rgba(255,255,255,0.5);"></p>
-        </div>
-
-        <button id="btn-step2" type="button" class="btn-cta btn-cta-full" aria-label="Continuar">
-          Continuar →
-        </button>
-
-        <div id="error-step2" class="error-box"></div>
-
-        <p style="text-align:center;font-size:0.6875rem;color:rgba(255,255,255,0.18);margin-top:1rem;">
-          Al continuar aceptas nuestra <a href="/es/" style="color:rgba(255,255,255,0.32);text-decoration:underline;">política de privacidad</a>
-        </p>
-      </div>
-
-    </div><!-- /step-2 -->
-
-    <!-- ═══ STEP 3: Competidores ═══ -->
-    <div id="step-3" class="hidden">
-
-      <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.375rem 0.875rem;border-radius:9999px;background:#00300e;color:#3ce36a;font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:2rem;">
-        <span class="material-symbols-outlined" style="font-size:14px;color:#3ce36a;">check_circle</span>
-        Datos guardados
+        Datos guardados · Paso 2 de 2
       </div>
 
       <h2 style="font-size:clamp(1.875rem,4vw,3rem);font-weight:800;color:#fff;letter-spacing:-0.03em;line-height:1.1;margin:0 0 1rem;max-width:32rem;">
@@ -387,9 +283,9 @@ const lang = 'es';
         </button>
       </div>
 
-      <div id="error-step3" class="error-box" style="max-width:44rem;margin-top:1rem;"></div>
+      <div id="error-step2" class="error-box" style="max-width:44rem;margin-top:1rem;"></div>
 
-    </div><!-- /step-3 -->
+    </div><!-- /step-2 -->
 
   </div><!-- /content -->
 </div><!-- /page shell -->
@@ -399,7 +295,6 @@ const lang = 'es';
 <script>
   // State
   let userData: { url: string; name: string; email: string } = { url: '', name: '', email: '' };
-  let competitorsPromise: Promise<any> | null = null;
   let competitorsResult: any = null;
   let selectedCompetitors: string[] = [];
   let manualCompetitors: string[] = [];
@@ -435,19 +330,8 @@ const lang = 'es';
   });
 
   // UI helpers
-  function updateStepNav(current: number) {
-    [1, 2, 3].forEach(n => {
-      const chip = document.getElementById(`chip-${n}`);
-      if (!chip) return;
-      chip.classList.remove('active', 'done');
-      if (n === current) chip.classList.add('active');
-      else if (n < current) chip.classList.add('done');
-    });
-  }
-
   function showStep(n: number) {
-    updateStepNav(n);
-    [1, 2, 3].forEach(i => {
+    [1, 2].forEach(i => {
       const el = document.getElementById(`step-${i}`);
       if (el) el.classList.toggle('hidden', i !== n);
     });
@@ -469,7 +353,7 @@ const lang = 'es';
     if (btn) { btn.textContent = text; btn.disabled = disabled; }
   }
 
-  // URL validation
+  // URL feedback
   const urlInput = document.getElementById('url') as HTMLInputElement;
   if (urlInput) {
     urlInput.addEventListener('input', () => {
@@ -479,40 +363,31 @@ const lang = 'es';
         const isValid = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value.replace(/^https?:\/\//, '').replace(/\/$/, ''));
         if (feedbackRow) {
           feedbackRow.style.display = 'block';
-          if (isValid) {
-            feedbackRow.textContent = '✓ URL válida';
-            feedbackRow.style.color = '#3ce36a';
-          } else {
-            feedbackRow.textContent = 'Formato incorrecto (ej: ejemplo.com)';
-            feedbackRow.style.color = '#fca5a5';
-          }
+          feedbackRow.textContent = isValid ? '✓ URL válida' : 'Formato incorrecto (ej: ejemplo.com)';
+          feedbackRow.style.color = isValid ? '#3ce36a' : '#fca5a5';
         }
       } else {
+        const feedbackRow = document.getElementById('url-feedback-row') as HTMLElement;
         if (feedbackRow) feedbackRow.style.display = 'none';
       }
     });
   }
 
-  // STEP 1
+  // STEP 1: Validate URL + name + email → fetch competitors → show step 2
   document.getElementById('btn-step1')?.addEventListener('click', async () => {
     hideError('error-step1');
     const url = (document.getElementById('url') as HTMLInputElement).value.trim();
-    if (!url) return showError('error-step1', 'Introduce la URL de tu web.');
-    const isValid = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(url.replace(/^https?:\/\//, '').replace(/\/$/, ''));
-    if (!isValid) return showError('error-step1', 'Introduce una URL válida (ej: ejemplo.com).');
-    userData = { ...userData, url };
-    showStep(2);
-  });
-
-  // STEP 2
-  document.getElementById('btn-step2')?.addEventListener('click', async () => {
-    hideError('error-step2');
     const name = (document.getElementById('name') as HTMLInputElement).value.trim();
     const email = (document.getElementById('email') as HTMLInputElement).value.trim();
-    if (!name) return showError('error-step2', 'Introduce tu nombre.');
-    if (!email || !email.includes('@')) return showError('error-step2', 'Introduce un email válido.');
-    userData = { ...userData, name, email };
-    setBtn('btn-step2', 'Buscando competidores…', true);
+
+    if (!url) return showError('error-step1', 'Introduce la URL de tu web.');
+    const isValidUrl = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(url.replace(/^https?:\/\//, '').replace(/\/$/, ''));
+    if (!isValidUrl) return showError('error-step1', 'Introduce una URL válida (ej: ejemplo.com).');
+    if (!name) return showError('error-step1', 'Introduce tu nombre.');
+    if (!email || !email.includes('@')) return showError('error-step1', 'Introduce un email válido.');
+
+    userData = { url, name, email };
+    setBtn('btn-step1', 'Buscando competidores…', true);
 
     const listEl = document.getElementById('competitor-list');
     if (listEl) {
@@ -548,20 +423,19 @@ const lang = 'es';
       }, 2400);
     }
 
-    competitorsResult = null;
-    competitorsPromise = fetch('/api/audit/find-competitors', {
+    fetch('/api/audit/find-competitors', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: userData.url }),
     })
       .then(r => r.json())
-      .then(data => { competitorsResult = data; renderStep3(); return data; })
-      .catch(() => { competitorsResult = { competitors: [] }; renderStep3(); });
+      .then(data => { competitorsResult = data; renderCompetitors(); })
+      .catch(() => { competitorsResult = { competitors: [] }; renderCompetitors(); });
 
-    showStep(3);
+    showStep(2);
   });
 
-  function renderStep3() {
+  function renderCompetitors() {
     const competitors = competitorsResult?.competitors || [];
     const listEl = document.getElementById('competitor-list');
     selectedCompetitors = [];
@@ -604,9 +478,9 @@ const lang = 'es';
     }
   };
 
-  // STEP 3: Start audit
+  // STEP 2: Start audit
   async function startAudit(withCompetitors: boolean) {
-    hideError('error-step3');
+    hideError('error-step2');
     setBtn('btn-start-audit', 'Iniciando…', true);
     setBtn('btn-skip-step3', '…', true);
     const allCompetitors = withCompetitors ? [...selectedCompetitors, ...manualCompetitors] : [];
@@ -620,12 +494,12 @@ const lang = 'es';
       if (res.ok && result.audit_id) {
         window.location.href = `/es/audit/${result.audit_id}`;
       } else {
-        showError('error-step3', result.error || 'Ha ocurrido un error. Por favor, inténtalo de nuevo.');
+        showError('error-step2', result.error || 'Ha ocurrido un error. Por favor, inténtalo de nuevo.');
         setBtn('btn-start-audit', 'Iniciar análisis completo →', false);
         setBtn('btn-skip-step3', 'Omitir por ahora', false);
       }
     } catch {
-      showError('error-step3', 'Error de conexión. Por favor, inténtalo de nuevo.');
+      showError('error-step2', 'Error de conexión. Por favor, inténtalo de nuevo.');
       setBtn('btn-start-audit', 'Iniciar análisis completo →', false);
       setBtn('btn-skip-step3', 'Omitir por ahora', false);
     }
