@@ -16,21 +16,40 @@ export async function runSEO(url: string): Promise<SEOResult> {
   const timer = setTimeout(() => controller.abort(), 45000);
 
   try {
-    // ── Tier 1: domain overview (organic + paid metrics) ──────────
-    const res = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
-      body: JSON.stringify([{ target: domain, location_code: 2724, language_code: 'es' }]),
-    });
+    // ── Tier 1 + Tier 2 in parallel (they don't depend on each other) ─
+    const [overviewRes, kwRes] = await Promise.all([
+      fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{ target: domain, location_code: 2724, language_code: 'es' }]),
+      }),
+      fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{
+          target: domain,
+          location_code: 2724,
+          language_code: 'es',
+          limit: 20,
+          order_by: ['keyword_data.keyword_info.search_volume,desc'],
+          filters: ['ranked_serp_element.serp_item.rank_absolute', '<=', 10],
+        }]),
+      }),
+    ]);
 
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      const msg = (errBody as any)?.status_message || `HTTP ${res.status}`;
+    if (!overviewRes.ok) {
+      const errBody = await overviewRes.json().catch(() => ({}));
+      const msg = (errBody as any)?.status_message || `HTTP ${overviewRes.status}`;
       return { skipped: true, reason: `DataForSEO: ${msg}`.slice(0, 120) };
     }
 
-    const data = await res.json();
+    const [data, kwData] = await Promise.all([
+      overviewRes.json(),
+      kwRes.ok ? kwRes.json() : Promise.resolve(null),
+    ]);
+
     const task = data?.tasks?.[0];
 
     if (!task || task.status_code !== 20000 || !task.result_count) {
@@ -74,44 +93,27 @@ export async function runSEO(url: string): Promise<SEOResult> {
       isInvestingPaid: paidKeywordsTotal > 0 || undefined,
     };
 
-    // ── Tier 2: top organic non-branded keywords ─────────────────
+    // ── Tier 2 result (already fetched in parallel above) ────────
     try {
-      const kwRes = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
-        method: 'POST',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
-        body: JSON.stringify([{
-          target: domain,
-          location_code: 2724,
-          language_code: 'es',
-          limit: 20,
-          order_by: ['keyword_data.keyword_info.search_volume,desc'],
-          filters: ['ranked_serp_element.serp_item.rank_absolute', '<=', 10],
-        }]),
-      });
+      const kwTask = kwData?.tasks?.[0];
+      if (kwTask?.status_code === 20000 && kwTask.result_count > 0) {
+        const kwItems: any[] = kwTask.result[0]?.items || [];
+        const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '').toLowerCase();
 
-      if (kwRes.ok) {
-        const kwData = await kwRes.json();
-        const kwTask = kwData?.tasks?.[0];
-        if (kwTask?.status_code === 20000 && kwTask.result_count > 0) {
-          const kwItems: any[] = kwTask.result[0]?.items || [];
-          const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '').toLowerCase();
+        const topKeywords = kwItems
+          .filter((it: any) => {
+            const kw = (it.keyword_data?.keyword || '').toLowerCase();
+            return !kw.includes(domainBase) && kw.length > 3;
+          })
+          .slice(0, 6)
+          .map((it: any) => ({
+            keyword: it.keyword_data?.keyword || '',
+            position: it.ranked_serp_element?.serp_item?.rank_absolute ?? 0,
+            volume: it.keyword_data?.keyword_info?.search_volume ?? 0,
+          }))
+          .filter((kw) => kw.keyword);
 
-          const topKeywords = kwItems
-            .filter((it: any) => {
-              const kw = (it.keyword_data?.keyword || '').toLowerCase();
-              return !kw.includes(domainBase) && kw.length > 3;
-            })
-            .slice(0, 6)
-            .map((it: any) => ({
-              keyword: it.keyword_data?.keyword || '',
-              position: it.ranked_serp_element?.serp_item?.rank_absolute ?? 0,
-              volume: it.keyword_data?.keyword_info?.search_volume ?? 0,
-            }))
-            .filter((kw) => kw.keyword);
-
-          if (topKeywords.length > 0) baseResult.topKeywords = topKeywords;
-        }
+        if (topKeywords.length > 0) baseResult.topKeywords = topKeywords;
       }
     } catch { /* non-fatal */ }
 

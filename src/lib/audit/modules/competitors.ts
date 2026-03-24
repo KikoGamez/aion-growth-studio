@@ -1,8 +1,46 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import type { CompetitorsResult, CrawlResult } from '../types';
+import { callHaikuWithValidation } from '../llm-utils';
 
 const ANTHROPIC_KEY = import.meta.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+
+/** HEAD-check competitor domains in parallel — filter out invented/dead domains */
+async function filterValidDomains(
+  competitors: Array<{ name: string; url: string; snippet: string }>,
+): Promise<Array<{ name: string; url: string; snippet: string }>> {
+  const checked = await Promise.allSettled(
+    competitors.map(async (comp) => {
+      const normalized = comp.url.startsWith('http') ? comp.url : `https://${comp.url}`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      try {
+        const res = await fetch(normalized, {
+          method: 'HEAD',
+          signal: controller.signal,
+          redirect: 'follow',
+        });
+        clearTimeout(timer);
+        // 403 = domain exists but blocks HEAD; still valid
+        const valid = res.ok || res.status === 403 || res.status === 405;
+        return { comp, valid };
+      } catch {
+        clearTimeout(timer);
+        return { comp, valid: false };
+      }
+    }),
+  );
+
+  const valid = checked
+    .filter(
+      (r): r is PromiseFulfilledResult<{ comp: typeof competitors[0]; valid: boolean }> =>
+        r.status === 'fulfilled' && r.value.valid,
+    )
+    .map((r) => r.value.comp);
+
+  // If all fail validation (network issue etc.), fall back to unvalidated list
+  return valid.length > 0 ? valid : competitors;
+}
 
 export async function runCompetitors(
   url: string,
@@ -35,7 +73,7 @@ export async function runCompetitors(
     return { competitors };
   }
 
-  // Otherwise: use Claude to detect competitors
+  // Otherwise: use Claude Haiku to detect competitors with structured validation
   if (!ANTHROPIC_KEY) {
     return { skipped: true, reason: 'No competitor URLs provided and ANTHROPIC_API_KEY not configured' };
   }
@@ -50,46 +88,33 @@ Brand: ${brandName}
 Sector: ${sector}
 Description: ${description}
 
-Reply ONLY with a valid JSON array (no explanation, no markdown):
-[{"name": "Company Name", "url": "https://...", "snippet": "One sentence why they compete"}]
+Reply ONLY with a valid JSON object (no explanation, no markdown):
+{"competitors": [{"name": "Company Name", "url": "https://...", "snippet": "One sentence why they compete"}]}
 
 Rules:
 - Only include real companies with active websites
 - Match the business scope (local vs global)
-- Do not include ${domain} itself`;
+- Do not include ${domain} itself
+- URL must be a real, valid domain you are confident exists`;
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+  const validated = await callHaikuWithValidation('competitors', prompt, 15000, 2);
 
-    const data = await res.json();
-    const text: string = data?.content?.[0]?.text || '';
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return { competitors: [] };
-
-    const parsed = JSON.parse(match[0]);
-    const competitors = (parsed as any[])
-      .filter((c) => c.url && !c.url.includes(domain))
-      .slice(0, 5)
-      .map((c) => ({
-        name: (c.name || '').slice(0, 80),
-        url: (c.url || '').slice(0, 120),
-        snippet: (c.snippet || '').slice(0, 150),
-      }));
-
-    return { competitors };
-  } catch (err: any) {
-    return { competitors: [], error: err.message?.slice(0, 100) };
+  if (!validated) {
+    return { competitors: [], error: 'LLM failed to produce valid competitors' };
   }
+
+  // Filter and normalize
+  const rawList = validated.competitors
+    .filter((c) => !c.url.includes(domain))
+    .slice(0, 5)
+    .map((c) => ({
+      name: c.name.slice(0, 80),
+      url: c.url.slice(0, 120),
+      snippet: (c.snippet || '').slice(0, 150),
+    }));
+
+  // Validate that domains actually exist (eliminates hallucinated domains)
+  const validList = await filterValidDomains(rawList);
+
+  return { competitors: validList.slice(0, 4) };
 }

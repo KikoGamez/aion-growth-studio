@@ -1,11 +1,18 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { getAuditPage, saveModuleResult, markAuditError } from '../../../../lib/audit/notion';
-import { executeStep } from '../../../../lib/audit/runner';
+import { getAuditPage, saveModuleResult, savePhaseResults, markAuditError } from '../../../../lib/audit/notion';
+import { executeStep, executePhase, PHASE_ENTRY_STEPS } from '../../../../lib/audit/runner';
 import { STEP_PROGRESS } from '../../../../lib/audit/types';
 import type { AuditStep } from '../../../../lib/audit/types';
 import { validateApiKey, mapResultsForPlatform } from '../../../../lib/api-auth';
+
+// Progress values reported after each phase completes (shown as the next phase entry's progress)
+const PHASE_COMPLETE_PROGRESS: Record<string, number> = {
+  sector: 40,             // phase 1 done
+  competitor_traffic: 65, // phase 2 done
+  score: 87,              // phase 3 done
+};
 
 export const GET: APIRoute = async ({ params, request }) => {
   const { id } = params;
@@ -74,11 +81,45 @@ export const GET: APIRoute = async ({ params, request }) => {
       );
     }
 
-    // Execute the current step
     const currentStep = audit.currentStep as AuditStep;
+
+    // ── Phase execution (parallel steps) ─────────────────────────
+    if (PHASE_ENTRY_STEPS.has(currentStep)) {
+      const { moduleResults, nextStep, extraProps } = await executePhase(currentStep, audit);
+
+      await savePhaseResults(id, moduleResults, nextStep, extraProps);
+
+      const isCompleted = nextStep === 'done';
+      const completedModuleKeys = moduleResults.map((r) => r.moduleKey);
+      const progress = isCompleted
+        ? 100
+        : PHASE_COMPLETE_PROGRESS[nextStep as string] ?? STEP_PROGRESS[nextStep as AuditStep] ?? 50;
+
+      if (isPlatform) {
+        return new Response(
+          JSON.stringify({
+            status: isCompleted ? 'completed' : 'running',
+            currentModule: isCompleted ? 'done' : (nextStep as string),
+            completedModules: [...Object.keys(audit.results), ...completedModuleKeys],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          status: isCompleted ? 'completed' : 'processing',
+          progress,
+          module_completed: completedModuleKeys.join(','),
+          currentStep: nextStep,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // ── Single step execution (crawl + score/insights/qa) ────────
     const { result, moduleKey, nextStep } = await executeStep(currentStep, audit);
 
-    // Prepare extra property updates
     const extraProps: { score?: number; sector?: string } = {};
     if (moduleKey === 'score' && (result as any).total !== undefined) {
       extraProps.score = (result as any).total;
@@ -87,14 +128,18 @@ export const GET: APIRoute = async ({ params, request }) => {
       extraProps.sector = (result as any).sector;
     }
 
-    // Save result and advance step
+    // If QA produced corrected insights, also save them
+    if (moduleKey === 'qa' && (result as any).correctedInsights) {
+      await saveModuleResult(id, 'insights', (result as any).correctedInsights, 'qa', {});
+    }
+
     await saveModuleResult(id, moduleKey, result, nextStep, extraProps);
 
     const isCompleted = nextStep === 'done';
-    const progress = isCompleted ? 100 : STEP_PROGRESS[nextStep as AuditStep] ?? 99;
-    const allResults = isCompleted
-      ? { ...audit.results, [moduleKey]: result }
-      : null;
+    const progress = isCompleted
+      ? 100
+      : PHASE_COMPLETE_PROGRESS[nextStep as string] ?? STEP_PROGRESS[nextStep as AuditStep] ?? 99;
+    const allResults = isCompleted ? { ...audit.results, [moduleKey]: result } : null;
 
     if (isPlatform) {
       const completedModules = [...Object.keys(audit.results), moduleKey];

@@ -220,6 +220,47 @@ REGLAS DE REDACCIÓN ESTRICTAS:
 5. Las iniciativas deben fluir de los datos: si el funnel score es bajo, la primera iniciativa debe atacar la conversión con los datos exactos que lo demuestran.
 6. Tono: experto que respeta al empresario. No condescendiente, no hiperentusiasta. Como un buen médico que te da el diagnóstico real.
 
+EJEMPLO DE OUTPUT CORRECTO (para una empresa de consultoría con score 42/100):
+{
+  "bullets": [
+    "Invisible en IA: tu marca aparece en 1 de 12 respuestas cuando alguien pregunta por consultoría de sostenibilidad en ChatGPT o Perplexity (GEO score 8/100) — tu principal competidor aparece en 7 de 12.",
+    "Web lenta en móvil: Google tarda 4.8 segundos en mostrar tu contenido en móvil (LCP 4.8s, umbral recomendado: 2.5s). Cada segundo adicional reduce la conversión un 10-20%.",
+    "Sin captación activa: tu web tiene 1.400 palabras de contenido pero sin formulario visible ni CTA claro en las páginas de servicio (funnel score 22/100).",
+    "SEO en construcción: 8 keywords en top 10 de Google (Domain Rank 18/100) — tu competidor más cercano tiene 68 keywords en top 10.",
+    "Reputación sólida: 4.7 estrellas con 124 reseñas en Google Business Profile — por encima del promedio del sector.",
+    "Stack de medición incompleto: no hay píxel de conversión ni tag manager instalado — sin datos para optimizar campañas futuras."
+  ],
+  "initiatives": [
+    {
+      "title": "Añadir captación a páginas de servicio",
+      "description": "Tus páginas de servicio acumulan tráfico pero no convierten: sin formulario visible ni CTA directo (funnel score 22/100). Añadir un formulario de 3-5 campos y un CTA claro en cada página de servicio es la acción de mayor impacto inmediato. Resultado esperado: 2-4 leads adicionales/mes sin incrementar el tráfico."
+    },
+    {
+      "title": "Posicionarte en los 8 gaps de keywords",
+      "description": "Hay 8 consultas donde tu competidor aparece en top 10 y tú no — términos como 'consultoría sostenibilidad empresas' con 590 búsquedas/mes. Crear páginas específicas para estas keywords es la palanca de mayor retorno orgánico. Resultado esperado: +30-50% de tráfico orgánico en 4-6 meses."
+    },
+    {
+      "title": "Crear contenido para ser visible en IA",
+      "description": "Apareces en 1 de 12 respuestas de ChatGPT y Perplexity cuando alguien pregunta por tu sector (GEO score 8/100). Publicar artículos de autoridad que respondan las preguntas exactas que la IA usa como fuente mejora esta métrica. Resultado: incremento progresivo de visibilidad en IA en 3-6 meses."
+    }
+  ]
+}
+
+EJEMPLO DE OUTPUT INCORRECTO — NO HAGAS ESTO:
+{
+  "bullets": [
+    "Tu presencia digital tiene bases técnicas aceptables pero déficits significativos.",
+    "La visibilidad online es mejorable."
+  ],
+  "initiatives": [
+    {
+      "title": "Tu presencia digital global obtiene un 44/100",
+      "description": "La infraestructura técnica aguanta, pero SEO, reputación social y medición están en estado crítico."
+    }
+  ]
+}
+Los bullets sin datos numéricos y las iniciativas que son diagnósticos en vez de acciones serán rechazados por el sistema de QA.
+
 Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto fuera del JSON):
 {
   "bullets": [

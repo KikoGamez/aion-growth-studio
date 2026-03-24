@@ -4,9 +4,6 @@ export type AuditStep =
   | 'pagespeed'
   | 'sector'
   | 'content'
-  | 'geo'
-  | 'instagram'
-  | 'linkedin'
   | 'gbp'
   | 'reputation'
   | 'traffic'
@@ -16,6 +13,10 @@ export type AuditStep =
   | 'competitors'
   | 'competitor_traffic'
   | 'keyword_gap'
+  | 'geo'
+  | 'competitor_pagespeed'
+  | 'instagram'
+  | 'linkedin'
   | 'techstack'
   | 'conversion'
   | 'score'
@@ -27,33 +28,35 @@ export type AuditStepOrDone = AuditStep | 'done';
 export type AuditStatus = 'processing' | 'completed' | 'error';
 
 export const STEP_ORDER: AuditStep[] = [
-  'crawl', 'ssl', 'pagespeed', 'sector', 'content', 'geo',
+  'crawl', 'ssl', 'pagespeed', 'sector', 'content',
   'gbp', 'reputation', 'traffic', 'seo', 'seo_pages', 'content_cadence',
   'competitors', 'competitor_traffic', 'keyword_gap',
+  'geo', 'competitor_pagespeed',
   'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights',
   'meta_ads', 'qa',
 ];
 
 export const STEP_PROGRESS: Record<AuditStep, number> = {
-  crawl: 6,
-  ssl: 12,
-  pagespeed: 18,
-  sector: 24,
-  content: 30,
-  geo: 36,
-  gbp: 41,
-  reputation: 44,
-  traffic: 47,
-  seo: 50,
-  seo_pages: 54,
-  content_cadence: 56,
-  competitors: 58,
-  competitor_traffic: 61,
-  keyword_gap: 64,
-  instagram: 67,
-  linkedin: 70,
-  techstack: 75,
-  conversion: 81,
+  crawl: 5,
+  ssl: 10,
+  pagespeed: 15,
+  sector: 20,
+  content: 25,
+  gbp: 29,
+  reputation: 33,
+  traffic: 37,
+  seo: 42,
+  seo_pages: 46,
+  content_cadence: 50,
+  competitors: 53,
+  competitor_traffic: 57,
+  keyword_gap: 61,
+  geo: 64,
+  competitor_pagespeed: 67,
+  instagram: 70,
+  linkedin: 73,
+  techstack: 77,
+  conversion: 83,
   score: 90,
   insights: 95,
   meta_ads: 97,
@@ -65,8 +68,7 @@ export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
   ssl: 'pagespeed',
   pagespeed: 'sector',
   sector: 'content',
-  content: 'geo',
-  geo: 'gbp',
+  content: 'gbp',
   gbp: 'reputation',
   reputation: 'traffic',
   traffic: 'seo',
@@ -75,7 +77,9 @@ export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
   content_cadence: 'competitors',
   competitors: 'competitor_traffic',
   competitor_traffic: 'keyword_gap',
-  keyword_gap: 'instagram',
+  keyword_gap: 'geo',
+  geo: 'competitor_pagespeed',
+  competitor_pagespeed: 'instagram',
   instagram: 'linkedin',
   linkedin: 'techstack',
   techstack: 'conversion',
@@ -179,6 +183,14 @@ export interface GeoQuery {
   engines?: Array<{ name: string; mentioned: boolean; context?: string }>; // Per-engine results
 }
 
+export interface GeoCompetitorMention {
+  name: string;
+  domain: string;
+  mentions: number;   // out of total queries
+  total: number;
+  mentionRate: number; // 0-100
+}
+
 export interface GeoResult extends ModuleResult {
   queries?: GeoQuery[];
   overallScore?: number;
@@ -191,6 +203,7 @@ export interface GeoResult extends ModuleResult {
     bofu: { mentioned: number; total: number };
   };
   crossModel?: Array<{ name: string; mentioned: number; total: number }>;
+  competitorMentions?: GeoCompetitorMention[];
 }
 
 export interface InstagramPost {
@@ -417,6 +430,17 @@ export interface MetaAdsResult extends ModuleResult {
   competitorDetails?: Array<{ name: string; url: string; hasMetaAds: boolean }>;
 }
 
+// ── New: Competitor PageSpeed ──────────────────────────────────────
+export interface CompetitorPageSpeedItem {
+  name: string;
+  domain: string;
+  mobileScore: number; // 0-100
+}
+
+export interface CompetitorPageSpeedResult extends ModuleResult {
+  items: CompetitorPageSpeedItem[];
+}
+
 // ── New: QA Agent ─────────────────────────────────────────────────
 export interface QAIssue {
   section: string;
@@ -432,6 +456,7 @@ export interface QAResult extends ModuleResult {
   overallAssessment?: string;
   qaTimestamp?: string;
   qaBypassed?: boolean;
+  correctedInsights?: { bullets?: string[]; initiatives?: Array<{ title: string; description: string }> };
 }
 
 // ── New: Content cadence ──────────────────────────────────────────

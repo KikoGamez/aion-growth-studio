@@ -1,14 +1,19 @@
-import type { GeoResult, GeoQuery, CrawlResult } from '../types';
+import type { GeoResult, GeoQuery, GeoCompetitorMention, CrawlResult } from '../types';
 
 const OPENAI_KEY = import.meta.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
 const PERPLEXITY_KEY = import.meta.env.PERPLEXITY_API_KEY || process.env.PERPLEXITY_API_KEY;
+const ANTHROPIC_KEY = import.meta.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+const GEMINI_KEY = import.meta.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+const DEEPSEEK_KEY = import.meta.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY;
 
 type Stage = 'tofu' | 'mofu' | 'bofu';
+type EngineType = 'openai_compat' | 'anthropic' | 'gemini';
 
 interface Engine {
   name: string;
   apiKey: string;
-  baseUrl: string;
+  type: EngineType;
+  baseUrl?: string;  // for openai_compat engines
   model: string;
 }
 
@@ -49,30 +54,77 @@ function hasDenialNearBrand(answer: string, domain: string, brandName: string): 
 
 // ── Engine query ──────────────────────────────────────────────────
 
-async function askEngine(query: string, engine: Engine, timeout = 32000): Promise<string> {
+const SYSTEM_PROMPT =
+  'You are a helpful AI assistant. When asked about companies, products, or services, provide specific real brand names and concrete recommendations. Be concise and direct.';
+
+async function askOpenAICompat(query: string, engine: Engine, signal: AbortSignal): Promise<string> {
+  const res = await fetch((engine.baseUrl || 'https://api.openai.com/v1') + '/chat/completions', {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${engine.apiKey}` },
+    body: JSON.stringify({
+      model: engine.model,
+      max_tokens: 250,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: query },
+      ],
+    }),
+  });
+  if (!res.ok) return '';
+  const data = (await res.json()) as any;
+  return (data?.choices?.[0]?.message?.content || '') as string;
+}
+
+async function askAnthropic(query: string, engine: Engine, signal: AbortSignal): Promise<string> {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': engine.apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: engine.model,
+      max_tokens: 250,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: query }],
+    }),
+  });
+  if (!res.ok) return '';
+  const data = (await res.json()) as any;
+  return (data?.content?.[0]?.text || '') as string;
+}
+
+async function askGemini(query: string, engine: Engine, signal: AbortSignal): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${engine.model}:generateContent?key=${engine.apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${query}` }] }],
+      generationConfig: { maxOutputTokens: 250 },
+    }),
+  });
+  if (!res.ok) return '';
+  const data = (await res.json()) as any;
+  return (data?.candidates?.[0]?.content?.parts?.[0]?.text || '') as string;
+}
+
+async function askEngine(query: string, engine: Engine, timeout = 12000): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const res = await fetch(engine.baseUrl + '/chat/completions', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${engine.apiKey}` },
-      body: JSON.stringify({
-        model: engine.model,
-        max_tokens: 500,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a helpful AI assistant. When asked about companies, products, or services, provide specific real brand names and concrete recommendations. Be concise and direct.',
-          },
-          { role: 'user', content: query },
-        ],
-      }),
-    });
-    if (!res.ok) return '';
-    const data = (await res.json()) as any;
-    return (data?.choices?.[0]?.message?.content || '') as string;
+    switch (engine.type) {
+      case 'anthropic':
+        return await askAnthropic(query, engine, controller.signal);
+      case 'gemini':
+        return await askGemini(query, engine, controller.signal);
+      default:
+        return await askOpenAICompat(query, engine, controller.signal);
+    }
   } catch {
     return '';
   } finally {
@@ -195,7 +247,12 @@ async function generateQueries(
 
 // ── Main export ───────────────────────────────────────────────────
 
-export async function runGEO(url: string, sector: string, crawl: CrawlResult): Promise<GeoResult> {
+export async function runGEO(
+  url: string,
+  sector: string,
+  crawl: CrawlResult,
+  competitors?: Array<{ name: string; url: string }>,
+): Promise<GeoResult> {
   if (!OPENAI_KEY) {
     return { skipped: true, reason: 'OPENAI_API_KEY not configured' };
   }
@@ -206,11 +263,12 @@ export async function runGEO(url: string, sector: string, crawl: CrawlResult): P
   const valueProposition = crawl.description?.slice(0, 120) || '';
   const keywords = crawl.h1s?.[0] || valueProposition.split(/[,.:]/)[0] || sector;
 
-  // Configure engines — Perplexity is optional
+  // Configure engines — add each available engine
   const engines: Engine[] = [
     {
       name: 'ChatGPT',
       apiKey: OPENAI_KEY,
+      type: 'openai_compat',
       baseUrl: 'https://api.openai.com/v1',
       model: 'gpt-4o-mini',
     },
@@ -218,8 +276,34 @@ export async function runGEO(url: string, sector: string, crawl: CrawlResult): P
       ? [{
           name: 'Perplexity',
           apiKey: PERPLEXITY_KEY,
+          type: 'openai_compat' as EngineType,
           baseUrl: 'https://api.perplexity.ai',
           model: 'llama-3.1-sonar-small-128k-online',
+        }]
+      : []),
+    ...(ANTHROPIC_KEY
+      ? [{
+          name: 'Claude',
+          apiKey: ANTHROPIC_KEY,
+          type: 'anthropic' as EngineType,
+          model: 'claude-haiku-4-5-20251001',
+        }]
+      : []),
+    ...(GEMINI_KEY
+      ? [{
+          name: 'Gemini',
+          apiKey: GEMINI_KEY,
+          type: 'gemini' as EngineType,
+          model: 'gemini-2.0-flash',
+        }]
+      : []),
+    ...(DEEPSEEK_KEY
+      ? [{
+          name: 'DeepSeek',
+          apiKey: DEEPSEEK_KEY,
+          type: 'openai_compat' as EngineType,
+          baseUrl: 'https://api.deepseek.com/v1',
+          model: 'deepseek-chat',
         }]
       : []),
   ];
@@ -231,18 +315,24 @@ export async function runGEO(url: string, sector: string, crawl: CrawlResult): P
 
   try {
     // Run ALL queries × ALL engines in parallel
+    // Promise.allSettled: if one engine times out or errors, others still contribute
     const runResults = await Promise.all(
       querySpecs.map(async (spec) => {
-        const engineOutputs = await Promise.all(
+        const settled = await Promise.allSettled(
           engines.map(async (engine) => {
             const answer = await askEngine(spec.query, engine);
             const isMentioned = detectMention(answer, domain, brandName);
-            // For direct brand query: discount if denial phrase near brand
             const mentioned = isMentioned
               ? (spec.isBrandQuery ? !hasDenialNearBrand(answer, domain, brandName) : true)
               : false;
             return { engineName: engine.name, answer, mentioned };
           }),
+        );
+        // Map settled results — failed engines contribute empty/false
+        const engineOutputs = settled.map((s, i) =>
+          s.status === 'fulfilled'
+            ? s.value
+            : { engineName: engines[i].name, answer: '', mentioned: false },
         );
         // Union logic: mentioned if ANY engine mentions it
         const mentioned = engineOutputs.some((e) => e.mentioned);
@@ -261,6 +351,27 @@ export async function runGEO(url: string, sector: string, crawl: CrawlResult): P
         error: 'APIs no respondieron (timeout o rate limit) — reintenta en unos minutos',
       };
     }
+
+    // Compute competitor mentions from already-fetched AI answers (zero extra API calls)
+    const competitorMentions: GeoCompetitorMention[] = (competitors || []).map((comp) => {
+      const compDomain = new URL(comp.url.startsWith('http') ? comp.url : `https://${comp.url}`)
+        .hostname.replace(/^www\./, '');
+      let mentionCount = 0;
+      for (const r of runResults) {
+        const isMentioned = r.engineOutputs.some((e) =>
+          detectMention(e.answer, compDomain, comp.name),
+        );
+        if (isMentioned) mentionCount++;
+      }
+      return {
+        name: comp.name,
+        domain: compDomain,
+        mentions: mentionCount,
+        total: runResults.length,
+        mentionRate:
+          runResults.length > 0 ? Math.round((mentionCount / runResults.length) * 100) : 0,
+      };
+    });
 
     // Build GeoQuery objects
     const queries: GeoQuery[] = runResults.map((r) => ({
@@ -327,6 +438,7 @@ export async function runGEO(url: string, sector: string, crawl: CrawlResult): P
       mentionRate,
       funnelBreakdown,
       crossModel,
+      competitorMentions: competitorMentions.length > 0 ? competitorMentions : undefined,
     };
   } catch (err: any) {
     return {

@@ -21,18 +21,62 @@ import { runContentCadence } from './modules/content-cadence';
 import { runReputation } from './modules/reputation';
 import { runMetaAds } from './modules/meta-ads';
 import { runQAAgent } from './modules/qa-agent';
+import { runCompetitorPageSpeed } from './modules/competitor-pagespeed';
 import { NEXT_STEP } from './types';
 import type { AuditStep, AuditStepOrDone, ModuleResult, AuditPageData, CrawlResult } from './types';
 
 const APPS_SCRIPT_SOCIAL_WEBHOOK =
   import.meta.env.APPS_SCRIPT_SOCIAL_WEBHOOK || process.env.APPS_SCRIPT_SOCIAL_WEBHOOK;
 
-/**
- * Fire-and-forget: asks Google Apps Script (residential Google IP) to scrape
- * Instagram and LinkedIn and write results directly to the Notion audit page.
- * By the time the audit reaches the instagram/linkedin steps (~3 min later),
- * the data is already in Notion and the steps just read it.
- */
+// ── Phase definitions ─────────────────────────────────────────────
+// 4 phases: crawl runs alone, then 3 parallel phases, then synthesis (sequential).
+
+/** Steps within each phase — run in parallel via Promise.allSettled */
+export const PHASE_STEPS: Record<string, AuditStep[]> = {
+  // Phase 1: all steps that only need URL / crawl data
+  ssl: [
+    'ssl', 'pagespeed', 'seo', 'seo_pages', 'traffic',
+    'gbp', 'techstack', 'content_cadence',
+  ],
+  // Phase 2: steps that need crawl + phase 1 results
+  sector: ['sector', 'content', 'conversion', 'reputation', 'competitors'],
+  // Phase 3: steps that need competitors from phase 2
+  competitor_traffic: [
+    'competitor_traffic', 'competitor_pagespeed', 'keyword_gap',
+    'geo', 'instagram', 'linkedin', 'meta_ads',
+  ],
+};
+
+/** Phase entry step → next phase entry step (or first synthesis step) */
+export const PHASE_NEXT_STEP: Record<string, AuditStepOrDone> = {
+  ssl: 'sector',
+  sector: 'competitor_traffic',
+  competitor_traffic: 'score',
+};
+
+/** Set for O(1) phase entry lookup */
+export const PHASE_ENTRY_STEPS = new Set(Object.keys(PHASE_STEPS));
+
+// ── Per-module timeouts (ms) ──────────────────────────────────────
+
+export const STEP_TIMEOUTS: Record<string, number> = {
+  geo: 30_000,
+  competitor_traffic: 45_000,
+  seo: 30_000,
+  pagespeed: 25_000,
+  traffic: 30_000,
+  instagram: 15_000,
+  linkedin: 15_000,
+  reputation: 20_000,
+  insights: 30_000,
+  qa: 30_000,
+  score: 10_000,
+  competitors: 20_000,
+};
+const DEFAULT_TIMEOUT = 15_000;
+
+// ── Social prefetch ───────────────────────────────────────────────
+
 function triggerSocialPrefetch(pageId: string, crawl: CrawlResult): void {
   if (!APPS_SCRIPT_SOCIAL_WEBHOOK) return;
   if (!crawl.instagramHandle && !crawl.linkedinUrl) return;
@@ -45,8 +89,10 @@ function triggerSocialPrefetch(pageId: string, crawl: CrawlResult): void {
       instagramHandle: crawl.instagramHandle || null,
       linkedinUrl: crawl.linkedinUrl || null,
     }),
-  }).catch(() => { /* intentionally ignored — Apps Script runs independently */ });
+  }).catch(() => { /* intentionally ignored */ });
 }
+
+// ── Step execution ────────────────────────────────────────────────
 
 export interface StepExecution {
   result: ModuleResult;
@@ -54,139 +100,208 @@ export interface StepExecution {
   nextStep: AuditStepOrDone;
 }
 
-export async function executeStep(step: AuditStep, audit: AuditPageData): Promise<StepExecution> {
-  const { url, results } = audit;
-  const nextStep = NEXT_STEP[step];
+/** Run a single step with a per-module timeout. Returns {skipped} on timeout. */
+async function executeStepWithTimeout(
+  step: AuditStep,
+  audit: AuditPageData,
+): Promise<ModuleResult> {
+  const timeoutMs = STEP_TIMEOUTS[step] ?? DEFAULT_TIMEOUT;
+  return Promise.race([
+    runStep(step, audit),
+    new Promise<ModuleResult>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${step} timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
+    ),
+  ]).catch((err: Error) => ({
+    skipped: true,
+    reason: err.message.slice(0, 120),
+  }));
+}
 
+/** Core step dispatcher — same logic as before, now called by timeout wrapper */
+async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleResult> {
+  const { url, results } = audit;
+
+  switch (step) {
+    case 'crawl':
+      return runCrawl(url);
+
+    case 'ssl':
+      return runSSL(url);
+
+    case 'pagespeed':
+      return runPageSpeed(url);
+
+    case 'sector':
+      return runSector(url, results.crawl || {});
+
+    case 'content':
+      return runContent(url, results.crawl || {});
+
+    case 'geo': {
+      const sector = (results.sector as any)?.sector || 'business services';
+      const comps: Array<{ name: string; url: string }> =
+        (results.competitors as any)?.competitors || [];
+      return runGEO(url, sector, results.crawl || {}, comps);
+    }
+
+    case 'competitor_pagespeed': {
+      const comps: Array<{ name: string; url: string }> =
+        (results.competitors as any)?.competitors || [];
+      return runCompetitorPageSpeed(comps);
+    }
+
+    case 'gbp':
+      return runGBP(url, results.crawl || {});
+
+    case 'reputation':
+      return runReputation(url, results.crawl || {}, results.gbp);
+
+    case 'traffic':
+      return runTraffic(url);
+
+    case 'seo':
+      return runSEO(url);
+
+    case 'seo_pages':
+      return runSeoPages(url);
+
+    case 'content_cadence':
+      return runContentCadence(url);
+
+    case 'competitors': {
+      const sector = (results.sector as any)?.sector || 'business services';
+      return runCompetitors(url, sector, results.crawl || {}, audit.userCompetitors);
+    }
+
+    case 'competitor_traffic': {
+      const comps: Array<{ name: string; url: string }> =
+        (results.competitors as any)?.competitors || [];
+      return runCompetitorTraffic(comps);
+    }
+
+    case 'keyword_gap': {
+      const ctItems: Array<{ url: string; domainRank?: number }> =
+        (results.competitor_traffic as any)?.items || [];
+      const compsByDr = [...ctItems].sort((a, b) => (b.domainRank || 0) - (a.domainRank || 0));
+      const bestComp = compsByDr[0]?.url ||
+        (results.competitors as any)?.competitors?.[0]?.url || '';
+      return runKeywordGap(url, bestComp);
+    }
+
+    case 'instagram': {
+      if (results.instagram) return results.instagram;
+      const competitorUrls = (results.competitors as any)?.competitors?.map((c: any) => c.url) || [];
+      return runInstagram(results.crawl || {}, competitorUrls, audit.userInstagram);
+    }
+
+    case 'linkedin': {
+      if (results.linkedin) return results.linkedin;
+      const competitorUrls = (results.competitors as any)?.competitors?.map((c: any) => c.url) || [];
+      return runLinkedIn(results.crawl || {}, competitorUrls, audit.userLinkedin);
+    }
+
+    case 'techstack':
+      return runTechStack(url);
+
+    case 'conversion':
+      return runConversion(url, results.crawl || {});
+
+    case 'score':
+      return runScore(results);
+
+    case 'insights':
+      return runInsights(url, results);
+
+    case 'meta_ads': {
+      const comps: Array<{ name: string; url: string }> =
+        (results.competitors as any)?.competitors || [];
+      return runMetaAds(url, results.crawl || {}, comps);
+    }
+
+    case 'qa':
+      return runQAAgent(results);
+
+    default:
+      return { skipped: true, reason: `Unknown step: ${step}` };
+  }
+}
+
+// ── Phase execution ───────────────────────────────────────────────
+
+export interface PhaseExecution {
+  moduleResults: Array<{ moduleKey: string; result: ModuleResult }>;
+  nextStep: AuditStepOrDone;
+  extraProps: { score?: number; sector?: string };
+}
+
+/**
+ * Run all steps in a phase in parallel (Promise.allSettled).
+ * Returns all results regardless of individual failures.
+ */
+export async function executePhase(
+  phaseEntry: AuditStep,
+  audit: AuditPageData,
+): Promise<PhaseExecution> {
+  const steps = PHASE_STEPS[phaseEntry];
+  const nextStep = PHASE_NEXT_STEP[phaseEntry] ?? 'score';
+
+  const settled = await Promise.allSettled(
+    steps.map(async (step) => {
+      const result = await executeStepWithTimeout(step, audit);
+      return { moduleKey: step, result };
+    }),
+  );
+
+  const moduleResults = settled.map((s, i) =>
+    s.status === 'fulfilled'
+      ? s.value
+      : { moduleKey: steps[i], result: { skipped: true, reason: 'Phase step failed unexpectedly' } },
+  );
+
+  // Extract extra props (score, sector) if present
+  const extraProps: { score?: number; sector?: string } = {};
+  for (const { moduleKey, result } of moduleResults) {
+    if (moduleKey === 'score' && (result as any).total !== undefined) {
+      extraProps.score = (result as any).total;
+    }
+    if (moduleKey === 'sector' && (result as any).sector) {
+      extraProps.sector = (result as any).sector;
+    }
+  }
+
+  return { moduleResults, nextStep, extraProps };
+}
+
+// ── Single step execution (crawl + synthesis steps) ──────────────
+
+/**
+ * Execute a single step (used for crawl + score/insights/qa).
+ * Applies correctedInsights from QA if present.
+ */
+export async function executeStep(step: AuditStep, audit: AuditPageData): Promise<StepExecution> {
+  const nextStep = NEXT_STEP[step];
   let result: ModuleResult;
 
   try {
-    switch (step) {
-      case 'crawl':
-        result = await runCrawl(url);
-        triggerSocialPrefetch(audit.notionPageId, result as CrawlResult);
-        break;
+    result = await executeStepWithTimeout(step, audit);
 
-      case 'ssl':
-        result = await runSSL(url);
-        break;
+    // Crawl: trigger social prefetch after completing
+    if (step === 'crawl') {
+      triggerSocialPrefetch(audit.notionPageId, result as CrawlResult);
+    }
 
-      case 'pagespeed':
-        result = await runPageSpeed(url);
-        break;
-
-      case 'sector':
-        result = await runSector(url, results.crawl || {});
-        break;
-
-      case 'content':
-        result = await runContent(url, results.crawl || {});
-        break;
-
-      case 'geo': {
-        const sector = (results.sector as any)?.sector || 'business services';
-        result = await runGEO(url, sector, results.crawl || {});
-        break;
-      }
-
-      case 'gbp':
-        result = await runGBP(url, results.crawl || {});
-        break;
-
-      case 'reputation':
-        result = await runReputation(url, results.crawl || {}, results.gbp);
-        break;
-
-      case 'traffic':
-        result = await runTraffic(url);
-        break;
-
-      case 'seo':
-        result = await runSEO(url);
-        break;
-
-      case 'seo_pages':
-        result = await runSeoPages(url);
-        break;
-
-      case 'content_cadence':
-        result = await runContentCadence(url);
-        break;
-
-      case 'competitors': {
-        const sector = (results.sector as any)?.sector || 'business services';
-        result = await runCompetitors(url, sector, results.crawl || {}, audit.userCompetitors);
-        break;
-      }
-
-      case 'competitor_traffic': {
-        const comps: Array<{ name: string; url: string }> =
-          (results.competitors as any)?.competitors || [];
-        result = await runCompetitorTraffic(comps);
-        break;
-      }
-
-      case 'keyword_gap': {
-        // Pick best competitor by DR from competitor_traffic, fallback to first competitor
-        const ctItems: Array<{ url: string; domainRank?: number }> =
-          (results.competitor_traffic as any)?.items || [];
-        const compsByDr = [...ctItems].sort((a, b) => (b.domainRank || 0) - (a.domainRank || 0));
-        const bestComp = compsByDr[0]?.url ||
-          (results.competitors as any)?.competitors?.[0]?.url || '';
-        result = await runKeywordGap(url, bestComp);
-        break;
-      }
-
-      case 'instagram': {
-        // If Apps Script already wrote the result to Notion, use it directly
-        if (results.instagram) { result = results.instagram; break; }
-        const competitorUrls = (results.competitors as any)?.competitors?.map((c: any) => c.url) || [];
-        result = await runInstagram(results.crawl || {}, competitorUrls, audit.userInstagram);
-        break;
-      }
-
-      case 'linkedin': {
-        // If Apps Script already wrote the result to Notion, use it directly
-        if (results.linkedin) { result = results.linkedin; break; }
-        const competitorUrls = (results.competitors as any)?.competitors?.map((c: any) => c.url) || [];
-        result = await runLinkedIn(results.crawl || {}, competitorUrls, audit.userLinkedin);
-        break;
-      }
-
-      case 'techstack':
-        result = await runTechStack(url);
-        break;
-
-      case 'conversion':
-        result = await runConversion(url, results.crawl || {});
-        break;
-
-      case 'score':
-        result = await runScore(results);
-        break;
-
-      case 'insights':
-        result = await runInsights(url, results);
-        break;
-
-      case 'meta_ads': {
-        const comps: Array<{ name: string; url: string }> =
-          (results.competitors as any)?.competitors || [];
-        result = await runMetaAds(url, results.crawl || {}, comps);
-        break;
-      }
-
-      case 'qa':
-        result = await runQAAgent(results);
-        break;
-
-      default:
-        result = { skipped: true, reason: `Unknown step: ${step}` };
+    // QA: if correctedInsights provided, update insights in results for downstream use
+    if (step === 'qa' && (result as any).correctedInsights) {
+      audit.results.insights = {
+        ...(audit.results.insights || {}),
+        ...(result as any).correctedInsights,
+      };
     }
   } catch (err: any) {
-    result = {
-      error: err.message?.slice(0, 150) || 'Module failed unexpectedly',
-    };
+    result = { error: err.message?.slice(0, 150) || 'Module failed unexpectedly' };
   }
 
   return { result, moduleKey: step, nextStep };

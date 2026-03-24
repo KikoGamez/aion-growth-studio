@@ -127,6 +127,38 @@ export async function saveModuleResult(
   await notion.pages.update({ page_id: pageId, properties });
 }
 
+/** Save multiple module results from a parallel phase in one Notion operation */
+export async function savePhaseResults(
+  pageId: string,
+  moduleResults: Array<{ moduleKey: string; result: ModuleResult }>,
+  nextStep: AuditStepOrDone,
+  extraProps?: { score?: number; sector?: string },
+): Promise<void> {
+  // Batch-append all result blocks in a single Notion call (max 100 blocks — always safe here)
+  const children = moduleResults.map(({ moduleKey, result }) => ({
+    object: 'block',
+    type: 'code',
+    code: {
+      rich_text: [{ type: 'text', text: { content: prepareBlockContent(moduleKey, result) } }],
+      language: 'json',
+    },
+  }));
+
+  await notion.blocks.children.append({ block_id: pageId, children: children as any[] });
+
+  const properties: any = { 'Current Step': { select: { name: nextStep } } };
+  if (nextStep === 'done') {
+    properties['Status'] = { select: { name: 'completed' } };
+    properties['Completed'] = { date: { start: new Date().toISOString() } };
+  }
+  if (extraProps?.score !== undefined) properties['Score'] = { number: extraProps.score };
+  if (extraProps?.sector) {
+    properties['Sector'] = { rich_text: [{ text: { content: extraProps.sector.slice(0, 2000) } }] };
+  }
+
+  await notion.pages.update({ page_id: pageId, properties });
+}
+
 export async function markAuditError(pageId: string): Promise<void> {
   await notion.pages.update({
     page_id: pageId,

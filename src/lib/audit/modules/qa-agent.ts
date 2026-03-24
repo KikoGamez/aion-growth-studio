@@ -12,9 +12,12 @@ function buildQAPrompt(results: Record<string, any>): string {
   const sector = results.sector?.sector || 'unknown';
   const crawl = results.crawl || {};
   const ctItems: any[] = results.competitor_traffic?.items || [];
-  const allCompetitorsEmpty = ctItems.length > 0 && ctItems.every(
-    (c: any) => c.organicTrafficEstimate == null && c.keywordsTop10 == null,
+  const ctItemsWithData = ctItems.filter(
+    (c: any) => c.organicTrafficEstimate != null || c.keywordsTop10 != null,
   );
+  const allCompetitorsEmpty = ctItems.length > 0 && ctItemsWithData.length === 0;
+  const noCompetitorData = ctItems.length === 0 || allCompetitorsEmpty;
+  const health = results.score || {};
 
   const summary = {
     sector,
@@ -32,6 +35,10 @@ function buildQAPrompt(results: Record<string, any>): string {
     techstack_maturity: ts.maturityScore,
     techstack_cms: ts.cms,
     competitors_all_empty: allCompetitorsEmpty,
+    no_competitor_data: noCompetitorData,
+    competitors_with_data_count: ctItemsWithData.length,
+    competitors_total_count: ctItems.length,
+    health_competitividad: health.competitividad ?? null,
     paid_investing: seo.isInvestingPaid,
   };
 
@@ -58,23 +65,58 @@ Revisa las posibles inconsistencias y responde ÚNICAMENTE con JSON válido con 
   "approved": true,
   "issues": [],
   "suppressed_sections": [],
-  "overall_assessment": "valoración breve de 1-2 frases"
+  "overall_assessment": "valoración breve de 1-2 frases",
+  "corrected_insights": null
 }
 
-Criterios que debes aplicar:
+Si corriges bullets o iniciativas, incluye el objeto insights completo corregido en "corrected_insights":
+{
+  "bullets": ["bullet corregido 1", ...],
+  "initiatives": [{"title": "...", "description": "..."}, ...]
+}
+Si no hay correcciones en insights, "corrected_insights" debe ser null.
+
+Criterios que debes aplicar ESTRICTAMENTE:
 
 1. COHERENCIA: Si etv orgánico < 100 y el informe sugiere "buena visibilidad orgánica", es contradicción.
 2. PROYECCIONES: Si la proyección de tráfico supera el 200% del tráfico actual, ajústala.
-3. SECCIONES SIN DATOS: Si competitor_traffic tiene todos los items vacíos, marca "competitor_benchmark" para supresión.
+3. COMPETIDORES SIN DATOS (CRÍTICO): Si no_competitor_data es true o all_competitors_empty es true:
+   - SIEMPRE suprime "competitor_benchmark"
+   - SIEMPRE suprime cualquier afirmación comparativa como "SEO mejorable con relación al mercado",
+     "por debajo de la media del sector", "sus competidores tienen más visibilidad", etc.
+   - El informe NUNCA puede hacer comparativas de mercado si no hay datos reales de competidores.
+   - Si el informe tiene texto comparativo con mercado/sector pero competitors_with_data_count = 0, marca issue CRÍTICO.
 4. URGENCIA INJUSTIFICADA: Si el informe usa alerta roja pero los datos no son críticos (etv > 1000, rating > 4.0), suaviza.
 5. TECH STACK: Si el CMS es enterprise (Drupal, SAP, Salesforce) y no hay analytics detectado, añade nota de caveat en lugar de conclusión categórica.
 6. GEO: Si el score GEO > 50 y hay texto de "invisibilidad crítica", es inconsistente.
-7. COMPETIDORES VACÍOS: Si all_competitors_empty es true, suprime la sección "competitor_benchmark".
+7. SALUD COMPETITIVIDAD: Si health_competitividad es null, suprime "competitor_benchmark" sin excepción.
+8. INVENTED MARKET REFERENCES: Si el informe menciona "promedio del mercado", "benchmark del sector", o hace afirmaciones
+   sobre cómo se posiciona vs el mercado pero no hay datos de competidores reales, es SIEMPRE un error. Suprime y marca issue.
+9. SECCIONES SIN DATOS GEO: Si geo_score es 0 y geo_queries_count es 0, suprime "geo_analysis".
 
 Para suppressed_sections usa estos identificadores exactos: "competitor_benchmark", "geo_analysis", "seo_visibility", "reputation", "techstack".
 
+REGLA DE ORO: Nunca inventar comparativas. Sin datos de competidores = sin benchmarks.
 Solo marca approved: false si hay issues que cambian materialmente las conclusiones.
-Issues menores de tono → approved: true con correcciones opcionales.`;
+Issues menores de tono → approved: true con correcciones opcionales.
+
+REGLAS ADICIONALES DE CALIDAD DE INSIGHTS:
+
+10. DATOS NUMÉRICOS OBLIGATORIOS EN BULLETS: Cada bullet DEBE contener al menos un dato numérico concreto (número de keywords, score, segundos, estrellas, porcentaje, etc.).
+    - CORRECTO: "Invisible en IA: apareces en 1 de 12 respuestas de ChatGPT (GEO score 8/100)"
+    - INCORRECTO: "Tu presencia digital tiene bases técnicas aceptables"
+    Si un bullet no tiene dato numérico, corríGElo incorporando el dato más relevante disponible en el análisis.
+
+11. INICIATIVAS = ACCIONES, no diagnósticos:
+    - CORRECTO: "Añadir formulario de contacto a páginas de servicio"
+    - INCORRECTO: "Tu presencia digital global obtiene un 44/100" (esto es un diagnóstico)
+    Si el title de una iniciativa es un diagnóstico y no una acción ejecutable, reescríbelo como acción.
+
+12. VEREDICTO COHERENTE CON DATOS: Si los bullets mencionan datos positivos (ej: buena reputación, keywords en top 10), el overall_assessment no puede ser completamente negativo, y viceversa.
+
+13. NO CONTRADECIR LOS DATOS: Si seo.keywordsTop10 >= 50 y un bullet dice "sin presencia en Google", es una contradicción grave. Corrige el bullet.
+
+Si aplicas correcciones a bullets o iniciativas, SIEMPRE incluye el objeto "corrected_insights" completo con los bullets e iniciativas corregidos.`;
 }
 
 export async function runQAAgent(results: Record<string, any>): Promise<QAResult> {
@@ -127,6 +169,7 @@ export async function runQAAgent(results: Record<string, any>): Promise<QAResult
       suppressedSections: (qa.suppressed_sections || []).map((s: any) => s.section ?? s),
       overallAssessment: qa.overall_assessment || '',
       qaTimestamp: new Date().toISOString(),
+      correctedInsights: qa.corrected_insights ?? undefined,
     };
   } catch (err: any) {
     const reason = err.name === 'AbortError' ? 'QA agent timed out (15s)' : err.message?.slice(0, 100);
