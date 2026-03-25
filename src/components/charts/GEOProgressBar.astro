@@ -1,0 +1,19 @@
+---
+export interface Props {
+  current: number;
+  total: number;
+}
+
+const { current, total } = Astro.props;
+const filled = Math.min(current, total);
+const empty = total - filled;
+---
+
+<div style="display:flex;gap:4px;margin-top:24px;">
+  {Array.from({ length: filled }).map(() => (
+    <div style="height:6px;width:24px;border-radius:999px;background:#00346d;"></div>
+  ))}
+  {empty > 0 && (
+    <div style="height:6px;flex:1;border-radius:999px;background:#e8e5ff;"></div>
+  )}
+</div>

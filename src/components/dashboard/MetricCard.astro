@@ -1,0 +1,79 @@
+---
+export interface Props {
+  label: string;
+  value: string | number;
+  delta?: string | number;
+  deltaDir?: 'up' | 'down' | 'neutral';
+  badge?: string;
+  badgeBg?: string;
+  badgeColor?: string;
+  source?: string;
+  note?: string;
+  sparklineValues?: number[];
+  slot?: string;
+}
+
+const {
+  label,
+  value,
+  delta,
+  deltaDir = 'up',
+  badge,
+  badgeBg = '#d7e3ff',
+  badgeColor = '#001b3f',
+  source,
+  note,
+  sparklineValues,
+} = Astro.props;
+
+const deltaColor = deltaDir === 'up' ? '#1d9e75' : deltaDir === 'down' ? '#ba1a1a' : '#64748b';
+const deltaIcon = deltaDir === 'up' ? 'arrow_upward' : deltaDir === 'down' ? 'arrow_downward' : 'add';
+
+// Build sparkline bars if provided
+function buildBars(vals: number[]): { height: string; opacity: string }[] {
+  const max = Math.max(...vals, 1);
+  return vals.map((v, i) => ({
+    height: `${Math.round((v / max) * 48)}px`,
+    opacity: i === vals.length - 1 ? '1' : `${0.1 + (i / vals.length) * 0.9}`,
+  }));
+}
+
+const bars = sparklineValues ? buildBars(sparklineValues) : null;
+---
+
+<div style="background:#ffffff;padding:24px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);position:relative;overflow:hidden;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#434750;">{label}</span>
+    {badge && (
+      <span style={`padding:2px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;`}>{badge}</span>
+    )}
+    {source && !badge && (
+      <span style="padding:2px 8px;border-radius:999px;background:#d7e3ff;color:#001b3f;font-size:10px;font-weight:700;">{source}</span>
+    )}
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;">
+    <span style="font-size:48px;font-weight:900;letter-spacing:-0.05em;color:#1a1a2e;line-height:1;">{value}</span>
+    {delta != null && (
+      <div style={`display:flex;align-items:center;gap:2px;font-weight:700;font-size:14px;color:${deltaColor};`}>
+        <span class="material-symbols-outlined" style="font-size:14px;">{deltaIcon}</span>
+        {delta}
+      </div>
+    )}
+  </div>
+
+  {note && (
+    <p style="margin-top:16px;font-size:12px;color:#434750;line-height:1.5;">{note}</p>
+  )}
+
+  <!-- Slot for custom content (e.g. progress bar) -->
+  <slot />
+
+  {bars && (
+    <div style="margin-top:24px;height:48px;display:flex;align-items:flex-end;gap:3px;">
+      {bars.map(b => (
+        <div style={`flex:1;background:#00346d;height:${b.height};opacity:${b.opacity};border-radius:2px 2px 0 0;`}></div>
+      ))}
+    </div>
+  )}
+</div>

@@ -1,0 +1,219 @@
+---
+export const prerender = false;
+import { getAuditPage } from '../../../lib/audit/notion';
+import { STEP_ORDER } from '../../../lib/audit/types';
+
+// Superuser only
+const user = Astro.locals.user;
+if (!user || user.role !== 'superuser') {
+  return Astro.redirect('/dashboard');
+}
+
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/admin');
+
+let audit: any = null;
+let fetchError: string | null = null;
+try {
+  audit = await getAuditPage(id);
+} catch (e: any) {
+  fetchError = e?.message || 'Error loading audit';
+}
+
+// ── Helper: derive module status ──────────────────────────────────
+function moduleStatus(key: string, result: any): { label: string; color: string; bg: string } {
+  if (!result) return { label: 'missing', color: '#9CA3AF', bg: '#F3F4F6' };
+  if ((result as any)._truncated) return { label: 'truncated', color: '#D85A30', bg: '#FFF3EE' };
+  if (result.skipped) return { label: 'skipped', color: '#BA7517', bg: '#FAEEDA' };
+  if (result.error) return { label: 'error', color: '#E24B4A', bg: '#FCEBEB' };
+  return { label: 'ok', color: '#1D9E75', bg: '#E1F5EE' };
+}
+
+// ── Helper: key data summary per module ───────────────────────────
+function moduleSummary(key: string, r: any): string {
+  if (!r) return '—';
+  if (r._truncated) return '⚠ Datos truncados — resultado demasiado grande para Notion';
+  if (r.skipped) return r.reason || 'Sin datos';
+  if (r.error) return `ERROR: ${r.error}`;
+
+  switch (key) {
+    case 'crawl': return [
+      r.title ? `title:"${r.title.slice(0,40)}"` : '',
+      r.wordCount ? `words:${r.wordCount}` : '',
+      r.businessType ? `type:${r.businessType}` : '',
+      r.companyName ? `brand:"${r.companyName}"` : '',
+    ].filter(Boolean).join(' | ');
+    case 'ssl': return `valid:${r.valid} | expires:${r.expiresAt?.slice(0,10) ?? '—'} | days:${r.daysUntilExpiry ?? '—'}`;
+    case 'pagespeed': return `mobile:${r.mobile?.performance ?? '—'} | desktop:${r.desktop?.performance ?? '—'} | lcp:${r.mobile?.lcp ?? '—'}s`;
+    case 'sector': return `sector:"${r.sector}" | confidence:${r.confidence}%`;
+    case 'content': return `clarity:${r.clarity} | cta:"${(r.cta||'').slice(0,50)}"`;
+    case 'gbp': return r.found ? `found | rating:${r.rating} (${r.reviewCount} reseñas)` : 'not found';
+    case 'reputation': return `level:${r.reputationLevel} | gbp:${r.gbpRating ?? '—'} (${r.gbpReviews ?? 0}) | tp:${r.trustpilotRating ?? '—'} (${r.trustpilotReviews ?? 0})`;
+    case 'traffic': return `visits:${r.visits?.toLocaleString() ?? '—'}/año | bounce:${r.bounceRate ? Math.round(r.bounceRate*100)+'%' : '—'} | organic:${r.channels?.organic?.share ? Math.round(r.channels.organic.share*100)+'%' : '—'}`;
+    case 'seo': return `kw_top10:${r.keywordsTop10 ?? '—'} | etv:${r.organicTrafficEstimate?.toLocaleString() ?? '—'} | paid_kw:${r.paidKeywordsTotal ?? 0} | top_kw:${r.topKeywords?.length ?? 0}`;
+    case 'seo_pages': return `pages:${r.pages?.length ?? 0}`;
+    case 'content_cadence': return `level:${r.cadenceLevel} | posts_90d:${r.postsLast90Days ?? '—'} | last:${r.lastPostDate ?? '—'}`;
+    case 'competitors': return `found:${r.competitors?.length ?? 0} competitors`;
+    case 'competitor_traffic': return `items:${r.items?.length ?? 0} | ok:${r.items?.filter((x:any) => !x.apiError).length ?? 0}`;
+    case 'keyword_gap': return `items:${r.items?.length ?? 0} | vs:"${r.competitor ?? '—'}"`;
+    case 'geo': return r._log || `mentionRate:${r.mentionRate ?? '—'}% | q:${r.queries?.length ?? 0} | overallScore:${r.overallScore ?? '—'}`;
+    case 'competitor_pagespeed': return `items:${r.items?.length ?? 0}`;
+    case 'instagram': return r.found ? `@${r.handle} | followers:${r.followers?.toLocaleString() ?? '—'} | er:${r.engagementRate?.toFixed(1) ?? '—'}%` : `not found${r.reason ? ' | ' + r.reason : ''}`;
+    case 'linkedin': return r.found ? `${r.name ?? r.url} | followers:${r.followers?.toLocaleString() ?? '—'}` : `not found${r.reason ? ' | ' + r.reason : ''}`;
+    case 'techstack': return `maturity:${r.maturityScore ?? '—'} | analytics:${r.analytics?.join(',') ?? '—'} | gtm:${r.tagManager?.join(',') ?? '—'}`;
+    case 'conversion': return `funnelScore:${r.funnelScore ?? '—'} | forms:${r.formCount ?? 0} | cta:${r.ctaCount ?? 0} | testimonials:${r.hasTestimonials}`;
+    case 'score': return `total:${r.total} | seo:${r.breakdown?.seoVisibility} | content:${r.breakdown?.content} | social:${r.breakdown?.socialReputation}`;
+    case 'insights': return `bullets:${r.bullets?.length ?? 0} | initiatives:${r.initiatives?.length ?? 0}`;
+    case 'meta_ads': return `hasMetaAds:${r.hasMetaAds} | comps_with_ads:${r.competitorsWithMetaAds ?? 0}`;
+    case 'qa': return `approved:${r.approved} | issues:${r.issues?.length ?? 0}${r.suppressedSections?.length ? ' | suppressed:'+r.suppressedSections.join(',') : ''}`;
+    default: return JSON.stringify(r).slice(0, 80);
+  }
+}
+
+const fmt = (ms: number) => ms >= 1000 ? `${(ms/1000).toFixed(1)}s` : `${ms}ms`;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Debug Auditoría — AION</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #F8F9FB; color: #1A1A2E; font-size: 14px; }
+    .header { background: #0F1B35; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+    .header a { color: #93C5FD; text-decoration: none; font-size: 13px; }
+    .header a:hover { text-decoration: underline; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .meta-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px 24px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .meta-item label { font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 4px; }
+    .meta-item span { font-size: 14px; color: #1A1A2E; font-weight: 500; word-break: break-all; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #E5E7EB; }
+    th { background: #F3F4F6; font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 14px; text-align: left; }
+    td { padding: 10px 14px; border-top: 1px solid #F0F0F0; vertical-align: top; }
+    tr:hover td { background: #FAFAFA; }
+    .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .module-name { font-weight: 600; color: #1A1A2E; font-size: 12px; }
+    .summary-text { font-size: 11px; color: #5A6478; font-family: 'SF Mono', 'Consolas', monospace; line-height: 1.5; }
+    .log-text { font-size: 11px; color: #7c3aed; font-family: 'SF Mono', 'Consolas', monospace; margin-top: 3px; }
+    .timing { font-size: 12px; font-weight: 600; color: #6B7280; }
+    .timing.slow { color: #D85A30; }
+    .timing.medium { color: #BA7517; }
+    .timing.fast { color: #1D9E75; }
+    .section-title { font-size: 13px; font-weight: 700; color: #5A6478; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; margin-top: 24px; }
+    .error-box { background: #FCEBEB; border: 1px solid #F9BCBC; border-radius: 8px; padding: 16px; color: #791F1F; }
+    .raw-toggle { font-size: 11px; color: #4A7FD4; cursor: pointer; text-decoration: underline; }
+    .raw-json { display: none; margin-top: 6px; font-size: 10px; color: #5A6478; font-family: monospace; background: #F8F9FB; border-radius: 4px; padding: 8px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; }
+    .raw-json.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/admin">← Panel Admin</a>
+    <span style="color:#fff;font-weight:700;">Debug Auditoría</span>
+    {audit && <span style="font-size:13px;color:#93C5FD;">{audit.url}</span>}
+  </div>
+
+  <div class="container">
+    {fetchError ? (
+      <div class="error-box">{fetchError}</div>
+    ) : audit ? (
+      <>
+        {/* Meta card */}
+        <div class="meta-card">
+          <div class="meta-item">
+            <label>URL</label>
+            <span><a href={audit.url} target="_blank" style="color:#4A7FD4;">{audit.url}</a></span>
+          </div>
+          <div class="meta-item">
+            <label>Estado</label>
+            <span>
+              <span class="badge" style={`background:${audit.status==='completed'?'#E1F5EE':audit.status==='error'?'#FCEBEB':'#FAEEDA'};color:${audit.status==='completed'?'#1D9E75':audit.status==='error'?'#E24B4A':'#BA7517'};`}>
+                {audit.status}
+              </span>
+            </span>
+          </div>
+          <div class="meta-item">
+            <label>Paso actual</label>
+            <span>{audit.currentStep}</span>
+          </div>
+          <div class="meta-item">
+            <label>Score</label>
+            <span>{audit.score ?? '—'}</span>
+          </div>
+          <div class="meta-item">
+            <label>Sector</label>
+            <span>{audit.sector ?? '—'}</span>
+          </div>
+          <div class="meta-item">
+            <label>Notion ID</label>
+            <span style="font-size:11px;">{audit.notionPageId}</span>
+          </div>
+        </div>
+
+        {/* Module table */}
+        <div class="section-title">Módulos ejecutados ({Object.keys(audit.results).length} / {STEP_ORDER.length})</div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width:140px;">Módulo</th>
+              <th style="width:90px;">Estado</th>
+              <th style="width:70px;">Tiempo</th>
+              <th>Datos clave / Log</th>
+            </tr>
+          </thead>
+          <tbody>
+            {STEP_ORDER.map((step) => {
+              const r = audit.results[step];
+              const st = moduleStatus(step, r);
+              const summary = moduleSummary(step, r);
+              const log = r?._log;
+              const timing = r?._t as number | undefined;
+              const timingClass = !timing ? '' : timing > 15000 ? 'slow' : timing > 5000 ? 'medium' : 'fast';
+              return (
+                <tr>
+                  <td><span class="module-name">{step}</span></td>
+                  <td>
+                    <span class="status-badge" style={`background:${st.bg};color:${st.color};`}>
+                      {st.label}
+                    </span>
+                  </td>
+                  <td>
+                    {timing != null
+                      ? <span class={`timing ${timingClass}`}>{fmt(timing)}</span>
+                      : <span style="color:#D1D5DB;">—</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="summary-text">{summary}</div>
+                    {log && log !== summary && (
+                      <div class="log-text">▸ {log}</div>
+                    )}
+                    {r && !r.skipped && !r._truncated && (
+                      <div style="margin-top:4px;">
+                        <span class="raw-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">ver JSON</span>
+                        <pre class="raw-json">{JSON.stringify(r, null, 2).slice(0, 2000)}</pre>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* Modules not yet run */}
+        {STEP_ORDER.filter((s) => !audit.results[s]).length > 0 && (
+          <div style="margin-top:8px;font-size:12px;color:#9CA3AF;">
+            Pendientes: {STEP_ORDER.filter((s) => !audit.results[s]).join(', ')}
+          </div>
+        )}
+      </>
+    ) : (
+      <div class="error-box">No se encontró la auditoría con ID: {id}</div>
+    )}
+  </div>
+</body>
+</html>

@@ -154,11 +154,20 @@ export interface PageSpeedResult extends ModuleResult {
   desktop?: PageSpeedScore;
 }
 
+export interface SectorBenchmarks {
+  keywordsTop10: { low: number; median: number; high: number };
+  organicTrafficMonthly: { low: number; median: number; high: number };
+  domainRank: { low: number; median: number; high: number };
+  instagramFollowers?: { low: number; median: number; high: number };
+  linkedinFollowers?: { low: number; median: number; high: number };
+}
+
 export interface SectorResult extends ModuleResult {
   sector?: string;
   confidence?: number;
   keywords?: string[];
   rationale?: string;
+  benchmarks?: SectorBenchmarks;
 }
 
 export interface ContentResult extends ModuleResult {
@@ -340,6 +349,10 @@ export interface InsightsInitiative {
 }
 
 export interface InsightsResult extends ModuleResult {
+  summary?: string;
+  visibilitySummary?: string;
+  benchmarkSummary?: string;
+  experienceSummary?: string;
   bullets?: string[];
   initiatives?: InsightsInitiative[];
 }
@@ -396,6 +409,11 @@ export interface SEOResult extends ModuleResult {
   paidTop3Keywords?: number;
   isInvestingPaid?: boolean;
   paidTopKeywords?: Array<{ keyword: string; position: number; volume: number }>;
+  // Backlinks / Domain Authority (DataForSEO Backlinks API)
+  referringDomains?: number;
+  backlinksTotal?: number;
+  domainRank?: number;   // 0-100: DataForSEO domain authority score
+  spamScore?: number;    // 0-100: link profile spam risk
 }
 
 // ── New: SEO top pages ─────────────────────────────────────────────

@@ -1,0 +1,45 @@
+---
+export interface Props {
+  requiredTier: 'señales' | 'palancas';
+  currentTier: 'radar' | 'señales' | 'palancas';
+  featureName?: string;
+}
+
+const { requiredTier, currentTier, featureName = 'esta funcionalidad' } = Astro.props;
+
+const tierOrder = { radar: 0, señales: 1, palancas: 2 };
+const hasAccess = tierOrder[currentTier] >= tierOrder[requiredTier];
+
+const tierLabel = requiredTier === 'señales' ? 'Señales' : 'Palancas';
+const tierColor = requiredTier === 'señales' ? '#205db0' : '#7c3aed';
+const tierBg = requiredTier === 'señales' ? '#d7e3ff' : '#ede9fe';
+const upgradeHref = '/dashboard/subscription';
+---
+
+{hasAccess ? (
+  <slot />
+) : (
+  <div style="position:relative;border-radius:12px;overflow:hidden;">
+    <!-- Blurred preview slot -->
+    <div style="filter:blur(4px);pointer-events:none;user-select:none;opacity:0.6;">
+      <slot name="preview" />
+    </div>
+
+    <!-- Gate overlay -->
+    <div style={`position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;background:rgba(252,248,255,0.85);backdrop-filter:blur(2px);`}>
+      <div style={`display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:${tierBg};color:${tierColor};font-size:12px;font-weight:700;margin-bottom:16px;`}>
+        <span class="material-symbols-outlined" style="font-size:14px;">lock</span>
+        Plan {tierLabel}
+      </div>
+      <h3 style="font-size:18px;font-weight:800;color:#1a1a2e;letter-spacing:-0.03em;margin-bottom:8px;">
+        Desbloquea {featureName}
+      </h3>
+      <p style="font-size:14px;color:#434750;max-width:320px;line-height:1.5;margin-bottom:24px;">
+        Actualiza al plan {tierLabel} para acceder a esta funcionalidad y muchas más.
+      </p>
+      <a href={upgradeHref} style={`display:inline-block;padding:12px 28px;border-radius:10px;background:${tierColor};color:white;font-weight:700;font-size:14px;text-decoration:none;`}>
+        Ver planes →
+      </a>
+    </div>
+  </div>
+)}

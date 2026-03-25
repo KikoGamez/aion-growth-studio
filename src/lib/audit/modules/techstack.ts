@@ -6,7 +6,7 @@ type Category = 'analytics' | 'tagManager' | 'conversionPixels' | 'crmAutomation
 const TOOLS: Array<{ name: string; category: Category; patterns: string[] }> = [
   // Analytics
   { name: 'Google Analytics 4', category: 'analytics',
-    patterns: ['gtag/js', 'googletagmanager.com/gtag', '"G-'] },
+    patterns: ['gtag/js', 'googletagmanager.com/gtag', '"G-', "'G-", '/gtag/js?id=', 'measurementId":"G-', '"measurement_id":"G-'] },
   { name: 'Universal Analytics', category: 'analytics',
     patterns: ['analytics.js', "'UA-", '"UA-'] },
   { name: 'Plausible', category: 'analytics',
@@ -141,6 +141,14 @@ export async function runTechStack(url: string): Promise<TechStackResult> {
         result.cms = cms.name;
         break;
       }
+    }
+
+    // GTM inference: if GTM is detected but no analytics tool found in static HTML,
+    // mark analytics as present via GTM. Tag managers load tracking scripts dynamically —
+    // they never appear in the raw HTML fetch. Virtually all GTM deployments include GA4.
+    if (result.tagManager!.length > 0 && result.analytics!.length === 0) {
+      result.analytics!.push('Google Analytics (vía GTM)');
+      result.allTools!.push('Google Analytics (vía GTM)');
     }
 
     // Maturity score:

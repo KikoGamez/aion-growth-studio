@@ -27,7 +27,7 @@ export async function runInsights(
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
+        max_tokens: 2500,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -39,6 +39,10 @@ export async function runInsights(
 
     const parsed = JSON.parse(match[0]);
     return {
+      summary: parsed.summary || undefined,
+      visibilitySummary: parsed.visibilitySummary || undefined,
+      benchmarkSummary: parsed.benchmarkSummary || undefined,
+      experienceSummary: parsed.experienceSummary || undefined,
       bullets: (parsed.bullets || []).slice(0, 6),
       initiatives: (parsed.initiatives || []).slice(0, 3),
     };
@@ -54,21 +58,23 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
   const domain = new URL(url.startsWith('http') ? url : `https://${url}`)
     .hostname.replace(/^www\./, '');
 
-  const score      = r.score      as any;
-  const crawl      = r.crawl      as any;
-  const ssl        = r.ssl        as any;
-  const ps         = r.pagespeed  as any;
-  const sector     = r.sector     as any;
-  const content    = r.content    as any;
-  const geo        = r.geo        as any;
-  const ig         = r.instagram  as any;
-  const li         = r.linkedin   as any;
-  const gbp        = r.gbp        as any;
-  const traffic    = r.traffic    as any;
-  const seo        = r.seo        as any;
-  const techstack  = r.techstack  as any;
-  const conversion = r.conversion as any;
-  const competitors = r.competitors as any;
+  const score           = r.score             as any;
+  const crawl           = r.crawl             as any;
+  const ssl             = r.ssl               as any;
+  const ps              = r.pagespeed         as any;
+  const sector          = r.sector            as any;
+  const content         = r.content           as any;
+  const geo             = r.geo               as any;
+  const ig              = r.instagram         as any;
+  const li              = r.linkedin          as any;
+  const gbp             = r.gbp               as any;
+  const traffic         = r.traffic           as any;
+  const seo             = r.seo               as any;
+  const techstack       = r.techstack         as any;
+  const conversion      = r.conversion        as any;
+  const competitors     = r.competitors       as any;
+  const compTraffic     = r.competitor_traffic as any;
+  const kg              = r.keyword_gap       as any;
 
   const bd = score?.breakdown;
 
@@ -199,6 +205,26 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
     comps.slice(0, 5).forEach((c: any, i: number) => {
       lines.push(`${i + 1}. ${c.name} (${c.url})`);
     });
+  } else {
+    lines.push('\n=== COMPETIDORES ===');
+    lines.push('AVISO: No hay datos de competidores disponibles para este análisis. NO hagas comparativas con competidores en los bullets ni en las iniciativas. Basa el análisis únicamente en los datos propios del dominio.');
+  }
+
+  // ── Benchmark competitivo (tráfico SEO comparativo) ───────────────
+  const ctItems: any[] = (compTraffic?.items || []).filter((c: any) => !c.apiError && (c.organicTrafficEstimate != null || c.keywordsTop10 != null));
+  if (ctItems.length > 0) {
+    lines.push('\n=== BENCHMARK COMPETITIVO (DataForSEO) ===');
+    lines.push(`Cliente — Keywords Top 10: ${seo?.keywordsTop10 ?? 0} · Tráfico orgánico est.: ${seo?.organicTrafficEstimate ?? 0}/mes · Domain Rank: ${seo?.domainRank ?? '?'}/100`);
+    ctItems.slice(0, 3).forEach((c: any) => {
+      lines.push(`${c.name || c.domain}: kw top10=${c.keywordsTop10 ?? '?'} · tráfico est.=${c.organicTrafficEstimate ?? '?'}/mes · paid kw=${c.paidKeywordsTotal ?? 0}`);
+    });
+    const kgItems: any[] = kg?.items || [];
+    if (kgItems.length > 0) {
+      lines.push(`Keyword gap vs competidores: ${kgItems.length} keywords donde el competidor posiciona y el cliente no. Top: ${kgItems.slice(0, 3).map((k: any) => `"${k.keyword}" (vol ${k.searchVolume ?? '?'})`).join(', ')}`);
+    }
+  } else {
+    lines.push('\n=== BENCHMARK COMPETITIVO ===');
+    lines.push('Sin datos de tráfico competitivo disponibles. No hagas comparativas numéricas precisas con competidores.');
   }
 
   return lines.join('\n');
@@ -209,10 +235,16 @@ function buildPrompt(summary: string): string {
 
 Tu misión: redactar el diagnóstico ejecutivo que verá el dueño de la empresa cuando abra su informe. Debe sentirse como si lo hubiera escrito un consultor senior que se ha empapado a fondo de su negocio, no como un output genérico de IA.
 
+Genera seis cosas: (1) un resumen ejecutivo de 2 frases para el hero del informe, (2) una línea de contexto sobre la visibilidad digital del negocio, (3) una línea de contexto sobre el benchmark competitivo, (4) una línea de contexto sobre la experiencia web y conversión, (5) los bullets de diagnóstico detallado, (6) las iniciativas estratégicas.
+
 DATOS DEL ANÁLISIS:
 ${summary}
 
 REGLAS DE REDACCIÓN ESTRICTAS:
+0. El campo "summary" es 1-2 frases que capturan la situación real del negocio con UN dato clave. Es lo primero que leerá el CEO. Sé directo y específico: di qué tiene bien y cuál es el mayor gap, con el dato que lo demuestra. Si no hay datos de competidores, NO menciones comparativas con competidores.
+0b. El campo "visibilitySummary" es UNA frase (máx. 25 palabras) que resume exclusivamente los tres pilares de Visibilidad Digital: SEO orgánico (keywords/tráfico), GEO/IA (mention rate) y Publicidad (paid keywords). Indica qué pilar domina, cuál es el gap más crítico y qué implica para el negocio. Solo datos de estos tres canales, nada de conversión, técnico ni reputación.
+0c. El campo "benchmarkSummary" es UNA frase (máx. 25 palabras) que resume la posición competitiva del negocio frente a sus competidores: quién lidera en SEO orgánico (keywords top 10), cuál es la brecha más crítica y si el cliente está perdiendo o ganando terreno. Si no hay datos de tráfico competitivo, describe la posición SEO del cliente en términos absolutos.
+0d. El campo "experienceSummary" es UNA frase (máx. 25 palabras) que resume la experiencia web y capacidad de conversión: velocidad en móvil (PageSpeed), capacidad de captación (funnel score) y madurez del stack de medición (tech maturity). Solo estos tres aspectos, sin SEO ni competidores.
 1. CADA bullet y CADA frase de iniciativa DEBE citar un dato específico del análisis en paréntesis, p.ej.: "(Domain Rank 18/100, por debajo del benchmark sectorial de 35)" o "(0 keywords en top 10 en Google)" o "(GEO nivel 1: la IA no menciona la marca en consultas de sector)".
 2. Habla en términos de NEGOCIO, nunca de tecnología. Prohíbido: "canonical tags", "schema markup", "LCP", "CLS". Permitido: "tu web no aparece bien configurada para Google", "Google tarda más de 4 segundos en cargar tu página en móvil", "ningún asistente de IA menciona tu marca cuando alguien pregunta por servicios de [sector]".
 3. El GEO score debe traducirse a impacto de negocio real: si score < 30, di que la marca es invisible para la IA; si > 60, destaca la ventaja competitiva.
@@ -222,6 +254,7 @@ REGLAS DE REDACCIÓN ESTRICTAS:
 
 EJEMPLO DE OUTPUT CORRECTO (para una empresa de consultoría con score 42/100):
 {
+  "summary": "Tienes una base SEO sólida (8 keywords en top 10, ~4.200 visitas/mes) pero tu marca es invisible en IA: aparece en 1 de 12 respuestas de ChatGPT sobre tu sector, y sin analytics ni píxeles instalados no puedes medir ni optimizar nada.",
   "bullets": [
     "Invisible en IA: tu marca aparece en 1 de 12 respuestas cuando alguien pregunta por consultoría de sostenibilidad en ChatGPT o Perplexity (GEO score 8/100) — tu principal competidor aparece en 7 de 12.",
     "Web lenta en móvil: Google tarda 4.8 segundos en mostrar tu contenido en móvil (LCP 4.8s, umbral recomendado: 2.5s). Cada segundo adicional reduce la conversión un 10-20%.",
@@ -263,6 +296,10 @@ Los bullets sin datos numéricos y las iniciativas que son diagnósticos en vez 
 
 Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto fuera del JSON):
 {
+  "summary": "1-2 frases ejecutivas con el dato clave que define la situación del negocio. Sin competidores si no hay datos de ellos.",
+  "visibilitySummary": "Una frase sobre SEO orgánico, presencia en IA (GEO) y publicidad de pago — solo estos tres canales.",
+  "benchmarkSummary": "Una frase sobre la posición competitiva en SEO y tráfico vs los principales competidores.",
+  "experienceSummary": "Una frase sobre velocidad web móvil, funnel de conversión y madurez del stack de medición.",
   "bullets": [
     "Bullet 1: estado actual de un aspecto clave con dato citado en paréntesis",
     "Bullet 2",

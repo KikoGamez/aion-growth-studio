@@ -1,0 +1,76 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import AlertCard from '../../components/dashboard/AlertCard.astro';
+import TierGate from '../../components/dashboard/TierGate.astro';
+import { getClient, getAlerts } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const allAlerts = await getAlerts(client.id);
+const tier: Tier = client.tier;
+const canAccess = tier === 'señales' || tier === 'palancas';
+
+const filterParam = Astro.url.searchParams.get('type') || 'all';
+const filtered = filterParam === 'all' ? allAlerts : allAlerts.filter(a => a.type === filterParam);
+
+const filterTypes = [
+  { value: 'all', label: 'Todos' },
+  { value: 'seo', label: 'SEO' },
+  { value: 'geo', label: 'GEO' },
+  { value: 'competitor', label: 'Competidores' },
+  { value: 'web', label: 'Web' },
+  { value: 'paid', label: 'Paid' },
+];
+---
+
+<DashboardLayout title="Alertas" currentPath="/dashboard/alerts" tier={tier} clientName={client.name} domain={client.domain}>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Alertas</h1>
+      <p style="font-size:14px;color:#434750;margin-top:4px;">Cambios detectados en tu ecosistema digital</p>
+    </div>
+
+    {canAccess ? (
+      <>
+        <!-- Filter pills -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          {filterTypes.map(f => (
+            <a
+              href={`/dashboard/alerts?type=${f.value}`}
+              style={`padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;transition:all 0.15s;${filterParam === f.value ? 'background:#1a4b8c;color:white;' : 'background:#e8e5ff;color:#434750;'}`}
+            >
+              {f.label}
+              {f.value !== 'all' && (
+                <span style="margin-left:4px;opacity:0.7;">({allAlerts.filter(a => f.value === 'all' || a.type === f.value).length})</span>
+              )}
+              {f.value === 'all' && (
+                <span style="margin-left:4px;opacity:0.7;">({allAlerts.length})</span>
+              )}
+            </a>
+          ))}
+        </div>
+
+        <!-- Alerts list -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          {filtered.length === 0 ? (
+            <div style="text-align:center;padding:48px;color:#94a3b8;">
+              <span class="material-symbols-outlined" style="font-size:48px;display:block;margin-bottom:12px;">notifications_off</span>
+              No hay alertas para este filtro.
+            </div>
+          ) : (
+            filtered.map(alert => <AlertCard alert={alert} />)
+          )}
+        </div>
+      </>
+    ) : (
+      <TierGate requiredTier="señales" currentTier={tier} featureName="Alertas en tiempo real">
+        <div slot="preview" style="display:flex;flex-direction:column;gap:12px;">
+          {allAlerts.slice(0, 3).map(alert => <AlertCard alert={alert} />)}
+        </div>
+      </TierGate>
+    )}
+
+  </div>
+</DashboardLayout>

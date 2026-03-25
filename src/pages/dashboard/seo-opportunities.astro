@@ -1,0 +1,134 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import TierGate from '../../components/dashboard/TierGate.astro';
+import { getClient, getLatestSnapshot } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const snapshot = await getLatestSnapshot(client.id);
+const tier: Tier = client.tier;
+const canAccess = tier === 'señales' || tier === 'palancas';
+
+const kgItems = snapshot.pipeline_output.keyword_gap?.items || [];
+
+const priorityConfig: Record<string, { bg: string; color: string; label: string }> = {
+  'quick-win': { bg: '#e1f5ee', color: '#085041', label: 'Quick Win' },
+  'oportunidad': { bg: '#d6e3ff', color: '#124687', label: 'Oportunidad' },
+};
+---
+
+<DashboardLayout title="SEO Oportunidades" currentPath="/dashboard/seo-opportunities" tier={tier} clientName={client.name} domain={client.domain}>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">SEO Oportunidades</h1>
+      <p style="font-size:14px;color:#434750;margin-top:4px;">Keywords de alto valor que tus competidores ya están capturando</p>
+    </div>
+
+    {canAccess ? (
+      <>
+        <!-- Keywords table -->
+        <div style="background:#ffffff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#f5f2ff;">
+                <th style="text-align:left;padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Keyword</th>
+                <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Volumen</th>
+                <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Dificultad</th>
+                <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Tu pos.</th>
+                <th style="text-align:left;padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Competidor</th>
+                <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Impacto</th>
+                <th style="text-align:center;padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Prioridad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kgItems.map((item: any, i: number) => {
+                const diff = item.difficulty || 0;
+                const diffColor = diff < 30 ? '#1d9e75' : diff < 50 ? '#ba7517' : '#ba1a1a';
+                const pc = priorityConfig[item.priority] || priorityConfig['oportunidad'];
+                const impactBg = item.impact === 'high' ? '#e1f5ee' : item.impact === 'medium' ? '#e8e5ff' : '#f5f2ff';
+                const impactColor = item.impact === 'high' ? '#085041' : '#434750';
+                return (
+                  <tr style={`border-bottom:1px solid #f5f2ff;${i % 2 === 0 ? '' : 'background:#fafafa;'}`}>
+                    <td style="padding:14px 16px;font-weight:600;color:#1a1a2e;">{item.keyword}</td>
+                    <td style="padding:14px 16px;text-align:center;color:#434750;">{item.volume?.toLocaleString('es-ES') || '—'}</td>
+                    <td style="padding:14px 16px;text-align:center;">
+                      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                        <div style={`height:4px;width:48px;background:#e8e5ff;border-radius:999px;overflow:hidden;`}>
+                          <div style={`height:100%;width:${diff}%;background:${diffColor};`}></div>
+                        </div>
+                        <span style={`font-size:12px;font-weight:700;color:${diffColor};`}>{diff}</span>
+                      </div>
+                    </td>
+                    <td style="padding:14px 16px;text-align:center;color:#94a3b8;">{item.position || '—'}</td>
+                    <td style="padding:14px 16px;font-size:12px;color:#434750;">{item.competitor || '—'}</td>
+                    <td style="padding:14px 16px;text-align:center;">
+                      <span style={`padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:${impactBg};color:${impactColor};`}>{item.impact || 'medium'}</span>
+                    </td>
+                    <td style="padding:14px 16px;text-align:center;">
+                      <span style={`padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:${pc.bg};color:${pc.color};`}>{pc.label}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Bottom bento -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+          <!-- Top Quick Win -->
+          <div style="background:#ffffff;padding:24px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+              <span class="material-symbols-outlined" style="color:#1d9e75;font-size:20px;">bolt</span>
+              <h3 style="font-size:14px;font-weight:700;color:#1a1a2e;">Top Quick Win</h3>
+            </div>
+            {kgItems.find((k: any) => k.priority === 'quick-win') && (() => {
+              const kw = kgItems.find((k: any) => k.priority === 'quick-win');
+              return (
+                <div>
+                  <p style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:4px;">{kw.keyword}</p>
+                  <p style="font-size:12px;color:#434750;">{kw.volume?.toLocaleString('es-ES')} búsquedas/mes · Dificultad {kw.difficulty}</p>
+                </div>
+              );
+            })()}
+          </div>
+
+          <!-- Competitor Alert -->
+          <div style="background:#fff8f1;border:1px solid #fed7aa;padding:24px;border-radius:12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+              <span class="material-symbols-outlined" style="color:#c2410c;font-size:20px;">warning</span>
+              <h3 style="font-size:14px;font-weight:700;color:#1a1a2e;">Alerta Competidor</h3>
+            </div>
+            <p style="font-size:13px;color:#7c2d12;">
+              {kgItems[0]?.competitor || 'EcoSoluciones.com'} domina {kgItems.filter((k: any) => k.competitor === kgItems[0]?.competitor).length} de tus keywords objetivo.
+            </p>
+          </div>
+
+          <!-- AI Projection -->
+          <div style="background:#1a1a2e;padding:24px;border-radius:12px;color:white;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+              <span class="material-symbols-outlined" style="font-size:20px;color:#73a6fe;">auto_awesome</span>
+              <h3 style="font-size:14px;font-weight:700;">Proyección IA</h3>
+            </div>
+            <p style="font-size:13px;color:#94a3b8;line-height:1.5;">
+              Capturando los {kgItems.length} gaps identificados podrías incrementar el tráfico orgánico estimado en <strong style="color:white;">+40%</strong> en 3 meses.
+            </p>
+          </div>
+        </div>
+      </>
+    ) : (
+      <TierGate requiredTier="señales" currentTier={tier} featureName="SEO Oportunidades">
+        <div slot="preview">
+          <div style="background:#ffffff;border-radius:12px;overflow:hidden;opacity:0.6;">
+            <div style="height:200px;background:#f5f2ff;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;">
+              Tabla de keywords disponible con plan Señales
+            </div>
+          </div>
+        </div>
+      </TierGate>
+    )}
+
+  </div>
+</DashboardLayout>

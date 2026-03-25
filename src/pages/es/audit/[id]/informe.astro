@@ -21,7 +21,9 @@ const health = computeHealthScore(r);
 // Data shortcuts
 const crawl = r.crawl || {};
 const seo = (!r.seo?.skipped && r.seo) ? r.seo : null;
-const geo = (!r.geo?.skipped && r.geo) ? r.geo : null;
+const geoTruncated = r.geo?._truncated === true;
+const geoApiError = !r.geo?.skipped && r.geo?.error && !geoTruncated ? r.geo.error : null;
+const geo = (!r.geo?.skipped && r.geo && !geoTruncated) ? r.geo : null;
 const traffic = (!r.traffic?.skipped && r.traffic) ? r.traffic : null;
 const ps = (!r.pagespeed?.skipped && r.pagespeed) ? r.pagespeed : null;
 const gbp = (!r.gbp?.skipped && r.gbp?.found) ? r.gbp : null;
@@ -49,6 +51,27 @@ const businessType: string = crawl.businessType || 'unknown';
 const compPS = (r.competitor_pagespeed && !r.competitor_pagespeed?.skipped) ? r.competitor_pagespeed : null;
 const kwGap = kg;
 
+// Visibility sub-scores (for the Visibilidad Digital block header)
+const visSeoSub     = r.score?.breakdown?.seoVisibility ?? 0;
+const visGeoSub     = geo?.overallScore ?? 0;
+const _trafficCh    = (r.traffic?.channels || {}) as Record<string, any>;
+const _totalTraf    = Object.values(_trafficCh).reduce((s: number, c: any) => s + (c.visits || 0), 0);
+const _organicTraf  = _trafficCh.organic?.visits || 0;
+const visTrafficSub = _totalTraf > 0 ? Math.min(100, Math.round((_organicTraf / _totalTraf) * 150)) : 0;
+const visScore      = health.visibilidad;
+const visColor      = scoreColor(visScore);
+const visSummaryText = (insights as any)?.visibilitySummary || null;
+
+// Benchmark header vars
+const benchScore = health.competitividad;
+const benchColor = scoreColor(benchScore);
+const benchSummaryText = (insights as any)?.benchmarkSummary || null;
+
+// Experiencia header vars
+const expScore = health.experiencia;
+const expColor = scoreColor(expScore);
+const expSummaryText = (insights as any)?.experienceSummary || null;
+
 // Helpers
 function fmt(n: number | undefined | null): string {
   if (n == null) return '—';
@@ -68,9 +91,9 @@ function statusStyle(s: AreaStatus): { bg: string; fg: string; label: string } {
 
 // 7-area semaphore
 const statusByArea: { area: string; status: AreaStatus; summary: string; anchor: string }[] = [
-  { area: 'SEO Orgánico', status: ss(health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visitas/mes` : 'Sin datos SEO', anchor: '#seo' },
+  { area: 'SEO Orgánico', status: ss(r.score?.breakdown?.seoVisibility ?? health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visitas/mes` : 'Sin datos SEO', anchor: '#seo' },
   { area: 'Visibilidad IA', status: ss(geo?.mentionRate ?? 0), summary: geo ? `Mencionado en ${geo.mentionRate ?? 0}% de las consultas` : 'Sin datos GEO', anchor: '#ia' },
-  { area: 'Publicidad', status: (seo?.paidKeywordsTotal ?? 0) > 0 ? 'good' : 'bad', summary: (seo?.paidKeywordsTotal ?? 0) > 0 ? `${fmt(seo?.paidKeywordsTotal)} kw patrocinadas` : 'Sin inversión publicitaria', anchor: '#ads' },
+  { area: 'Autoridad Web', status: ss(seo?.domainRank ?? 0), summary: seo?.domainRank != null ? `Domain rank: ${seo.domainRank}/100, ${fmt(seo.referringDomains)} dominios enlazantes` : 'Sin datos de autoridad', anchor: '#autoridad' },
   { area: 'Benchmark', status: hasCompetitorData ? ss(health.competitividad ?? 0) : 'bad', summary: hasCompetitorData ? `${ctItems.length} competidores con datos` : 'Sin datos de competidores', anchor: '#competidores' },
   { area: 'Web & Velocidad', status: ss(ps?.mobile?.performance ?? 0), summary: ps ? `Score móvil: ${ps.mobile?.performance ?? '—'}/100` : 'Sin datos PageSpeed', anchor: '#experiencia' },
   { area: 'Conversión', status: ss(cv?.funnelScore ?? health.conversion ?? 0), summary: cv ? `Funnel score: ${cv.funnelScore ?? '—'}/100` : 'Sin datos', anchor: '#experiencia' },
@@ -104,7 +127,7 @@ const missingSchemas = recommendedSchemas.filter(s => !presentLower.includes(s.t
 // Keyword data
 const kwGapItems: any[] = kwGap?.items?.slice(0, 8) || [];
 const pos4to10Keywords: any[] = (seo?.topKeywords || []).filter((k: any) => k.position >= 4 && k.position <= 10).slice(0, 5);
-const seoToAiGap: any[] = (seo?.topKeywords || []).slice(0, 5);
+// seoToAiGap removed — data was incorrect (all SEO keywords shown as IA misses regardless)
 
 // Paid
 const clientPaidKw = seo?.paidKeywordsTotal ?? 0;
@@ -184,8 +207,25 @@ function buildHorizontalBars(items: Array<{label:string;value:number;color:strin
   return `<svg width="${totalW}" height="${h}" viewBox="0 0 ${totalW} ${h}">${bars}</svg>`;
 }
 
+// displayCompetitors: all known competitors with best available data.
+// Primary source: ctItemsRaw (DataForSEO data, even partial).
+// Fallback: AI-detected competitor names (always populated).
+const displayCompetitors: any[] = (() => {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const c of ctItemsRaw) {
+    if (c.domain && !seen.has(c.domain)) { seen.add(c.domain); out.push(c); }
+  }
+  for (const c of competitors) {
+    let d = c.url;
+    try { d = new URL(c.url.startsWith('http') ? c.url : `https://${c.url}`).hostname.replace(/^www\./, ''); } catch {}
+    if (d && !seen.has(d)) { seen.add(d); out.push({ name: c.name, domain: d, url: c.url }); }
+  }
+  return out.slice(0, 5);
+})();
+
 // Radar datasets
-const maxKW = Math.max(seo?.keywordsTop10||0, ...ctItems.map((c:any)=>c.keywordsTop10||0), 1);
+const maxKW = Math.max(seo?.keywordsTop10||0, ...displayCompetitors.map((c:any)=>c.keywordsTop10||0), 1);
 const maxFollowers = Math.max(linkedin?.followers||0, instagram?.followers||0, ...(linkedin?.competitors||[]).map((c:any)=>c.followers||0), ...(instagram?.competitors||[]).map((c:any)=>c.followers||0), 1);
 
 const radarColors = ['#1A4B8C','#D85A30','#888780'];
@@ -197,15 +237,15 @@ const radarDatasets = [
     Math.round((Math.max(linkedin?.followers||0,instagram?.followers||0)/maxFollowers)*100),
     ps?.mobile?.performance??0,
   ]},
-  ...ctItems.slice(0,2).map((ct:any,idx:number)=>({
+  ...displayCompetitors.slice(0,2).map((ct:any, idx:number)=>({
     label: ct.name||ct.domain,
     color: radarColors[idx+1],
     values: [
-      Math.round(((ct.keywordsTop10||0)/maxKW)*100),
+      ct.keywordsTop10 != null ? Math.round((ct.keywordsTop10/maxKW)*100) : 0,
       geo?.competitorMentions?.[idx]?.mentionRate??0,
       (ct.paidKeywordsTotal||0)>0?80:20,
       Math.round((Math.max((linkedin?.competitors||[])[idx]?.followers||0,(instagram?.competitors||[])[idx]?.followers||0)/maxFollowers)*100),
-      compPS?.items?.[idx]?.mobileScore??0,
+      compPS?.items?.find((p:any)=>p.domain===ct.domain)?.mobileScore ?? compPS?.items?.[idx]?.mobileScore ?? 0,
     ],
   })),
 ];
@@ -265,7 +305,6 @@ const displayStrategic = strategicActions.length>0 ? strategicActions : fallback
 // GEO cross-model
 const crossModel: any[] = geo?.crossModel||[];
 const geoEngines = [...new Set(crossModel.map((e:any)=>e.name))];
-const geoEngineNames: string[] = geo?.queries?.[0]?.engines?.map((e:any) => e.name) || geoEngines;
 
 // Match/Gap/Noise counts from keyword data
 const topKeywords: any[] = seo?.topKeywords || [];
@@ -279,8 +318,8 @@ const btLabelForSchema = businessType !== 'unknown' ? (btLabels[businessType] ||
 // Competitor all-zero GEO check
 const allCompGeoZero = (geo?.competitorMentions?.length ?? 0) > 0 && geo.competitorMentions.every((cm: any) => (cm.mentionRate ?? 0) === 0);
 
-// Health summary text
-const healthSummaryText = diagnosisHealthSummary(health);
+// Health summary text — prefer AI-generated summary from insights, fallback to rule-based
+const healthSummaryText = (insights as any)?.summary || diagnosisHealthSummary(health);
 
 // Hero status
 const heroStatus = statusStyle(ss(health.total));
@@ -472,7 +511,7 @@ const heroStatus = statusStyle(ss(health.total));
               <a href="#seo" class="compass-card">
                 <div class="compass-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A4B8C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
                 <div class="compass-card-title">Visibilidad Digital</div>
-                <div class="compass-card-desc">SEO, IA y Publicidad</div>
+                <div class="compass-card-desc">SEO, IA y Autoridad</div>
                 <div style="font-size:0.85rem;font-weight:700;color:#1A4B8C;margin-top:4px;">{health.visibilidad ?? 0}<span style="font-size:0.65rem;font-weight:400;color:#5A6478;">/100</span></div>
               </a>
               <a href="#competidores" class="compass-card">
@@ -524,12 +563,79 @@ const heroStatus = statusStyle(ss(health.total));
         ═══════════════════════════════════════════════════════════ -->
         <div id="seo" class="report-block reveal">
           <div class="block-title">Visibilidad Digital</div>
-          <div class="block-subtitle">Análisis de presencia orgánica, inteligencia artificial y publicidad de pago</div>
+          <div class="block-subtitle">Análisis de presencia orgánica, visibilidad en IA y autoridad de enlazado externo</div>
+
+          <!-- ── Visibility header: gauge + sub-scores + Claude summary ── -->
+          <div style="display:flex;align-items:center;gap:32px;background:#F8F9FB;border-radius:14px;padding:20px 24px;margin-bottom:24px;flex-wrap:wrap;">
+
+            <!-- Gauge -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+              <div style="position:relative;width:88px;height:88px;">
+                <svg viewBox="0 0 36 36" style="width:88px;height:88px;transform:rotate(-90deg);">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke={visColor} stroke-width="3" stroke-linecap="round" stroke-dasharray={`${visScore}, 100`}/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style={`font-size:1.4rem;font-weight:800;color:${visColor};line-height:1;`}>{visScore}</span>
+                  <span style="font-size:0.55rem;color:#5A6478;">/100</span>
+                </div>
+              </div>
+              <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#5A6478;">Visibilidad</span>
+            </div>
+
+            <!-- Sub-scores -->
+            <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
+              {[
+                { label: 'SEO Orgánico', value: visSeoSub, weight: '75%' },
+                { label: 'Visibilidad IA (GEO)', value: visGeoSub, weight: '15%' },
+                { label: 'Mix tráfico orgánico', value: visTrafficSub, weight: '10%' },
+              ].map(sub => {
+                const c = sub.value >= 70 ? '#1D9E75' : sub.value >= 40 ? '#BA7517' : '#E24B4A';
+                return (
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                      <span style="font-size:0.75rem;font-weight:600;color:#1A1A2E;">{sub.label}</span>
+                      <span style={`font-size:0.75rem;font-weight:700;color:${c};`}>{sub.value}<span style="font-size:0.6rem;color:#5A6478;font-weight:400;">/100</span></span>
+                    </div>
+                    <div style="height:6px;background:rgba(0,0,0,0.08);border-radius:4px;overflow:hidden;">
+                      <div style={`height:100%;width:${sub.value}%;background:${c};border-radius:4px;transition:width 0.6s ease;`}></div>
+                    </div>
+                    <div style="font-size:0.6rem;color:#9CA3AF;margin-top:2px;">peso {sub.weight}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <!-- Claude visibility summary -->
+          {visSummaryText && (
+            <div style="font-size:0.85rem;color:#434750;font-style:italic;line-height:1.6;margin-bottom:20px;padding-left:4px;border-left:3px solid #4A7FD4;">
+              {visSummaryText}
+            </div>
+          )}
 
           <!-- ── Layer 1: SEO Orgánico ── -->
-          <div style="font-size:0.88rem;font-weight:700;color:#1A4B8C;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-            <span style="width:3px;height:16px;background:#1A4B8C;border-radius:2px;display:inline-block;"></span>
-            SEO Orgánico
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+            <div style="font-size:0.88rem;font-weight:700;color:#1A4B8C;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;gap:8px;">
+              <span style="width:3px;height:16px;background:#1A4B8C;border-radius:2px;display:inline-block;"></span>
+              SEO Orgánico
+            </div>
+            {(() => {
+              const s = visSeoSub;
+              const c = s >= 70 ? '#1D9E75' : s >= 40 ? '#BA7517' : '#E24B4A';
+              const bg = s >= 70 ? '#E1F5EE' : s >= 40 ? '#FAEEDA' : '#FCEBEB';
+              const lbl = s >= 70 ? 'Fuerte' : s >= 40 ? 'Moderado' : 'Débil';
+              return (
+                <div style={`display:flex;align-items:center;gap:10px;background:${bg};border-radius:10px;padding:8px 16px;`}>
+                  <div style="width:72px;height:6px;background:rgba(0,0,0,0.1);border-radius:4px;overflow:hidden;">
+                    <div style={`height:100%;width:${s}%;background:${c};border-radius:4px;`}></div>
+                  </div>
+                  <span style={`font-size:1rem;font-weight:800;color:${c};`}>{s}</span>
+                  <span style="font-size:0.65rem;color:#5A6478;">/100</span>
+                  <span style={`font-size:0.7rem;font-weight:700;color:${c};`}>{lbl}</span>
+                </div>
+              );
+            })()}
           </div>
 
           {seo ? (
@@ -567,13 +673,17 @@ const heroStatus = statusStyle(ss(health.total));
 
               {(seo.topKeywords?.length ?? 0) > 0 && (
                 <div style="margin-top:14px;margin-bottom:4px;">
-                  <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Top keywords orgánicas</div>
+                  <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:0.75rem;font-weight:600;color:#5A6478;">Top keywords orgánicas</span>
+                    <span style="font-size:0.65rem;color:#9CA3AF;">ordenadas por tráfico real estimado (ETV = volumen × CTR según posición)</span>
+                  </div>
                   <table>
                     <thead>
                       <tr>
                         <th>Keyword</th>
                         <th>Posición</th>
                         <th>Volumen / mes</th>
+                        <th title="Estimated Traffic Value: visitas reales estimadas según la posición">Tráfico est. (ETV)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -586,6 +696,7 @@ const heroStatus = statusStyle(ss(health.total));
                             </span>
                           </td>
                           <td>{fmt(kw.volume)}</td>
+                          <td style="font-weight:600;color:#1A4B8C;">{kw.etv ? fmt(kw.etv) : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -621,18 +732,29 @@ const heroStatus = statusStyle(ss(health.total));
               {/* Match/Gap/Noise cards */}
               {(matchCount > 0 || gapCount > 0) && (
                 <div style="margin-top:16px;">
-                  <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Cruce de keywords relevantes</div>
+                  <div style="margin-bottom:10px;">
+                    <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:4px;">Cruce de keywords relevantes</div>
+                    <div style="font-size:0.72rem;color:#9CA3AF;line-height:1.5;">Cruzamos las búsquedas más relevantes de tu sector con tus posiciones reales en Google para saber dónde estás captando negocio, dónde lo estás perdiendo y dónde estás invirtiendo esfuerzo sin retorno.</div>
+                  </div>
                   <div class="grid-3" style="gap:10px;">
                     <div style="background:#EAF3DE;border-radius:8px;padding:14px;">
                       <div style="font-size:22px;font-weight:700;color:#27500A;">{matchCount}</div>
                       <div style="font-size:12px;font-weight:700;color:#27500A;margin-top:2px;">Coincidencia</div>
                       <div style="font-size:11px;color:#3D7027;margin-top:4px;">Posicionas donde importa</div>
                     </div>
-                    <div style="background:#FCEBEB;border-radius:8px;padding:14px;">
-                      <div style="font-size:22px;font-weight:700;color:#791F1F;">{gapCount || kwGapItems.length}</div>
-                      <div style="font-size:12px;font-weight:700;color:#791F1F;margin-top:2px;">Gap</div>
-                      <div style="font-size:11px;color:#A32D2D;margin-top:4px;">No posicionas donde deberías</div>
-                    </div>
+                    {gapCount > 0 ? (
+                      <div style="background:#FCEBEB;border-radius:8px;padding:14px;">
+                        <div style="font-size:22px;font-weight:700;color:#791F1F;">{gapCount}</div>
+                        <div style="font-size:12px;font-weight:700;color:#791F1F;margin-top:2px;">Oportunidades sin captar</div>
+                        <div style="font-size:11px;color:#A32D2D;margin-top:4px;">Keywords relevantes donde no posicionas</div>
+                      </div>
+                    ) : (
+                      <div style="background:#EAF3DE;border-radius:8px;padding:14px;">
+                        <div style="font-size:22px;font-weight:700;color:#27500A;">✓</div>
+                        <div style="font-size:12px;font-weight:700;color:#27500A;margin-top:2px;">Sin gaps detectados</div>
+                        <div style="font-size:11px;color:#3D7027;margin-top:4px;">Cobertura completa analizada</div>
+                      </div>
+                    )}
                     <div style="background:#FAEEDA;border-radius:8px;padding:14px;">
                       <div style="font-size:22px;font-weight:700;color:#633806;">{noiseCount || Math.max(0, (seo?.keywordsTop10 || 0) - matchCount - gapCount)}</div>
                       <div style="font-size:12px;font-weight:700;color:#633806;margin-top:2px;">Ruido</div>
@@ -647,11 +769,31 @@ const heroStatus = statusStyle(ss(health.total));
           )}
 
           <!-- ── Layer 2: GEO / IA ── -->
-          <div id="ia" class="sub-section-title">
-            <span style="width:3px;height:16px;background:#7c3aed;border-radius:2px;display:inline-block;margin-right:8px;vertical-align:middle;"></span>
-            Visibilidad en IA
+          <div id="ia" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px;">
+            <div style="font-size:0.88rem;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.06em;display:flex;align-items:center;gap:8px;">
+              <span style="width:3px;height:16px;background:#7c3aed;border-radius:2px;display:inline-block;"></span>
+              Visibilidad IA
+            </div>
+            {(() => {
+              const s = visGeoSub;
+              const c = s >= 70 ? '#1D9E75' : s >= 40 ? '#BA7517' : '#E24B4A';
+              const bg = s >= 70 ? '#E1F5EE' : s >= 40 ? '#FAEEDA' : '#FCEBEB';
+              const lbl = s >= 70 ? 'Fuerte' : s >= 40 ? 'Moderado' : 'Débil';
+              return (
+                <div style={`display:flex;align-items:center;gap:10px;background:${bg};border-radius:10px;padding:8px 16px;`}>
+                  <div style="width:72px;height:6px;background:rgba(0,0,0,0.1);border-radius:4px;overflow:hidden;">
+                    <div style={`height:100%;width:${s}%;background:${c};border-radius:4px;`}></div>
+                  </div>
+                  <span style={`font-size:1rem;font-weight:800;color:${c};`}>{s}</span>
+                  <span style="font-size:0.65rem;color:#5A6478;">/100</span>
+                  <span style={`font-size:0.7rem;font-weight:700;color:${c};`}>{lbl}</span>
+                </div>
+              );
+            })()}
           </div>
-          <div class="sub-section-subtitle">Presencia en ChatGPT, Perplexity, Gemini y otros motores de IA generativa</div>
+          {geo && (
+            <div style="font-size:0.75rem;color:#5A6478;font-style:italic;border-left:3px solid #7c3aed;padding-left:10px;line-height:1.5;margin-bottom:16px;">{diagnosisGEO(geo)}</div>
+          )}
 
           <!-- TOFU/MOFU/BOFU explanation -->
           <div style="background:#F8F9FB;border-radius:8px;border:0.5px solid #E5E7EB;padding:16px;margin-bottom:16px;">
@@ -678,32 +820,49 @@ const heroStatus = statusStyle(ss(health.total));
 
           {!qaSuppressed.includes('geo_analysis') && geo ? (
             <div>
+              {/* Metric cards */}
               <div class="grid-2" style="margin-bottom:14px;">
                 <div class="metric-card">
-                  <div class="metric-value" style={`color:${geo.mentionRate>=60?'#1D9E75':geo.mentionRate>=30?'#BA7517':'#E24B4A'};`}>{geo.mentionRate ?? 0}%</div>
+                  <div class="metric-value" style={`color:${(geo.mentionRate??0)>=60?'#1D9E75':(geo.mentionRate??0)>=30?'#BA7517':'#E24B4A'};`}>{geo.mentionRate ?? 0}%</div>
                   <div class="metric-label">Tasa de mención en IA</div>
                   <div class="metric-sub" style="margin-top:4px;">
-                    {geo.mentionRate>=60 ? 'Buena visibilidad en IA' : geo.mentionRate>=30 ? 'Visibilidad parcial — mejorable' : 'Baja presencia en IA generativa'}
+                    {(geo.mentionRate??0)>=60 ? 'Buena visibilidad en IA' : (geo.mentionRate??0)>=30 ? 'Visibilidad parcial — mejorable' : 'Baja presencia en IA generativa'}
                   </div>
                 </div>
                 <div class="metric-card">
-                  <div class="metric-value">{geoEngines.length > 0 ? geoEngines.length : '—'}</div>
+                  <div class="metric-value">{geoEngines.length > 0 ? geoEngines.length : (geo.queries?.length ?? 0) > 0 ? '1' : '—'}</div>
                   <div class="metric-label">Motores de IA analizados</div>
-                  <div class="metric-sub" style="margin-top:4px;">{geoEngines.length > 0 ? geoEngines.join(', ') : 'Sin datos de motores'}</div>
+                  <div class="metric-sub" style="margin-top:4px;">{geoEngines.length > 0 ? geoEngines.join(', ') : 'ChatGPT + otros'}</div>
                 </div>
               </div>
 
+              {/* Engine breakdown from crossModel */}
+              {crossModel.length > 0 && (
+                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                  {crossModel.map((eng: any) => {
+                    const pct = eng.total > 0 ? Math.round((eng.mentioned / eng.total) * 100) : 0;
+                    const c = pct >= 50 ? '#1D9E75' : pct >= 25 ? '#BA7517' : '#E24B4A';
+                    return (
+                      <div style={`background:#F8F9FB;border-radius:8px;border:0.5px solid #E5E7EB;padding:8px 14px;display:flex;align-items:center;gap:8px;`}>
+                        <span style="font-size:12px;font-weight:700;color:#1A1A2E;">{eng.name}</span>
+                        <span style={`font-size:13px;font-weight:800;color:${c};`}>{pct}%</span>
+                        <span style="font-size:10px;color:#9CA3AF;">{eng.mentioned}/{eng.total} consultas</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Query table — simplified: Stage | Query | ✓/✗ */}
               {(geo.queries?.length ?? 0) > 0 && (
                 <div style="margin-bottom:14px;overflow-x:auto;">
-                  <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Consultas analizadas en IA</div>
-                  <table style="min-width:500px;">
+                  <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Consultas analizadas — ¿apareces en la respuesta?</div>
+                  <table>
                     <thead>
                       <tr>
                         <th style="width:60px;">Etapa</th>
-                        <th>Consulta</th>
-                        {geoEngineNames.map((name: string) => (
-                          <th style="text-align:center;width:80px;">{name}</th>
-                        ))}
+                        <th>Consulta realizada a ChatGPT / Perplexity / Claude</th>
+                        <th style="text-align:center;width:70px;">Mención</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -715,41 +874,15 @@ const heroStatus = statusStyle(ss(health.total));
                             </span>
                           </td>
                           <td style="font-size:11px;">{q.query}</td>
-                          {geoEngineNames.map((name: string) => {
-                            const eng = q.engines?.find((e: any) => e.name === name);
-                            const mentioned = eng?.mentioned ?? false;
-                            return (
-                              <td style="text-align:center;">
-                                <span style={`display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${mentioned?'#E1F5EE':'#FCEBEB'};font-size:12px;color:${mentioned?'#27500A':'#A32D2D'};font-weight:700;`}>
-                                  {mentioned ? '✓' : '✗'}
-                                </span>
-                              </td>
-                            );
-                          })}
+                          <td style="text-align:center;">
+                            <span style={`display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${q.mentioned?'#E1F5EE':'#FCEBEB'};font-size:12px;color:${q.mentioned?'#27500A':'#A32D2D'};font-weight:700;`}>
+                              {q.mentioned ? '✓' : '✗'}
+                            </span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-              )}
-
-              {/* SEO → IA gap */}
-              {seoToAiGap.length > 0 && (
-                <div style="margin-top:16px;margin-bottom:14px;">
-                  <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Gap SEO → IA: posicionas en Google pero no apareces en IA</div>
-                  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-                    {seoToAiGap.map((kw: any) => (
-                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #F0F0F0;">
-                        <span style="font-size:12px;font-weight:600;color:#1A1A2E;min-width:160px;">{kw.keyword}</span>
-                        {(kw.volume ?? 0) > 0 && <span class="tag" style="background:#F3F4F6;color:#5A6478;">{fmt(kw.volume)}/mes</span>}
-                        <span class="tag" style={`background:#E1F5EE;color:#1D9E75;`}>Google #{kw.position}</span>
-                        <span class="tag" style="background:#FCEBEB;color:#A32D2D;">IA ✗</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div class="callout callout-blue" style="font-size:12px;">
-                    Mejorar tu visibilidad en IA para estos términos es la iniciativa GEO de mayor retorno: la demanda ya existe y tú ya eres relevante en Google. Solo falta que ChatGPT y Perplexity lo sepan.
-                  </div>
                 </div>
               )}
 
@@ -792,78 +925,70 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               )}
             </div>
+          ) : geoTruncated ? (
+            <div class="callout callout-amber">
+              Los datos de visibilidad en IA de este diagnóstico no se pudieron almacenar correctamente (resultado demasiado grande). Re-lanza el diagnóstico para obtener los datos completos.
+            </div>
+          ) : geoApiError ? (
+            <div class="callout callout-amber">
+              Error al capturar visibilidad en IA: {geoApiError}. Puede deberse a un límite temporal de la API — vuelve a lanzar el diagnóstico.
+            </div>
           ) : qaSuppressed.includes('geo_analysis') ? (
             <div class="callout callout-amber">El análisis de visibilidad en IA ha sido omitido por falta de datos suficientes.</div>
           ) : (
             <div class="callout callout-amber">No se han podido obtener datos de visibilidad en IA para este dominio.</div>
           )}
 
-          <!-- ── Layer 3: Publicidad ── -->
-          <div id="ads" class="sub-section-title">
-            <span style="width:3px;height:16px;background:#D85A30;border-radius:2px;display:inline-block;margin-right:8px;vertical-align:middle;"></span>
-            Publicidad
+          <!-- ── Layer 3: Autoridad de Marca ── -->
+          <div id="autoridad" class="sub-section-title">
+            <span style="width:3px;height:16px;background:#7c3aed;border-radius:2px;display:inline-block;margin-right:8px;vertical-align:middle;"></span>
+            Autoridad de Marca
           </div>
-          <div class="sub-section-subtitle">Inversión en Google Ads y Meta Ads detectada para tu dominio y competidores</div>
+          <div class="sub-section-subtitle">Presencia externa: blogs, medios, directorios y enlaces entrantes hacia tu dominio</div>
 
-          <div class="grid-2" style="margin-bottom:14px;">
-            <div class="metric-card">
-              <div class="metric-value" style={`color:${clientPaidKw>0?'#1D9E75':'#E24B4A'};`}>{fmt(clientPaidKw)}</div>
-              <div class="metric-label">Keywords en Google Ads</div>
-              <div class="metric-sub" style="margin-top:4px;">
-                {clientPaidKw > 0 ? `Tráfico pagado estimado: ${fmt(seo?.paidTrafficEstimate)} visitas/mes` : 'Sin inversión detectada en Google Ads'}
+          {seo && (seo.domainRank != null || seo.referringDomains != null) ? (
+            <div>
+              <div class="grid-3" style="margin-bottom:14px;">
+                <div class="metric-card">
+                  <div class="metric-value" style={`color:${(seo.domainRank??0)>=50?'#1D9E75':(seo.domainRank??0)>=25?'#BA7517':'#E24B4A'};`}>{seo.domainRank ?? '—'}</div>
+                  <div class="metric-label">Domain Rank</div>
+                  <div class="metric-sub" style="margin-top:4px;">Autoridad del dominio (0–100)</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value">{fmt(seo.referringDomains)}</div>
+                  <div class="metric-label">Dominios enlazantes</div>
+                  <div class="metric-sub" style="margin-top:4px;">Webs únicas que enlazan al dominio</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value">{fmt(seo.backlinksTotal)}</div>
+                  <div class="metric-label">Backlinks totales</div>
+                  <div class="metric-sub" style="margin-top:4px;">Total de enlaces entrantes</div>
+                </div>
               </div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value" style={`color:${metaAds?.active?'#1D9E75':'#E24B4A'};`}>
-                {metaAds ? (metaAds.active ? 'Activa' : 'Inactiva') : '—'}
-              </div>
-              <div class="metric-label">Meta Ads (Facebook/Instagram)</div>
-              <div class="metric-sub" style="margin-top:4px;">
-                {metaAds?.active ? `${fmt(metaAds.adsCount)} anuncios detectados` : 'Sin anuncios activos detectados'}
-              </div>
-            </div>
-          </div>
 
-          {clientPaidKw === 0 && compPaidItems.length === 0 && (
-            <div class="callout callout-amber">
-              Ni tú ni tus competidores invierten en paid search. Es una oportunidad para capturar demanda con menor competencia en subastas de AdWords.
+              {(seo.domainRank ?? 0) < 20 && (
+                <div class="callout callout-red">
+                  Tu domain rank es bajo ({seo.domainRank ?? 0}/100). Conseguir menciones en medios relevantes, publicar guest posts y aparecer en directorios del sector son acciones prioritarias para aumentar tu autoridad.
+                </div>
+              )}
+              {(seo.domainRank ?? 0) >= 20 && (seo.domainRank ?? 0) < 50 && (
+                <div class="callout callout-amber">
+                  Tu domain rank está en desarrollo ({seo.domainRank ?? 0}/100). Aumentar la presencia en blogs especializados y medios del sector puede acelerar el crecimiento orgánico.
+                </div>
+              )}
+              {(seo.domainRank ?? 0) >= 50 && (
+                <div class="callout callout-green">
+                  Buena autoridad de dominio ({seo.domainRank ?? 0}/100) con {fmt(seo.referringDomains)} dominios enlazantes. Mantén la estrategia de link building y prioriza la calidad sobre la cantidad.
+                </div>
+              )}
+              {(seo.spamScore ?? 0) > 40 && (
+                <div class="callout callout-red" style="margin-top:8px;">
+                  <strong>Alerta:</strong> Tu perfil de backlinks tiene un spam score elevado ({seo.spamScore}%). Revisa y desautoriza enlaces tóxicos desde Google Search Console para evitar penalizaciones.
+                </div>
+              )}
             </div>
-          )}
-
-          {clientPaidKw === 0 && compPaidItems.length > 0 && (
-            <div class="callout callout-red">
-              <strong>Atención:</strong> {compPaidItems.length} de tus competidores están invirtiendo en Google Ads y tú no. Están capturando clientes que potencialmente buscan tus servicios.
-            </div>
-          )}
-
-          {clientPaidKw > 0 && compPaidItems.length > 0 && (
-            <div class="callout callout-green">
-              Estás invirtiendo en paid junto a {compPaidItems.length} competidores. Analiza el gap de keywords para optimizar tu presupuesto y evitar solapamientos.
-            </div>
-          )}
-
-          {compPaidItems.length > 0 && (
-            <div style="margin-top:14px;">
-              <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Competidores con inversión en paid</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Competidor</th>
-                    <th>Keywords patrocinadas</th>
-                    <th>Tráfico paid est.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {compPaidItems.slice(0,5).map((c: any) => (
-                    <tr>
-                      <td style="font-weight:500;">{c.name || c.domain}</td>
-                      <td>{fmt(c.paidKeywordsTotal)}</td>
-                      <td>{fmt(c.paidTrafficEstimate)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          ) : (
+            <div class="callout callout-amber">No se han podido obtener datos de autoridad de dominio para este sitio.</div>
           )}
         </div>
 
@@ -873,6 +998,58 @@ const heroStatus = statusStyle(ss(health.total));
         <div id="competidores" class="report-block reveal">
           <div class="block-title">Benchmark Competitivo</div>
           <div class="block-subtitle">Tu posición relativa frente a los principales competidores en 5 ejes clave</div>
+
+          <!-- ── Benchmark header: gauge + key metrics + Claude summary ── -->
+          <div style="display:flex;align-items:center;gap:32px;background:#F8F9FB;border-radius:14px;padding:20px 24px;margin-bottom:24px;flex-wrap:wrap;">
+            <!-- Gauge -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+              <div style="position:relative;width:88px;height:88px;">
+                <svg viewBox="0 0 36 36" style="width:88px;height:88px;transform:rotate(-90deg);">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke={benchColor} stroke-width="3" stroke-linecap="round" stroke-dasharray={`${benchScore}, 100`}/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style={`font-size:1.4rem;font-weight:800;color:${benchColor};line-height:1;`}>{benchScore}</span>
+                  <span style="font-size:0.55rem;color:#5A6478;">/100</span>
+                </div>
+              </div>
+              <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#5A6478;">Benchmark</span>
+            </div>
+            <!-- Key metrics comparison -->
+            <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
+              {(() => {
+                const topComp = displayCompetitors[0];
+                const clientKW = seo?.keywordsTop10 ?? 0;
+                const compKW = topComp?.keywordsTop10 ?? null;
+                const maxKWVal = Math.max(clientKW, compKW ?? 0, 1);
+                const kgCount = kg?.items?.length ?? 0;
+                const rows = [
+                  { label: `Keywords Top 10 (${domain})`, value: clientKW, max: maxKWVal, color: '#1A4B8C' },
+                  ...(compKW != null ? [{ label: `Keywords Top 10 (${topComp?.name || topComp?.domain || 'competidor'})`, value: compKW, max: maxKWVal, color: '#D85A30' }] : []),
+                  ...(kgCount > 0 ? [{ label: 'Keywords en gap competitivo', value: kgCount, max: Math.max(kgCount, 10), color: '#BA7517' }] : []),
+                ];
+                return rows.map(row => {
+                  const pct = Math.min(100, Math.round((row.value / row.max) * 100));
+                  return (
+                    <div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="font-size:0.75rem;font-weight:600;color:#1A1A2E;">{row.label}</span>
+                        <span style={`font-size:0.75rem;font-weight:700;color:${row.color};`}>{fmt(row.value)}</span>
+                      </div>
+                      <div style="height:6px;background:rgba(0,0,0,0.08);border-radius:4px;overflow:hidden;">
+                        <div style={`height:100%;width:${pct}%;background:${row.color};border-radius:4px;`}></div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+          {benchSummaryText && (
+            <div style="font-size:0.85rem;color:#434750;font-style:italic;line-height:1.6;margin-bottom:20px;padding-left:4px;border-left:3px solid #D85A30;">
+              {benchSummaryText}
+            </div>
+          )}
 
           {qaSuppressed.includes('competitor_benchmark') ? (
             <div>
@@ -891,12 +1068,12 @@ const heroStatus = statusStyle(ss(health.total));
             <div>
 
           <!-- Color legend -->
-          {ctItems.length > 0 && (
+          {displayCompetitors.length > 0 && (
             <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
               <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1A1A2E;font-weight:600;">
                 <span style="width:12px;height:12px;border-radius:3px;background:#1A4B8C;display:inline-block;"></span>{domain}
               </div>
-              {ctItems.slice(0,2).map((ct: any, idx: number) => (
+              {displayCompetitors.slice(0,2).map((ct: any, idx: number) => (
                 <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5A6478;">
                   <span style={`width:12px;height:12px;border-radius:3px;background:${idx===0?'#D85A30':'#888780'};display:inline-block;`}></span>{ct.name || ct.domain}
                 </div>
@@ -905,7 +1082,7 @@ const heroStatus = statusStyle(ss(health.total));
           )}
 
           <!-- Competitive data table -->
-          {ctItems.length > 0 && (
+          {displayCompetitors.length > 0 && (
             <div style="margin-bottom:20px;">
               <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Datos comparativos</div>
               <table>
@@ -926,17 +1103,20 @@ const heroStatus = statusStyle(ss(health.total));
                     <td>{fmt(clientPaidKw)}</td>
                     <td>{ps?.mobile?.performance ?? '—'}/100</td>
                   </tr>
-                  {ctItems.slice(0,4).map((ct: any) => (
+                  {displayCompetitors.slice(0,4).map((ct: any) => (
                     <tr>
                       <td style="font-weight:500;">{ct.name || ct.domain}</td>
-                      <td>{fmt(ct.keywordsTop10)}</td>
-                      <td>{fmt(ct.organicTrafficEstimate)}</td>
-                      <td>{fmt(ct.paidKeywordsTotal)}</td>
-                      <td>{compPS?.items?.find((p: any) => p.domain === ct.domain)?.mobileScore ?? '—'}/100</td>
+                      <td>{ct.keywordsTop10 != null ? fmt(ct.keywordsTop10) : <span style="color:#9CA3AF;font-size:11px;">sin datos</span>}</td>
+                      <td>{ct.organicTrafficEstimate != null ? fmt(ct.organicTrafficEstimate) : <span style="color:#9CA3AF;font-size:11px;">sin datos</span>}</td>
+                      <td>{ct.paidKeywordsTotal != null ? fmt(ct.paidKeywordsTotal) : '—'}</td>
+                      <td>{compPS?.items?.find((p: any) => p.domain === ct.domain)?.mobileScore ?? compPS?.items?.find((p: any) => p.name === ct.name)?.mobileScore ?? '—'}/100</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              {ctItems.length === 0 && (
+                <div style="font-size:11px;color:#9CA3AF;margin-top:6px;font-style:italic;">* Sin datos de tráfico SEO en DataForSEO para estos competidores. Se muestran los datos disponibles de velocidad web e IA.</div>
+              )}
             </div>
           )}
 
@@ -959,14 +1139,14 @@ const heroStatus = statusStyle(ss(health.total));
                       {seo
                         ? hasCompetitorData && ownETV < avgETV
                           ? `Tu tráfico orgánico (~${fmt(ownETV)} visitas/mes) está por debajo del promedio competitivo (~${fmt(Math.round(avgETV))} visitas/mes). Gap potencial: ${fmt(trafficGap)} visitas adicionales/mes.`
-                          : `Con ${fmt(seo.keywordsTop10)} keywords en top 10 y ~${fmt(seo.organicTrafficEstimate)} visitas/mes, tu SEO es ${st==='good'?'sólido':'mejorable'}.${!hasCompetitorData ? ' No hay datos comparables de los competidores analizados.' : ''}`
+                          : `Con ${fmt(seo.keywordsTop10)} keywords en top 10 y ~${fmt(seo.organicTrafficEstimate)} visitas/mes, tu SEO es ${st==='good'?'sólido':'mejorable'}.`
                         : 'No se han podido obtener datos SEO.'}
                     </p>
-                    {hasCompetitorData && (
+                    {displayCompetitors.length > 0 && (
                       <div style="display:flex;gap:12px;flex-wrap:wrap;">
                         <span style="font-size:11px;font-weight:700;color:#1A4B8C;">{domain}: {fmt(seo?.keywordsTop10)} kw</span>
-                        {ctItems.slice(0,2).map((ct: any, idx: number) => (
-                          <span style={`font-size:11px;color:${idx===0?'#D85A30':'#888780'};`}>{ct.name||ct.domain}: {fmt(ct.keywordsTop10)}</span>
+                        {displayCompetitors.slice(0,2).map((ct: any, idx: number) => (
+                          <span style={`font-size:11px;color:${idx===0?'#D85A30':'#888780'};`}>{ct.name||ct.domain}: {ct.keywordsTop10 != null ? fmt(ct.keywordsTop10)+' kw' : <span style="color:#9CA3AF;">sin datos SEO</span>}</span>
                         ))}
                       </div>
                     )}
@@ -1007,22 +1187,41 @@ const heroStatus = statusStyle(ss(health.total));
 
             <!-- Paid axis -->
             {(() => {
-              const stStyle = clientPaidKw>0 ? { fg:'#085041', bg:'#E1F5EE', label:'Bien' } : { fg:'#791F1F', bg:'#FCEBEB', label:'Mal' };
+              const hasAnyPaid = clientPaidKw > 0 || metaAds?.hasMetaAds;
+              const stStyle = hasAnyPaid ? { fg:'#085041', bg:'#E1F5EE', label:'Activo' } : { fg:'#791F1F', bg:'#FCEBEB', label:'Sin inversión' };
+              const compMetaAdsCount = metaAds?.competitorsWithMetaAds ?? 0;
               return (
                 <div style={`display:flex;gap:0;border-radius:8px;border:0.5px solid #E5E7EB;overflow:hidden;`}>
                   <div style={`width:6px;background:${stStyle.fg};flex-shrink:0;`}></div>
                   <div style="padding:14px 16px;flex:1;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                       <span style="font-size:0.82rem;font-weight:700;color:#D85A30;">Publicidad Pagada</span>
-                      <span class="status-badge" style={`background:${stStyle.bg};color:${stStyle.fg};font-size:10px;`}>{clientPaidKw>0?'Activo':'Sin inversión'}</span>
+                      <span class="status-badge" style={`background:${stStyle.bg};color:${stStyle.fg};font-size:10px;`}>{stStyle.label}</span>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                      <span style={`font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:${clientPaidKw>0?'#E1F5EE':'#F3F4F6'};color:${clientPaidKw>0?'#085041':'#6B7280'};`}>
+                        Google Ads: {clientPaidKw>0 ? `${fmt(clientPaidKw)} kw` : 'inactivo'}
+                      </span>
+                      {metaAds && (
+                        <span style={`font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:${metaAds.hasMetaAds?'#E1F5EE':'#F3F4F6'};color:${metaAds.hasMetaAds?'#085041':'#6B7280'};`}>
+                          Meta Ads: {metaAds.hasMetaAds ? 'activo' : 'inactivo'}
+                        </span>
+                      )}
                     </div>
                     <p style="font-size:12px;color:#5A6478;line-height:1.5;">
-                      {clientPaidKw > 0
-                        ? `Inviertes en ${fmt(clientPaidKw)} keywords de pago.${compPaidItems.length > 0 ? ` ${compPaidItems.length} competidores también activos en paid.` : ' Eres de los pocos activos en paid en tu mercado.'}`
-                        : compPaidItems.length > 0
-                          ? `No inviertes en Google Ads mientras ${compPaidItems.length} competidores sí lo hacen.`
-                          : `Ni tú ni tus competidores analizados invierten en paid search. La competencia en subastas es menor de lo habitual.`}
+                      {compPaidItems.length > 0 || compMetaAdsCount > 0
+                        ? `${compPaidItems.length > 0 ? `${compPaidItems.length} competidores en Google Ads` : ''}${compPaidItems.length > 0 && compMetaAdsCount > 0 ? ', ' : ''}${compMetaAdsCount > 0 ? `${compMetaAdsCount} en Meta Ads` : ''}.${!hasAnyPaid ? ' Están capturando demanda que tú no estás monetizando.' : ''}`
+                        : hasAnyPaid
+                          ? 'Estás entre los pocos activos en paid en este mercado.'
+                          : 'Ni tú ni tus competidores invierten en paid. Menor competencia en subastas.'}
                     </p>
+                    {(metaAds?.competitorDetails?.length ?? 0) > 0 && (
+                      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+                        {metaAds!.competitorDetails!.filter((c:any)=>c.hasMetaAds).slice(0,3).map((c:any)=>(
+                          <span style="font-size:10px;background:#FFF3EE;color:#D85A30;padding:2px 8px;border-radius:4px;font-weight:600;">{c.name}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -1091,6 +1290,51 @@ const heroStatus = statusStyle(ss(health.total));
         <div id="experiencia" class="report-block reveal">
           <div class="block-title">Web, Velocidad & Conversión</div>
           <div class="block-subtitle">Experiencia de usuario, rendimiento técnico, canales de tráfico y stack de medición</div>
+
+          <!-- ── Experiencia header: gauge + sub-scores + Claude summary ── -->
+          <div style="display:flex;align-items:center;gap:32px;background:#F8F9FB;border-radius:14px;padding:20px 24px;margin-bottom:24px;flex-wrap:wrap;">
+            <!-- Gauge -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+              <div style="position:relative;width:88px;height:88px;">
+                <svg viewBox="0 0 36 36" style="width:88px;height:88px;transform:rotate(-90deg);">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke={expColor} stroke-width="3" stroke-linecap="round" stroke-dasharray={`${expScore}, 100`}/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style={`font-size:1.4rem;font-weight:800;color:${expColor};line-height:1;`}>{expScore}</span>
+                  <span style="font-size:0.55rem;color:#5A6478;">/100</span>
+                </div>
+              </div>
+              <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#5A6478;">Experiencia</span>
+            </div>
+            <!-- Sub-scores -->
+            <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
+              {[
+                { label: 'Velocidad web (móvil)', value: ps?.mobile?.performance ?? 0, weight: '40%' },
+                { label: 'Captación y conversión', value: cv?.funnelScore ?? 0, weight: '40%' },
+                { label: 'Madurez del stack', value: ts?.maturityScore ?? 0, weight: '20%' },
+              ].map(sub => {
+                const c = sub.value >= 70 ? '#1D9E75' : sub.value >= 40 ? '#BA7517' : '#E24B4A';
+                return (
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                      <span style="font-size:0.75rem;font-weight:600;color:#1A1A2E;">{sub.label}</span>
+                      <span style={`font-size:0.75rem;font-weight:700;color:${c};`}>{sub.value}<span style="font-size:0.6rem;color:#5A6478;font-weight:400;">/100</span></span>
+                    </div>
+                    <div style="height:6px;background:rgba(0,0,0,0.08);border-radius:4px;overflow:hidden;">
+                      <div style={`height:100%;width:${sub.value}%;background:${c};border-radius:4px;transition:width 0.6s ease;`}></div>
+                    </div>
+                    <div style="font-size:0.6rem;color:#9CA3AF;margin-top:2px;">peso {sub.weight}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {expSummaryText && (
+            <div style="font-size:0.85rem;color:#434750;font-style:italic;line-height:1.6;margin-bottom:20px;padding-left:4px;border-left:3px solid #1D9E75;">
+              {expSummaryText}
+            </div>
+          )}
 
           <!-- Traffic metrics -->
           {traffic && (
@@ -1233,15 +1477,21 @@ const heroStatus = statusStyle(ss(health.total));
             <hr class="section-divider" />
             <div style="font-size:0.78rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Stack de medición y herramientas</div>
             <div class="grid-3" style="gap:8px;">
-              <div class="tech-item">
-                <div class="tech-dot" style={`background:${techStackMapped.analytics.detected?'#1D9E75':'#E24B4A'};`}></div>
-                <div>
-                  <div class="tech-name">Analytics</div>
-                  {techStackMapped.analytics.detected
-                    ? <div class="tech-tool" style="color:#1D9E75;">{techStackMapped.analytics.tool || 'Detectado'}</div>
-                    : <div class="tech-tool" style="color:#A32D2D;">No sabes cuántas visitas recibes ni qué funciona</div>}
-                </div>
-              </div>
+              {(() => {
+                const isViaGTM = techStackMapped.analytics.tool?.includes('vía GTM');
+                const dotColor = techStackMapped.analytics.detected ? (isViaGTM ? '#BA7517' : '#1D9E75') : '#E24B4A';
+                return (
+                  <div class="tech-item">
+                    <div class="tech-dot" style={`background:${dotColor};`}></div>
+                    <div>
+                      <div class="tech-name">Analytics</div>
+                      {techStackMapped.analytics.detected
+                        ? <div class="tech-tool" style={`color:${isViaGTM?'#BA7517':'#1D9E75'};`}>{techStackMapped.analytics.tool || 'Detectado'}{isViaGTM ? ' — confirma en GTM' : ''}</div>
+                        : <div class="tech-tool" style="color:#A32D2D;">No sabes cuántas visitas recibes ni qué funciona</div>}
+                    </div>
+                  </div>
+                );
+              })()}
               <div class="tech-item">
                 <div class="tech-dot" style={`background:${techStackMapped.tagManager.detected?'#1D9E75':'#BA7517'};`}></div>
                 <div>
@@ -1415,12 +1665,19 @@ const heroStatus = statusStyle(ss(health.total));
 
           <hr class="section-divider" />
 
-          <!-- CTA card -->
-          <div style="border:1px solid #4A7FD4;border-radius:10px;padding:24px;background:#F0F6FF;">
-            <div style="font-size:1rem;font-weight:700;color:#1A4B8C;margin-bottom:8px;">¿Quieres que monitorizemos esto cada mes?</div>
-            <p style="font-size:0.84rem;color:#5A6478;line-height:1.6;margin-bottom:0;">
-              Con <strong style="color:#1A4B8C;">Radar</strong>, recibirás un informe mensual con la evolución de todos estos indicadores, alertas cuando algo cambie, y una llamada de revisión con tu Growth Advisor. Sin sorpresas — con métricas de éxito definidas desde el primer día.
+          <!-- CTA card — dashboard onboarding -->
+          <div style="border:2px solid #4A7FD4;border-radius:12px;padding:24px;text-align:center;margin-top:32px;">
+            <h3 style="font-size:1.1rem;font-weight:700;color:#1A1A2E;margin-bottom:8px;">
+              ¿Quieres que monitorizemos esto cada mes?
+            </h3>
+            <p style="font-size:0.875rem;color:#5A6478;margin-bottom:16px;">
+              Conecta tus herramientas, elige tu plan, y recibe cada mes este análisis actualizado
+              con datos reales, tendencias y un plan de acción priorizado.
             </p>
+            <a href="/dashboard/onboarding" style="display:inline-block;background:#1A4B8C;color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:0.95rem;">
+              Empezar ahora →
+            </a>
+            <p style="font-size:11px;color:#9CA3AF;margin-top:12px;">Sin compromiso. Puedes cancelar en cualquier momento.</p>
           </div>
         </div>
 

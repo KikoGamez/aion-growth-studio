@@ -1,0 +1,19 @@
+---
+export interface Props {
+  clientName: string;
+}
+const { clientName } = Astro.props;
+---
+
+<div style="background:#fbbf24;color:#1a1a2e;padding:10px 24px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;flex-shrink:0;">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:16px;">👁</span>
+    Viendo como superusuario: <strong style="margin-left:4px;">{clientName}</strong>
+  </div>
+  <form method="POST" action="/api/auth/switch-client" style="margin:0;">
+    <input type="hidden" name="clientId" value="clear" />
+    <button type="submit" style="background:rgba(0,0,0,0.12);border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#1a1a2e;font-family:inherit;">
+      ← Volver al panel
+    </button>
+  </form>
+</div>

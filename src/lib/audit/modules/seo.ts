@@ -16,8 +16,8 @@ export async function runSEO(url: string): Promise<SEOResult> {
   const timer = setTimeout(() => controller.abort(), 45000);
 
   try {
-    // ── Tier 1 + Tier 2 in parallel (they don't depend on each other) ─
-    const [overviewRes, kwRes] = await Promise.all([
+    // ── Tier 1 + Tier 2 + Backlinks in parallel ──────────────────────
+    const [overviewRes, kwRes, blRes] = await Promise.all([
       fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live', {
         method: 'POST',
         signal: controller.signal,
@@ -33,9 +33,18 @@ export async function runSEO(url: string): Promise<SEOResult> {
           location_code: 2724,
           language_code: 'es',
           limit: 20,
-          order_by: ['keyword_data.keyword_info.search_volume,desc'],
+          // Sort by ETV (Estimated Traffic Value) = volume × CTR by position.
+          // This surfaces keywords that actually drive the most traffic,
+          // not just those with the highest raw search volume.
+          order_by: ['ranked_serp_element.serp_item.etv,desc'],
           filters: ['ranked_serp_element.serp_item.rank_absolute', '<=', 10],
         }]),
+      }),
+      fetch('https://api.dataforseo.com/v3/backlinks/summary/live', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{ target: domain, include_subdomains: true }]),
       }),
     ]);
 
@@ -45,9 +54,10 @@ export async function runSEO(url: string): Promise<SEOResult> {
       return { skipped: true, reason: `DataForSEO: ${msg}`.slice(0, 120) };
     }
 
-    const [data, kwData] = await Promise.all([
+    const [data, kwData, blData] = await Promise.all([
       overviewRes.json(),
       kwRes.ok ? kwRes.json() : Promise.resolve(null),
+      blRes.ok ? blRes.json() : Promise.resolve(null),
     ]);
 
     const task = data?.tasks?.[0];
@@ -93,6 +103,20 @@ export async function runSEO(url: string): Promise<SEOResult> {
       isInvestingPaid: paidKeywordsTotal > 0 || undefined,
     };
 
+    // ── Backlinks / Domain Authority (Tier 1 — already fetched above) ──
+    try {
+      const blTask = blData?.tasks?.[0];
+      if (blTask?.status_code === 20000 && blTask.result_count > 0) {
+        const blItem = blTask.result?.[0];
+        if (blItem) {
+          if (blItem.referring_domains != null) baseResult.referringDomains = blItem.referring_domains;
+          if (blItem.backlinks != null) baseResult.backlinksTotal = blItem.backlinks;
+          if (blItem.rank != null) baseResult.domainRank = blItem.rank;
+          if (blItem.spam_score != null) baseResult.spamScore = blItem.spam_score;
+        }
+      }
+    } catch { /* non-fatal */ }
+
     // ── Tier 2 result (already fetched in parallel above) ────────
     try {
       const kwTask = kwData?.tasks?.[0];
@@ -110,6 +134,7 @@ export async function runSEO(url: string): Promise<SEOResult> {
             keyword: it.keyword_data?.keyword || '',
             position: it.ranked_serp_element?.serp_item?.rank_absolute ?? 0,
             volume: it.keyword_data?.keyword_info?.search_volume ?? 0,
+            etv: Math.round(it.ranked_serp_element?.serp_item?.etv ?? 0),
           }))
           .filter((kw) => kw.keyword);
 

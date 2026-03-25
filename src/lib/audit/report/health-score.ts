@@ -13,7 +13,9 @@ export function computeHealthScore(results: Record<string, any>): HealthScore {
   const ctItems: any[] = results.competitor_traffic?.items || [];
 
   // ── VISIBILIDAD (30%) ─────────────────────────────────────────
-  // SEO pillar from existing breakdown + GEO score + organic traffic share
+  // SEO (75%) + GEO/AI visibility (15%) + organic traffic mix (10%)
+  // GEO counts but shouldn't dominate — a great SEO presence still
+  // scores well even without GEO optimisation yet.
   const seoNorm = breakdown.seoVisibility ?? 0;
   const geoNorm = geo?.overallScore ?? 0;
 
@@ -23,10 +25,10 @@ export function computeHealthScore(results: Record<string, any>): HealthScore {
   );
   const organicVisits = trafficChannels.organic?.visits || 0;
   const organicPct = totalVisits > 0 ? (organicVisits / totalVisits) * 100 : 0;
-  // 67% organic → 100 pts; 0% organic → 0 pts
+  // DataForSEO Traffic Analytics: 67%+ organic → 100 pts; 0% → 0 pts
   const trafficNorm = Math.min(100, organicPct * 1.5);
 
-  const visibilidad = Math.round(seoNorm * 0.5 + geoNorm * 0.3 + trafficNorm * 0.2);
+  const visibilidad = Math.round(seoNorm * 0.75 + geoNorm * 0.15 + trafficNorm * 0.10);
 
   // ── COMPETITIVIDAD (25%) ──────────────────────────────────────
   // null = datos insuficientes — nunca mostrar un número inventado

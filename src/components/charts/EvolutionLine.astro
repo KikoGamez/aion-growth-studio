@@ -1,0 +1,60 @@
+---
+export interface Props {
+  data: { month: string; score: number }[];
+  width?: number;
+  height?: number;
+}
+
+const { data, width = 600, height = 200 } = Astro.props;
+
+const scores = data.map(d => d.score);
+const min = Math.max(0, Math.min(...scores) - 10);
+const max = Math.min(100, Math.max(...scores) + 10);
+const range = max - min || 1;
+const padX = 40;
+const padY = 20;
+const innerW = width - padX * 2;
+const innerH = height - padY * 2;
+
+const pts = data.map((d, i) => ({
+  x: padX + (i / (data.length - 1)) * innerW,
+  y: padY + (1 - (d.score - min) / range) * innerH,
+  score: d.score,
+  month: d.month,
+}));
+
+const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+// Build area fill
+const area = `M ${pts[0].x},${pts[0].y} ` +
+  pts.slice(1).map(p => `L ${p.x},${p.y}`).join(' ') +
+  ` L ${pts[pts.length - 1].x},${padY + innerH} L ${pts[0].x},${padY + innerH} Z`;
+---
+
+<div style="position:relative;overflow:visible;">
+  <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style="overflow:visible;">
+    <!-- Area fill -->
+    <path d={area} fill="#00346d" opacity="0.08" />
+
+    <!-- Line -->
+    <polyline points={polyline} stroke="#00346d" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Dots + tooltips -->
+    {pts.map((p, i) => (
+      <g class="chart-dot-group" style="cursor:default;">
+        <circle cx={p.x} cy={p.y} r="5" fill="#00346d" stroke="white" stroke-width="2" />
+        <!-- Tooltip -->
+        <g class="chart-tooltip" style="opacity:0;transition:opacity 0.2s;pointer-events:none;">
+          <rect x={p.x - 28} y={p.y - 36} width="56" height="28" rx="6" fill="#1a1a2e" />
+          <text x={p.x} y={p.y - 17} text-anchor="middle" fill="white" font-size="13" font-weight="700" font-family="Inter">{p.score}</text>
+        </g>
+        <!-- Month label -->
+        <text x={p.x} y={height - 2} text-anchor="middle" fill="#94a3b8" font-size="10" font-family="Inter">{p.month.split('-')[0]}</text>
+      </g>
+    ))}
+  </svg>
+</div>
+
+<style>
+  .chart-dot-group:hover .chart-tooltip { opacity: 1 !important; }
+</style>

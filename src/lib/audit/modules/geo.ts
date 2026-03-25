@@ -341,15 +341,21 @@ export async function runGEO(
       }),
     );
 
-    // If ALL answers are empty → API down
-    if (runResults.every((r) => r.engineOutputs.every((e) => e.answer.length === 0))) {
+    // If ALL answers are empty → API down or all timed out
+    const perEngineEmpty = engines.map((e) => ({
+      name: e.name,
+      empty: runResults.every((r) => (r.engineOutputs.find((o) => o.engineName === e.name)?.answer || '').length === 0),
+    }));
+    if (perEngineEmpty.every((e) => e.empty)) {
+      const engineSummary = perEngineEmpty.map((e) => e.name).join(',');
       return {
         queries: [],
         overallScore: 0,
         brandScore: 0,
         sectorScore: 0,
         mentionRate: 0,
-        error: 'APIs no respondieron (timeout o rate limit) — reintenta en unos minutos',
+        error: `Todas las APIs devolvieron respuesta vacía (timeout o rate-limit). Motores: ${engineSummary}`,
+        _log: `all_empty | engines:${engineSummary} | q:${querySpecs.length} | probable:rate_limit_or_timeout`,
       };
     }
 
@@ -374,20 +380,14 @@ export async function runGEO(
       };
     });
 
-    // Build GeoQuery objects
+    // Build GeoQuery objects — strip context/engines to fit Notion's 2000-char block limit
     const queries: GeoQuery[] = runResults.map((r) => ({
-      query: r.spec.query,
+      query: r.spec.query.slice(0, 70),   // keep short — Notion has 2000-char limit
       mentioned: r.mentioned,
       stage: r.spec.stage,
       isBrandQuery: r.spec.isBrandQuery,
-      context: r.mentioned
-        ? (r.engineOutputs.find((e) => e.mentioned)?.answer || '').slice(0, 200)
-        : undefined,
-      engines: r.engineOutputs.map((e) => ({
-        name: e.engineName,
-        mentioned: e.mentioned,
-        context: e.mentioned ? e.answer.slice(0, 150) : undefined,
-      })),
+      // Intentionally omit: context, answer, engines per-query
+      // Per-engine aggregate data is preserved in crossModel
     }));
 
     const total = queries.length;
@@ -431,6 +431,7 @@ export async function runGEO(
     const brandScore =
       bofuQ.length > 0 ? Math.round((bofuQ.filter((q) => q.mentioned).length / bofuQ.length) * 100) : 0;
 
+    const engineLog = crossModel.map((e) => `${e.name}:${e.mentioned}/${e.total}`).join(' ');
     return {
       queries,
       overallScore,
@@ -440,6 +441,7 @@ export async function runGEO(
       funnelBreakdown,
       crossModel,
       competitorMentions: competitorMentions.length > 0 ? competitorMentions : undefined,
+      _log: `ok | q:${total} | mentions:${mentionCount}/${total} | ${engineLog}`,
     };
   } catch (err: any) {
     return {
@@ -449,6 +451,7 @@ export async function runGEO(
       sectorScore: 0,
       mentionRate: 0,
       error: err?.message?.slice(0, 100),
+      _log: `catch | ${err?.message?.slice(0, 120)}`,
     };
   }
 }

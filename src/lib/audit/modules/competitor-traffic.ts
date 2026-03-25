@@ -105,14 +105,23 @@ export async function runCompetitorTraffic(
     tasks = await fetchBatch(auth, items);
   }
 
-  const result = items.map((item, i) => {
+  // Map each result; for any domain with no Spain data, try global individually
+  const results = await Promise.all(items.map(async (item, i) => {
     const task = tasks?.[i] ?? null;
     const parsed = parseDFSItem(item.name, item.domain, item.url, task);
 
-    // If Spain returned no data for this specific domain, that's ok — global fallback not needed
-    // since we already have global as the batch fallback above
-    return parsed;
-  });
+    // If Spain has no data for this domain, try global (no location filter)
+    if ((parsed as any).apiError === 'no_data' || (parsed as any).apiError === 'empty_items') {
+      console.log(`[competitor-traffic] ${item.domain}: Spain has no data, trying global...`);
+      const globalTasks = await fetchBatch(auth, [item]);
+      if (globalTasks) {
+        const globalParsed = parseDFSItem(item.name, item.domain, item.url, globalTasks[0] ?? null);
+        if (!(globalParsed as any).apiError) return globalParsed;
+      }
+    }
 
-  return { items: result };
+    return parsed;
+  }));
+
+  return { items: results };
 }

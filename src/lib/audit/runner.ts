@@ -60,7 +60,7 @@ export const PHASE_ENTRY_STEPS = new Set(Object.keys(PHASE_STEPS));
 // ── Per-module timeouts (ms) ──────────────────────────────────────
 
 export const STEP_TIMEOUTS: Record<string, number> = {
-  geo: 30_000,
+  geo: 55_000,
   competitor_traffic: 45_000,
   seo: 30_000,
   pagespeed: 25_000,
@@ -106,7 +106,9 @@ async function executeStepWithTimeout(
   audit: AuditPageData,
 ): Promise<ModuleResult> {
   const timeoutMs = STEP_TIMEOUTS[step] ?? DEFAULT_TIMEOUT;
-  return Promise.race([
+  const t0 = Date.now();
+
+  const result = await Promise.race([
     runStep(step, audit),
     new Promise<ModuleResult>((_, reject) =>
       setTimeout(
@@ -118,6 +120,13 @@ async function executeStepWithTimeout(
     skipped: true,
     reason: err.message.slice(0, 120),
   }));
+
+  const ms = Date.now() - t0;
+  const status = result.skipped ? 'SKIP' : (result as any).error ? 'ERR' : 'OK';
+  const detail = (result as any)._log || (result as any).reason || (result as any).error || '';
+  console.log(`[audit:${step}] ${status} ${ms}ms${detail ? ' | ' + detail.slice(0, 120) : ''}`);
+
+  return { ...result, _t: ms };
 }
 
 /** Core step dispatcher — same logic as before, now called by timeout wrapper */

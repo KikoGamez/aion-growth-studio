@@ -1,0 +1,105 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import MetricCard from '../../components/dashboard/MetricCard.astro';
+import TierGate from '../../components/dashboard/TierGate.astro';
+import { getClient, getLatestSnapshot } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const snapshot = await getLatestSnapshot(client.id);
+const tier: Tier = client.tier;
+const canAccess = tier === 'señales' || tier === 'palancas';
+
+const metaAds = snapshot.pipeline_output.meta_ads || {};
+const ctItems = snapshot.pipeline_output.competitor_traffic?.items || [];
+---
+
+<DashboardLayout title="Paid Intelligence" currentPath="/dashboard/paid" tier={tier} clientName={client.name} domain={client.domain}>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Paid Intelligence</h1>
+      <p style="font-size:14px;color:#434750;margin-top:4px;">Rendimiento de campañas y análisis competitivo de publicidad</p>
+    </div>
+
+    {canAccess ? (
+      <>
+        {!metaAds.skipped ? (
+          <>
+            <!-- Metric cards -->
+            <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+              <MetricCard
+                label="Inversión total"
+                value={metaAds.spend ? `${metaAds.spend}€` : '—'}
+                source="Meta Ads"
+              />
+              <MetricCard
+                label="CPA"
+                value={metaAds.cpa ? `${metaAds.cpa}€` : '—'}
+                delta="-12%"
+                deltaDir="up"
+                note="Coste por adquisición mensual."
+              />
+              <MetricCard
+                label="ROAS"
+                value={metaAds.roas || '—'}
+                delta="+0.4"
+                deltaDir="up"
+                note="Retorno sobre inversión publicitaria."
+              />
+            </section>
+
+            <!-- Campaign list -->
+            {metaAds.campaigns?.length > 0 && (
+              <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:24px;">Campañas activas</h2>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  {metaAds.campaigns.map((c: string) => (
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#f5f2ff;border-radius:10px;">
+                      <span style="font-size:14px;font-weight:600;color:#1a1a2e;">{c}</span>
+                      <span style="padding:4px 10px;border-radius:999px;background:#e1f5ee;color:#085041;font-size:11px;font-weight:700;">Activa</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div style="background:#f5f2ff;border-radius:12px;padding:32px;text-align:center;">
+            <span class="material-symbols-outlined" style="font-size:48px;color:#c3c6d2;display:block;margin-bottom:12px;">paid</span>
+            <p style="font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">Sin datos de publicidad este mes</p>
+            <p style="font-size:14px;color:#434750;">Conecta Meta Ads o Google Ads en <a href="/dashboard/settings" style="color:#205db0;font-weight:600;">Ajustes</a> para ver el rendimiento de tus campañas.</p>
+          </div>
+        )}
+
+        <!-- Competitor intelligence -->
+        {ctItems.length > 0 && (
+          <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+            <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:24px;">Inteligencia Competitiva — Paid</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;">
+              {ctItems.map((c: any) => (
+                <div style="padding:20px;border:1px solid #e8e5ff;border-radius:10px;">
+                  <p style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px;">{c.domain}</p>
+                  <p style="font-size:12px;color:#434750;">Tráfico est.: <strong>{c.organicTrafficEstimate?.toLocaleString('es-ES') || '—'}</strong></p>
+                  <p style="font-size:12px;color:#434750;margin-top:4px;">Keywords top 10: <strong>{c.keywordsTop10 || '—'}</strong></p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    ) : (
+      <TierGate requiredTier="señales" currentTier={tier} featureName="Paid Intelligence">
+        <div slot="preview">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;opacity:0.5;">
+            <div style="background:#ffffff;padding:24px;border-radius:12px;height:120px;"></div>
+            <div style="background:#ffffff;padding:24px;border-radius:12px;height:120px;"></div>
+            <div style="background:#ffffff;padding:24px;border-radius:12px;height:120px;"></div>
+          </div>
+        </div>
+      </TierGate>
+    )}
+
+  </div>
+</DashboardLayout>

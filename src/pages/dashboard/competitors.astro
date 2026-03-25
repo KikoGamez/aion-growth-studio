@@ -1,0 +1,134 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getClient, getLatestSnapshot } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const snapshot = await getLatestSnapshot(client.id);
+const tier: Tier = client.tier;
+
+const ctItems = snapshot.pipeline_output.competitor_traffic?.items || [];
+const seo = snapshot.pipeline_output.seo || {};
+const geo = snapshot.pipeline_output.geo || {};
+const ps = snapshot.pipeline_output.pagespeed || {};
+
+// Build comparison rows: client + competitors
+interface CompRow {
+  name: string;
+  isClient: boolean;
+  traffic: number | null;
+  keywords: number | null;
+  mobilePerf: number | null;
+}
+
+const compRows: CompRow[] = [
+  {
+    name: client.name,
+    isClient: true,
+    traffic: seo.organicTrafficEstimate || null,
+    keywords: seo.keywordsTop10 || null,
+    mobilePerf: ps.mobile?.performance || null,
+  },
+  ...ctItems.map((c: any) => ({
+    name: c.domain,
+    isClient: false,
+    traffic: c.organicTrafficEstimate || null,
+    keywords: c.keywordsTop10 || null,
+    mobilePerf: c.mobilePerformance || null,
+  })),
+];
+
+function fmt(n: number | null): string {
+  if (n == null) return '—';
+  if (n >= 1000) return `${Math.round(n / 1000)}K`;
+  return String(n);
+}
+
+function scoreColor(v: number | null, max: number): string {
+  if (v == null) return '#94a3b8';
+  const ratio = v / max;
+  if (ratio >= 0.7) return '#1d9e75';
+  if (ratio >= 0.4) return '#ba7517';
+  return '#ba1a1a';
+}
+---
+
+<DashboardLayout title="Competidores" currentPath="/dashboard/competitors" tier={tier} clientName={client.name} domain={client.domain}>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Análisis de Competidores</h1>
+      <p style="font-size:14px;color:#434750;margin-top:4px;">Benchmark detallado frente a tu competencia directa</p>
+    </div>
+
+    <!-- Benchmark table -->
+    <div style="background:#ffffff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#f5f2ff;">
+            <th style="text-align:left;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Empresa</th>
+            <th style="text-align:center;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Tráfico est.</th>
+            <th style="text-align:center;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Keywords top 10</th>
+            <th style="text-align:center;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Perf. Mobile</th>
+          </tr>
+        </thead>
+        <tbody>
+          {compRows.map(row => {
+            const maxTraffic = Math.max(...compRows.map(r => r.traffic || 0));
+            const maxKw = Math.max(...compRows.map(r => r.keywords || 0));
+            return (
+              <tr style={`border-bottom:1px solid #f5f2ff;${row.isClient ? 'background:#f0f4ff;' : ''}`}>
+                <td style="padding:16px 20px;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style={`width:8px;height:8px;border-radius:50%;background:${row.isClient ? '#1a4b8c' : '#d85a30'};flex-shrink:0;`}></div>
+                    <span style={`font-weight:${row.isClient ? '800' : '600'};color:#1a1a2e;`}>{row.name}</span>
+                    {row.isClient && <span style="font-size:10px;background:#d6e3ff;color:#124687;padding:2px 6px;border-radius:4px;font-weight:700;">Tú</span>}
+                  </div>
+                </td>
+                <td style="padding:16px 20px;text-align:center;">
+                  <span style={`font-weight:700;font-size:15px;color:${scoreColor(row.traffic, maxTraffic)};`}>{fmt(row.traffic)}</span>
+                </td>
+                <td style="padding:16px 20px;text-align:center;">
+                  <span style={`font-weight:700;font-size:15px;color:${scoreColor(row.keywords, maxKw)};`}>{row.keywords || '—'}</span>
+                </td>
+                <td style="padding:16px 20px;text-align:center;">
+                  {row.mobilePerf != null ? (
+                    <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                      <div style="width:64px;height:6px;background:#e8e5ff;border-radius:999px;overflow:hidden;">
+                        <div style={`height:100%;width:${row.mobilePerf}%;background:${scoreColor(row.mobilePerf, 100)};`}></div>
+                      </div>
+                      <span style={`font-weight:700;color:${scoreColor(row.mobilePerf, 100)};`}>{row.mobilePerf}</span>
+                    </div>
+                  ) : <span style="color:#94a3b8;">—</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Dimension cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+      {[
+        { label: 'SEO', icon: 'search', value: `${seo.keywordsTop10 || 0} kw top10`, color: '#1d9e75' },
+        { label: 'GEO', icon: 'auto_awesome', value: `${geo.mentionRate || 0}% mención`, color: '#205db0' },
+        { label: 'Web', icon: 'speed', value: `${ps.mobile?.performance || '—'} mobile`, color: '#ba7517' },
+        { label: 'Contenido', icon: 'article', value: 'Análisis mensual', color: '#7c3aed' },
+        { label: 'Paid', icon: 'paid', value: seo.paidKeywordsTotal ? `${seo.paidKeywordsTotal} kw` : 'Sin campañas', color: '#d85a30' },
+      ].map(d => (
+        <div style="background:#ffffff;padding:20px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style={`width:36px;height:36px;border-radius:10px;background:${d.color}1a;display:flex;align-items:center;justify-content:center;`}>
+              <span class="material-symbols-outlined" style={`font-size:18px;color:${d.color};`}>{d.icon}</span>
+            </div>
+            <p style="font-size:13px;font-weight:700;color:#1a1a2e;">{d.label}</p>
+          </div>
+          <p style="font-size:14px;font-weight:600;color:#434750;">{d.value}</p>
+        </div>
+      ))}
+    </div>
+
+  </div>
+</DashboardLayout>

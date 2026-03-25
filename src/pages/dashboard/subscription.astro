@@ -1,0 +1,157 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getClient, IS_DEMO, DEMO_USERS } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const tier: Tier = client.tier;
+
+const tiers = [
+  {
+    id: 'radar' as Tier,
+    name: 'Radar',
+    price: '149',
+    icon: 'radar',
+    color: '#1a4b8c',
+    bg: '#d6e3ff',
+    features: [
+      'Informe mensual completo',
+      'Score de presencia digital',
+      'Análisis SEO + GEO + Web',
+      'Análisis de competidores',
+      'Plan de acción priorizado',
+      'Sesión mensual con Advisor',
+    ],
+    locked: [],
+  },
+  {
+    id: 'señales' as Tier,
+    name: 'Señales',
+    price: '349',
+    icon: 'bolt',
+    color: '#205db0',
+    bg: '#d7e3ff',
+    popular: true,
+    features: [
+      'Todo lo de Radar',
+      'Alertas en tiempo real',
+      'SEO Oportunidades (keyword gap)',
+      'Paid Intelligence (Meta/Google Ads)',
+      'Briefs de contenido IA',
+      'Historial de evolución',
+    ],
+    locked: [],
+  },
+  {
+    id: 'palancas' as Tier,
+    name: 'Palancas',
+    price: '699',
+    icon: 'rocket_launch',
+    color: '#7c3aed',
+    bg: '#ede9fe',
+    features: [
+      'Todo lo de Señales',
+      'Optimización técnica avanzada',
+      'Campañas paid gestionadas',
+      'Advisor IA personalizado 24/7',
+      'Acceso API a tus datos',
+      'SLA de respuesta prioritario',
+    ],
+    locked: [],
+  },
+];
+---
+
+<DashboardLayout title="Suscripción" currentPath="/dashboard/subscription" tier={tier} clientName={client.name} domain={client.domain}>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Suscripción</h1>
+      <p style="font-size:14px;color:#434750;margin-top:4px;">Gestiona tu plan y accede a nuevas funcionalidades</p>
+    </div>
+
+    <!-- Current plan -->
+    <div style="background:#1a1a2e;color:white;border-radius:16px;padding:32px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin-bottom:8px;">Plan actual</p>
+        <h2 style="font-size:32px;font-weight:900;letter-spacing:-0.04em;">Plan {tier.charAt(0).toUpperCase() + tier.slice(1)}</h2>
+        <p style="font-size:14px;color:#94a3b8;margin-top:4px;">Renovación: 1 de Abril 2026</p>
+      </div>
+      <button
+        onclick={IS_DEMO ? "alert('Stripe en modo demo — conecta tu cuenta para gestionar pagos.')" : undefined}
+        style="padding:12px 28px;border-radius:10px;background:#1a4b8c;color:white;font-size:14px;font-weight:700;border:none;cursor:pointer;"
+      >
+        Gestionar plan
+      </button>
+    </div>
+
+    <!-- Tier comparison -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+      {tiers.map(t => (
+        <div style={`background:#ffffff;border-radius:12px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);position:relative;border:2px solid ${t.id === tier ? t.color : 'transparent'};`}>
+          {t.popular && (
+            <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#205db0;color:white;font-size:10px;font-weight:700;padding:4px 12px;border-radius:999px;white-space:nowrap;">
+              MÁS POPULAR
+            </div>
+          )}
+          {t.id === tier && (
+            <div style="position:absolute;top:-12px;right:20px;background:#1d9e75;color:white;font-size:10px;font-weight:700;padding:4px 12px;border-radius:999px;">
+              TU PLAN
+            </div>
+          )}
+          <div style={`display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:${t.bg};color:${t.color};font-size:13px;font-weight:700;margin-bottom:16px;`}>
+            <span class="material-symbols-outlined" style="font-size:16px;">{t.icon}</span>
+            {t.name}
+          </div>
+          <p style="font-size:36px;font-weight:900;color:#1a1a2e;letter-spacing:-0.04em;">{t.price}€<span style="font-size:14px;font-weight:400;color:#94a3b8;">/mes</span></p>
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;">
+            {t.features.map(f => (
+              <div style="display:flex;align-items:flex-start;gap:8px;">
+                <span class="material-symbols-outlined" style="font-size:16px;color:#1d9e75;flex-shrink:0;margin-top:1px;">check</span>
+                <span style="font-size:13px;color:#434750;">{f}</span>
+              </div>
+            ))}
+          </div>
+          {t.id !== tier && (
+            <button
+              onclick={IS_DEMO ? `alert('Modo demo — selecciona el tier en Ajustes para probar.')` : undefined}
+              style={`margin-top:24px;width:100%;padding:10px;border-radius:8px;background:${t.id === 'palancas' ? '#7c3aed' : '#1a4b8c'};color:white;font-size:13px;font-weight:700;border:none;cursor:pointer;`}
+            >
+              {t.id === 'radar' ? 'Cambiar a Radar' : `Actualizar a ${t.name}`}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <!-- Team -->
+    <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+        <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;">Equipo</h2>
+        <button style="padding:8px 16px;border-radius:8px;background:#f5f2ff;color:#1a4b8c;font-size:13px;font-weight:700;border:none;cursor:pointer;">
+          + Invitar usuario
+        </button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {DEMO_USERS.map(u => (
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#f5f2ff;border-radius:10px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:#1a4b8c;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;">
+                {u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+              </div>
+              <div>
+                <p style="font-size:14px;font-weight:600;color:#1a1a2e;">{u.name}</p>
+                <p style="font-size:12px;color:#94a3b8;">{u.email}</p>
+              </div>
+            </div>
+            <span style={`padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:${u.role === 'admin' ? '#d6e3ff' : '#e8e5ff'};color:${u.role === 'admin' ? '#124687' : '#434750'};`}>
+              {u.role === 'admin' ? 'Admin' : 'Viewer'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+  </div>
+</DashboardLayout>

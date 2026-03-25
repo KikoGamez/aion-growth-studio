@@ -1,0 +1,151 @@
+---
+export const prerender = false;
+import { listAllClients } from '../../lib/db';
+
+const clients = await listAllClients();
+const error = Astro.url.searchParams.get('error');
+
+const tierBg: Record<string, string> = {
+  radar: '#e2e0fc',
+  señales: '#d6e3ff',
+  palancas: '#ede7f6',
+};
+const tierFg: Record<string, string> = {
+  radar: '#325ea0',
+  señales: '#1a4b8c',
+  palancas: '#6200ea',
+};
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Admin — AION Growth Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f5f2ff; color: #1a1a2e; margin: 0; min-height: 100vh; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #434750; padding: 10px 16px; border-bottom: 1px solid #e2e0fc; }
+    td { padding: 14px 16px; border-bottom: 1px solid #f0eeff; font-size: 14px; }
+    tr:hover td { background: #f0eeff; }
+    .tier-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div style="background:#0f1b35;color:white;padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:#1a4b8c;display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-outlined" style="color:white;font-size:18px;">hub</span>
+      </div>
+      <div>
+        <p style="font-size:15px;font-weight:800;margin:0;letter-spacing:-0.02em;">AION Growth Studio</p>
+        <p style="font-size:11px;color:#94a3b8;margin:0;">Panel Superusuario</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="/admin/clients/new" style="background:#1a4b8c;color:white;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:6px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">add</span>
+        Nuevo cliente
+      </a>
+      <form method="POST" action="/api/auth/logout" style="margin:0;">
+        <button type="submit" style="background:rgba(255,255,255,0.1);border:none;color:#94a3b8;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">Salir</button>
+      </form>
+    </div>
+  </div>
+
+  <div style="max-width:1100px;margin:0 auto;padding:40px 24px;">
+
+    <div style="margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;margin:0 0 4px;">Clientes</h1>
+      <p style="font-size:14px;color:#434750;margin:0;">{clients.length} clientes activos</p>
+    </div>
+
+    {error && (
+      <div style="background:#ffdad6;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#ba1a1a;font-weight:500;">
+        Error: {error}
+      </div>
+    )}
+
+    <div style="background:white;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden;">
+      {clients.length === 0 ? (
+        <div style="padding:64px;text-align:center;color:#434750;">
+          <span class="material-symbols-outlined" style="font-size:48px;color:#c3c6d2;display:block;margin-bottom:16px;">business</span>
+          <p style="font-size:16px;font-weight:600;margin-bottom:8px;">Sin clientes aún</p>
+          <p style="font-size:14px;margin-bottom:24px;">Crea el primer cliente para comenzar.</p>
+          <a href="/admin/clients/new" style="background:#1a4b8c;color:white;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;">+ Nuevo cliente</a>
+        </div>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Dominio</th>
+              <th>Sector</th>
+              <th>Plan</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map(client => (
+              <tr>
+                <td>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#e2e0fc;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#325ea0;flex-shrink:0;">
+                      {client.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span style="font-weight:600;">{client.name}</span>
+                  </div>
+                </td>
+                <td style="color:#434750;">{client.domain}</td>
+                <td style="color:#434750;">{client.sector || '—'}</td>
+                <td>
+                  <span class="tier-badge" style={`background:${tierBg[client.tier] ?? '#e2e0fc'};color:${tierFg[client.tier] ?? '#325ea0'};`}>
+                    {client.tier}
+                  </span>
+                </td>
+                <td>
+                  <form method="POST" action="/api/auth/switch-client" style="margin:0;display:inline;">
+                    <input type="hidden" name="clientId" value={client.id} />
+                    <button
+                      type="submit"
+                      style="background:#1a4b8c;color:white;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;"
+                    >
+                      <span class="material-symbols-outlined" style="font-size:14px;">login</span>
+                      Entrar
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+
+    <!-- Audit Debugger -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:20px 24px;margin-top:24px;">
+      <div style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:4px;">Debug de auditoría</div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:12px;">Pega el ID de Notion de una auditoría (está en la URL del informe: /es/audit/<strong>[ID]</strong>/informe)</div>
+      <form method="GET" action="/admin/audit/__ID__" style="display:flex;gap:10px;align-items:center;" onsubmit="event.preventDefault();window.location='/admin/audit/'+this.querySelector('input').value.trim();">
+        <input
+          type="text"
+          placeholder="32d41927-..."
+          style="flex:1;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:13px;font-family:monospace;outline:none;"
+        />
+        <button
+          type="submit"
+          style="background:#1a4b8c;color:white;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;"
+        >
+          Ver debug →
+        </button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

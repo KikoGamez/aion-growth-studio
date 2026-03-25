@@ -10,16 +10,22 @@ function fmt(n: number | undefined | null): string {
 // ── Health summary ────────────────────────────────────────────────
 export function diagnosisHealthSummary(score: HealthScore): string {
   const t = score.total;
+  const hasCompetitorData = score.competitividad !== null;
+
   if (t >= 70) {
     return 'Tu presencia digital es sólida. Las oportunidades están en optimización fina y expansión de canales.';
   }
   if (t >= 50) {
-    return 'Tienes fundamentos pero pierdes terreno frente a competidores más activos. Hay oportunidades claras de mejora en visibilidad y captación.';
+    return hasCompetitorData
+      ? 'Tienes fundamentos pero pierdes terreno frente a competidores más activos. Hay oportunidades claras de mejora en visibilidad y captación.'
+      : 'Tienes fundamentos digitales pero hay oportunidades claras de mejora en visibilidad y captación.';
   }
   if (t >= 30) {
     return 'Tu presencia digital tiene bases técnicas aceptables pero déficits significativos en visibilidad y posicionamiento. Estás perdiendo oportunidades de captación cada día.';
   }
-  return 'Tu presencia digital necesita atención urgente. Competidores están captando demanda que debería ser tuya. Hay acciones de alto impacto disponibles a corto plazo.';
+  return hasCompetitorData
+    ? 'Tu presencia digital necesita atención urgente. Competidores están captando demanda que debería ser tuya. Hay acciones de alto impacto disponibles a corto plazo.'
+    : 'Tu presencia digital necesita atención urgente. Hay acciones de alto impacto disponibles a corto plazo.';
 }
 
 // ── SEO ───────────────────────────────────────────────────────────

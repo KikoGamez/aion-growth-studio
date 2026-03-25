@@ -1,0 +1,107 @@
+---
+export const prerender = false;
+
+const error = Astro.url.searchParams.get('error');
+const sectors = [
+  'Sostenibilidad B2B', 'E-commerce', 'Servicios Profesionales', 'Hostelería',
+  'Salud y Bienestar', 'Tecnología', 'Educación', 'Inmobiliaria',
+  'Retail', 'Industria', 'Consultoría', 'General',
+];
+const tiers = [
+  { value: 'radar', label: 'Radar — 149€/mes', desc: 'Informe mensual básico' },
+  { value: 'señales', label: 'Señales — 349€/mes', desc: 'Alertas + oportunidades SEO' },
+  { value: 'palancas', label: 'Palancas — 699€/mes', desc: 'Suite completa' },
+];
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nuevo Cliente — AION Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f5f2ff; color: #1a1a2e; margin: 0; min-height: 100vh; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    label { display: block; font-size: 12px; font-weight: 700; color: #434750; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    input, select { width: 100%; padding: 12px 16px; border: 1px solid #e2e0fc; border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; background: white; }
+    input:focus, select:focus { border-color: #1a4b8c; }
+    .tier-card { border: 2px solid #e2e0fc; border-radius: 12px; padding: 16px; cursor: pointer; transition: border-color 0.15s; }
+    .tier-card:has(input:checked) { border-color: #1a4b8c; background: #f0f4ff; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div style="background:#0f1b35;color:white;padding:0 32px;display:flex;align-items:center;gap:16px;height:64px;position:sticky;top:0;z-index:100;">
+    <a href="/admin" style="color:#94a3b8;text-decoration:none;display:flex;align-items:center;gap:4px;font-size:13px;">
+      <span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span>
+      Panel admin
+    </a>
+    <span style="color:#334155;">/ Nuevo cliente</span>
+  </div>
+
+  <div style="max-width:640px;margin:0 auto;padding:40px 24px;">
+
+    <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;margin:0 0 4px;">Nuevo cliente</h1>
+    <p style="font-size:14px;color:#434750;margin:0 0 32px;">Crea un cliente y opcionalmente invita al admin.</p>
+
+    {error && (
+      <div style="background:#ffdad6;border-radius:10px;padding:12px 16px;margin-bottom:24px;font-size:13px;color:#ba1a1a;font-weight:500;">
+        {error === 'missing_fields' ? 'Nombre y dominio son obligatorios.' : `Error: ${error}`}
+      </div>
+    )}
+
+    <form method="POST" action="/api/admin/create-client" style="background:white;padding:32px;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:24px;">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <label for="name">Nombre de empresa *</label>
+          <input type="text" id="name" name="name" placeholder="Soluciones Verdes" required />
+        </div>
+        <div>
+          <label for="domain">Dominio *</label>
+          <input type="text" id="domain" name="domain" placeholder="solucionesverdes.es" required />
+        </div>
+      </div>
+
+      <div>
+        <label for="sector">Sector</label>
+        <select id="sector" name="sector">
+          {sectors.map(s => <option value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label>Plan inicial</label>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+          {tiers.map((t, i) => (
+            <label class="tier-card" style="cursor:pointer;display:flex;align-items:center;gap:12px;">
+              <input type="radio" name="tier" value={t.value} checked={i === 0} style="width:auto;accent-color:#1a4b8c;" />
+              <div>
+                <p style="font-size:14px;font-weight:700;margin:0;">{t.label}</p>
+                <p style="font-size:12px;color:#434750;margin:0;">{t.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label for="adminEmail">Email del admin (opcional — se enviará invitación)</label>
+        <input type="email" id="adminEmail" name="adminEmail" placeholder="admin@empresa.com" />
+      </div>
+
+      <div style="display:flex;gap:12px;padding-top:8px;">
+        <a href="/admin" style="flex:1;padding:13px;border-radius:10px;border:2px solid #e2e0fc;font-size:14px;font-weight:700;text-align:center;color:#434750;text-decoration:none;">Cancelar</a>
+        <button type="submit" style="flex:2;padding:13px;border-radius:10px;background:#1a4b8c;color:white;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;">
+          Crear cliente →
+        </button>
+      </div>
+
+    </form>
+  </div>
+</body>
+</html>

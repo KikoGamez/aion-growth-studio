@@ -1,0 +1,181 @@
+---
+import type { Tier } from '../../lib/demo-data';
+
+export interface Props {
+  currentPath?: string;
+  tier?: Tier;
+  clientName?: string;
+}
+
+const { currentPath = '', tier = 'señales', clientName = 'Soluciones Verdes' } = Astro.props;
+
+const canAccessSeñales = tier === 'señales' || tier === 'palancas';
+const canAccessPalancas = tier === 'palancas';
+
+interface NavItem {
+  href: string;
+  icon: string;
+  label: string;
+  locked?: boolean;
+  requiredTier?: 'señales' | 'palancas';
+  comingSoon?: boolean;
+}
+
+// Always visible for all tiers
+const coreNav: NavItem[] = [
+  { href: '/dashboard', icon: 'dashboard', label: 'Overview' },
+  { href: '/dashboard/report/marzo-2026', icon: 'analytics', label: 'Informe Mensual' },
+  { href: '/dashboard/evolution', icon: 'trending_up', label: 'Evolución' },
+  { href: '/dashboard/competitors', icon: 'group', label: 'Competidores' },
+];
+
+// Señales+ required
+const señalesNav: NavItem[] = [
+  { href: '/dashboard/alerts', icon: 'notifications_active', label: 'Alertas', locked: !canAccessSeñales, requiredTier: 'señales' },
+  { href: '/dashboard/seo-opportunities', icon: 'search_check', label: 'SEO Oportunidades', locked: !canAccessSeñales, requiredTier: 'señales' },
+  { href: '/dashboard/paid', icon: 'paid', label: 'Paid Intelligence', locked: !canAccessSeñales, requiredTier: 'señales' },
+  { href: '/dashboard/briefs', icon: 'edit_document', label: 'Briefs de Contenido', locked: !canAccessSeñales, requiredTier: 'señales' },
+];
+
+// Palancas required (coming soon)
+const palancasNav: NavItem[] = [
+  { href: '/dashboard/subscription', icon: 'settings_suggest', label: 'Opt. Técnica', locked: !canAccessPalancas, requiredTier: 'palancas', comingSoon: true },
+  { href: '/dashboard/subscription', icon: 'auto_awesome', label: 'Generador Contenido', locked: !canAccessPalancas, requiredTier: 'palancas', comingSoon: true },
+  { href: '/dashboard/subscription', icon: 'code', label: 'Schema Markup', locked: !canAccessPalancas, requiredTier: 'palancas', comingSoon: true },
+];
+
+// Always visible at bottom
+const accountNav: NavItem[] = [
+  { href: '/advisor', icon: 'support_agent', label: 'Advisor IA' },
+  { href: '/dashboard/settings', icon: 'settings', label: 'Ajustes' },
+  { href: '/dashboard/subscription', icon: 'credit_card', label: 'Suscripción' },
+];
+
+function isActive(href: string): boolean {
+  if (href === '/dashboard') return currentPath === '/dashboard' || currentPath === '/dashboard/';
+  if (href === '/dashboard/report/marzo-2026') return currentPath.startsWith('/dashboard/report');
+  return currentPath.startsWith(href);
+}
+
+function activeStyle(): string {
+  return 'display:flex;align-items:center;gap:12px;padding:10px 16px;color:white;background:rgba(59,130,246,0.1);border-right:4px solid #3b82f6;font-weight:600;text-decoration:none;';
+}
+
+function defaultStyle(): string {
+  return 'display:flex;align-items:center;gap:12px;padding:10px 16px;color:#94a3b8;text-decoration:none;transition:color 0.15s,background 0.15s;';
+}
+
+function lockedStyle(): string {
+  return 'display:flex;align-items:center;gap:12px;padding:10px 16px;color:#475569;opacity:0.5;pointer-events:none;cursor:default;text-decoration:none;';
+}
+
+function itemStyle(item: NavItem): string {
+  if (item.locked) return lockedStyle();
+  if (isActive(item.href)) return activeStyle();
+  return defaultStyle();
+}
+
+const initials = clientName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales', palancas: 'Palancas' };
+---
+
+<aside
+  id="sidebar"
+  style="width:256px;position:fixed;left:0;top:0;height:100vh;z-index:50;background:#1a1a2e;display:flex;flex-direction:column;padding-top:24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);font-family:'Inter',sans-serif;font-size:14px;overflow:hidden;"
+>
+  <!-- Logo -->
+  <div style="padding:0 24px 32px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:#1a4b8c;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span class="material-symbols-outlined" style="color:white;font-size:18px;">hub</span>
+      </div>
+      <div>
+        <h1 style="font-size:16px;font-weight:700;letter-spacing:-0.03em;color:white;margin:0;line-height:1.2;">AION Growth Studio</h1>
+        <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;margin:0;">Marketing Intelligence</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation (scrollable) -->
+  <nav style="flex:1;overflow-y:auto;padding-bottom:8px;">
+
+    <!-- Core: always visible -->
+    {coreNav.map(item => (
+      <a href={item.href} style={itemStyle(item)}
+        onmouseover={!item.locked && !isActive(item.href) ? "this.style.color='white';this.style.background='rgba(255,255,255,0.05)';" : undefined}
+        onmouseout={!item.locked && !isActive(item.href) ? "this.style.color='#94a3b8';this.style.background='transparent';" : undefined}
+      >
+        <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">{item.icon}</span>
+        <span style="flex:1;">{item.label}</span>
+      </a>
+    ))}
+
+    <!-- Señales group -->
+    <div style="padding:24px 16px 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Señales</div>
+    {señalesNav.map(item => (
+      <a href={item.locked ? '/dashboard/subscription' : item.href} style={itemStyle(item)}
+        onmouseover={!item.locked && !isActive(item.href) ? "this.style.color='white';this.style.background='rgba(255,255,255,0.05)';" : undefined}
+        onmouseout={!item.locked && !isActive(item.href) ? "this.style.color='#94a3b8';this.style.background='transparent';" : undefined}
+      >
+        <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">{item.icon}</span>
+        <span style="flex:1;">{item.label}</span>
+        {item.locked && (
+          <span style="font-size:9px;background:#1e293b;color:#475569;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.05em;">SEÑALES</span>
+        )}
+      </a>
+    ))}
+
+    <!-- Palancas group -->
+    <div style="padding:24px 16px 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Palancas</div>
+    {palancasNav.map(item => (
+      <a href={item.locked ? '/dashboard/subscription' : item.href} style={itemStyle(item)}>
+        <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">{item.icon}</span>
+        <span style="flex:1;">{item.label}</span>
+        {item.locked && (
+          <span style="font-size:9px;background:#1e293b;color:#475569;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.05em;">PALANCAS</span>
+        )}
+      </a>
+    ))}
+
+  </nav>
+
+  <!-- Account nav + user card -->
+  <div style="border-top:1px solid #1e293b;padding-top:8px;">
+    {accountNav.map(item => (
+      <a href={item.href} style={itemStyle(item)}
+        onmouseover={!isActive(item.href) ? "this.style.color='white';this.style.background='rgba(255,255,255,0.05)';" : undefined}
+        onmouseout={!isActive(item.href) ? "this.style.color='#94a3b8';this.style.background='transparent';" : undefined}
+      >
+        <span class="material-symbols-outlined" style="font-size:18px;flex-shrink:0;">{item.icon}</span>
+        <span style="font-size:13px;">{item.label}</span>
+      </a>
+    ))}
+
+    <!-- User card -->
+    <div style="margin:12px 12px 16px;">
+      <div style="border-radius:12px;background:#0f172a;border:1px solid #1e293b;padding:12px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:30px;height:30px;border-radius:50%;background:#1a4b8c;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;flex-shrink:0;">{initials}</div>
+          <div style="overflow:hidden;flex:1;">
+            <p style="color:white;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;">{clientName}</p>
+            <p style="color:#64748b;font-size:10px;margin:0;">Plan {tierLabels[tier]}</p>
+          </div>
+          <form method="POST" action="/api/auth/logout" style="flex-shrink:0;">
+            <button type="submit" title="Cerrar sesión" style="background:none;border:none;cursor:pointer;padding:4px;color:#475569;display:flex;align-items:center;">
+              <span class="material-symbols-outlined" style="font-size:16px;">logout</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Mobile hamburger -->
+<button
+  id="hamburger-btn"
+  style="display:none;position:fixed;top:16px;left:16px;z-index:60;background:#1a4b8c;color:white;border:none;border-radius:8px;padding:8px;cursor:pointer;"
+  aria-label="Abrir menú"
+>
+  <span class="material-symbols-outlined" style="font-size:20px;">menu</span>
+</button>

@@ -1,0 +1,171 @@
+---
+export const prerender = false;
+import { getClient } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const tier: Tier = client.tier;
+
+const demoThreads = [
+  { id: 't1', title: 'Estrategia SEO Q2 2026', date: 'Hoy', active: true },
+  { id: 't2', title: 'Análisis competencia EcoSoluciones', date: 'Ayer' },
+  { id: 't3', title: 'Optimización Meta Ads', date: '22 Mar' },
+];
+
+const demoMessages = [
+  {
+    role: 'advisor',
+    text: '¡Hola! Soy tu Advisor IA de AION. He analizado los últimos datos de Soluciones Verdes y tengo algunas recomendaciones prioritarias para este mes.',
+    time: '10:30',
+  },
+  {
+    role: 'user',
+    text: '¿Cuáles son las oportunidades más importantes que detectaste en SEO?',
+    time: '10:32',
+  },
+  {
+    role: 'advisor',
+    text: 'He identificado 3 keywords de alta conversión donde tu competencia directa (EcoSoluciones.com) está rankeando pero tú no: "gestión residuos empresa" (1.800 búsquedas/mes), "huella carbono pymes" (950/mes) y "consultoría ambiental Madrid" (720/mes). Con dificultad moderada (<35), son quick wins ideales para el próximo sprint de contenido.',
+    time: '10:32',
+  },
+  {
+    role: 'user',
+    text: '¿Qué tipo de contenido recomiendas para "gestión residuos empresa"?',
+    time: '10:35',
+  },
+  {
+    role: 'advisor',
+    text: 'Para esa keyword recomiendo una guía completa (3.000-4.000 palabras) con estructura: qué es + marco legal + pasos de implementación + casos reales. El contenido debe incluir Schema FAQ para capturar featured snippets. He preparado un brief completo en la sección Briefs de Contenido.',
+    time: '10:35',
+  },
+];
+
+const contextItems = [
+  { label: 'Score actual', value: '74/100', icon: 'insights' },
+  { label: 'Alertas activas', value: '2 críticas', icon: 'warning', color: '#ba1a1a' },
+  { label: 'Próxima revisión', value: '12 Apr 2026', icon: 'calendar_month' },
+  { label: 'Quick wins', value: '3 identificados', icon: 'bolt' },
+];
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advisor IA — AION Growth Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    .filled-icon { font-variation-settings: 'FILL' 1; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #fcf8ff; color: #1a1a2e; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  </style>
+</head>
+<body>
+
+  <!-- Top nav -->
+  <nav style="background:#1a1a2e;color:white;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <a href="/dashboard" style="color:#94a3b8;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:4px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span>
+        Dashboard
+      </a>
+      <div style="width:1px;height:16px;background:#334155;"></div>
+      <span style="font-size:14px;font-weight:700;color:white;">Advisor IA</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;background:#1a4b8c;padding:4px 12px;border-radius:999px;">
+      <span class="material-symbols-outlined filled-icon" style="font-size:14px;">auto_awesome</span>
+      Modo demo
+    </div>
+  </nav>
+
+  <!-- 3-panel layout -->
+  <div style="flex:1;display:flex;overflow:hidden;">
+
+    <!-- Thread list (left) -->
+    <aside style="width:240px;background:#f5f2ff;border-right:1px solid #e8e5ff;display:flex;flex-direction:column;flex-shrink:0;">
+      <div style="padding:16px;border-bottom:1px solid #e8e5ff;">
+        <button style="width:100%;padding:10px;border-radius:8px;background:#1a4b8c;color:white;font-size:13px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">add</span>
+          Nueva conversación
+        </button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:8px;">
+        {demoThreads.map(t => (
+          <div style={`padding:12px;border-radius:8px;cursor:pointer;margin-bottom:4px;${t.active ? 'background:#1a4b8c;color:white;' : 'color:#434750;'}`}>
+            <p style={`font-size:13px;font-weight:600;margin-bottom:2px;${t.active ? 'color:white;' : 'color:#1a1a2e;'}`}>{t.title}</p>
+            <p style={`font-size:11px;${t.active ? 'color:#93c5fd;' : 'color:#94a3b8;'}`}>{t.date}</p>
+          </div>
+        ))}
+      </div>
+    </aside>
+
+    <!-- Chat messages (center) -->
+    <main style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;">
+        {demoMessages.map(msg => (
+          <div style={`display:flex;gap:12px;${msg.role === 'user' ? 'flex-direction:row-reverse;' : ''}`}>
+            <div style={`width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;${msg.role === 'advisor' ? 'background:#1a4b8c;color:white;' : 'background:#e8e5ff;color:#434750;'}`}>
+              {msg.role === 'advisor' ? <span class="material-symbols-outlined" style="font-size:16px;">auto_awesome</span> : 'Tú'}
+            </div>
+            <div style={`max-width:70%;padding:14px 16px;border-radius:12px;${msg.role === 'advisor' ? 'background:white;box-shadow:0 1px 3px rgba(0,0,0,0.06);' : 'background:#00346d;color:white;'}`}>
+              <p style="font-size:14px;line-height:1.6;">{msg.text}</p>
+              <p style={`font-size:10px;margin-top:6px;${msg.role === 'advisor' ? 'color:#94a3b8;' : 'color:rgba(255,255,255,0.6);'}`}>{msg.time}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Input -->
+      <div style="padding:16px 24px;border-top:1px solid #e8e5ff;background:white;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <input
+            type="text"
+            placeholder="Pregunta a tu Advisor… (modo demo)"
+            disabled
+            style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid #e8e5ff;font-size:14px;color:#94a3b8;background:#f5f2ff;cursor:not-allowed;"
+          />
+          <button disabled style="padding:12px 20px;border-radius:10px;background:#e8e5ff;color:#94a3b8;font-size:14px;font-weight:700;border:none;cursor:not-allowed;">
+            <span class="material-symbols-outlined" style="font-size:18px;">send</span>
+          </button>
+        </div>
+        <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:8px;">El chat interactivo está disponible en producción con backend conectado.</p>
+      </div>
+    </main>
+
+    <!-- Context panel (right) -->
+    <aside style="width:280px;background:white;border-left:1px solid #e8e5ff;padding:24px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;flex-shrink:0;">
+      <h3 style="font-size:14px;font-weight:800;color:#1a1a2e;">Contexto de {client.name}</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {contextItems.map(item => (
+          <div style="padding:14px;background:#f5f2ff;border-radius:10px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span class="material-symbols-outlined" style={`font-size:16px;color:${item.color || '#205db0'};`}>{item.icon}</span>
+              <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">{item.label}</p>
+            </div>
+            <p style="font-size:16px;font-weight:800;color:#1a1a2e;">{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div style="border-top:1px solid #e8e5ff;padding-top:20px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;margin-bottom:12px;">Accesos rápidos</p>
+        {[
+          { href: '/dashboard', label: 'Ver Overview', icon: 'dashboard' },
+          { href: '/dashboard/alerts', label: 'Ver Alertas', icon: 'notifications_active' },
+          { href: '/dashboard/seo-opportunities', label: 'SEO Oportunidades', icon: 'search_check' },
+        ].map(link => (
+          <a href={link.href} style="display:flex;align-items:center;gap:8px;padding:10px;border-radius:8px;color:#1a1a2e;text-decoration:none;font-size:13px;font-weight:600;margin-bottom:4px;">
+            <span class="material-symbols-outlined" style="font-size:16px;color:#205db0;">{link.icon}</span>
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </aside>
+
+  </div>
+
+</body>
+</html>

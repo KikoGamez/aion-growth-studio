@@ -1,0 +1,121 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import TierGate from '../../components/dashboard/TierGate.astro';
+import { getClient, getLatestSnapshot } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const snapshot = await getLatestSnapshot(client.id);
+const tier: Tier = client.tier;
+const canAccess = tier === 'señales' || tier === 'palancas';
+
+const topKws = snapshot.pipeline_output.seo?.topKeywords || [];
+
+// Adapt keywords into brief format
+interface Brief {
+  id: string;
+  title: string;
+  keyword: string;
+  volume: number;
+  status: 'listo' | 'en_revision' | 'borrador';
+  h1: string;
+  h2s: string[];
+  paa: string[];
+}
+
+const briefs: Brief[] = topKws.slice(0, 3).map((kw: any, i: number) => ({
+  id: `brief-${i}`,
+  title: `Brief: ${kw.keyword}`,
+  keyword: kw.keyword,
+  volume: kw.volume || 0,
+  status: i === 0 ? 'listo' : i === 1 ? 'en_revision' : 'borrador',
+  h1: `Guía completa sobre ${kw.keyword}`,
+  h2s: [
+    `¿Qué es ${kw.keyword}?`,
+    `Beneficios para empresas`,
+    `Cómo implementarlo paso a paso`,
+    `Casos de éxito`,
+  ],
+  paa: [
+    `¿Cómo empezar con ${kw.keyword}?`,
+    `¿Cuánto cuesta ${kw.keyword}?`,
+    `¿Es obligatorio ${kw.keyword} para pymes?`,
+  ],
+}));
+
+const statusConfig: Record<string, { bg: string; color: string; label: string }> = {
+  listo: { bg: '#e1f5ee', color: '#085041', label: 'Listo' },
+  en_revision: { bg: '#faeeda', color: '#633806', label: 'En revisión' },
+  borrador: { bg: '#e8e5ff', color: '#434750', label: 'Borrador' },
+};
+---
+
+<DashboardLayout title="Briefs de Contenido" currentPath="/dashboard/briefs" tier={tier} clientName={client.name} domain={client.domain}>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Briefs de Contenido</h1>
+      <p style="font-size:14px;color:#434750;margin-top:4px;">Contenido estratégico listo para publicar</p>
+    </div>
+
+    {canAccess ? (
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        {briefs.map(brief => {
+          const sc = statusConfig[brief.status];
+          return (
+            <details style="background:#ffffff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;">
+              <summary style="display:flex;align-items:center;gap:16px;padding:20px 24px;cursor:pointer;list-style:none;">
+                <div style="flex:1;">
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+                    <h3 style="font-size:15px;font-weight:700;color:#1a1a2e;">{brief.title}</h3>
+                    <span style={`padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:${sc.bg};color:${sc.color};`}>{sc.label}</span>
+                  </div>
+                  <p style="font-size:12px;color:#434750;">Keyword: <strong>{brief.keyword}</strong> · {brief.volume.toLocaleString('es-ES')} búsquedas/mes</p>
+                </div>
+                <span class="material-symbols-outlined" style="font-size:20px;color:#94a3b8;">expand_more</span>
+              </summary>
+              <div style="padding:0 24px 24px;border-top:1px solid #f5f2ff;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px;">
+                  <div>
+                    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#434750;margin-bottom:12px;">Estructura</p>
+                    <p style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">{brief.h1}</p>
+                    {brief.h2s.map(h2 => (
+                      <p style="font-size:13px;color:#434750;padding:4px 0 4px 12px;border-left:3px solid #e8e5ff;margin-bottom:4px;">{h2}</p>
+                    ))}
+                  </div>
+                  <div>
+                    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#434750;margin-bottom:12px;">Preguntas PAA</p>
+                    {brief.paa.map(q => (
+                      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">
+                        <span class="material-symbols-outlined" style="font-size:14px;color:#205db0;margin-top:2px;flex-shrink:0;">help_outline</span>
+                        <p style="font-size:13px;color:#434750;">{q}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </details>
+          );
+        })}
+        {briefs.length === 0 && (
+          <div style="text-align:center;padding:48px;color:#94a3b8;background:#ffffff;border-radius:12px;">
+            <span class="material-symbols-outlined" style="font-size:48px;display:block;margin-bottom:12px;">edit_document</span>
+            No hay briefs generados aún. Los briefs se crean automáticamente en el próximo análisis mensual.
+          </div>
+        )}
+      </div>
+    ) : (
+      <TierGate requiredTier="señales" currentTier={tier} featureName="Briefs de Contenido">
+        <div slot="preview">
+          <div style="display:flex;flex-direction:column;gap:16px;opacity:0.5;">
+            {[1, 2, 3].map(() => (
+              <div style="background:#ffffff;border-radius:12px;padding:20px 24px;height:80px;"></div>
+            ))}
+          </div>
+        </div>
+      </TierGate>
+    )}
+
+  </div>
+</DashboardLayout>

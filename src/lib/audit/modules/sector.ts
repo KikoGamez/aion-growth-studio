@@ -7,7 +7,7 @@ export async function runSector(url: string, crawl: CrawlResult): Promise<Sector
     return { skipped: true, reason: 'ANTHROPIC_API_KEY not configured' };
   }
 
-  const prompt = `Analyze this website and detect its business sector.
+  const prompt = `Analyze this website and detect its business sector. Then estimate realistic digital marketing benchmarks for a TYPICAL established company in this sector in Spain.
 
 URL: ${url}
 Title: ${crawl.title || 'N/A'}
@@ -16,11 +16,28 @@ H1 headings: ${(crawl.h1s || []).join(' | ') || 'N/A'}
 
 Respond with ONLY a valid JSON object (no markdown, no explanation):
 {
-  "sector": "sector name in English (e.g. 'Digital Marketing Agency', 'SaaS B2B', 'E-commerce', 'Consulting')",
+  "sector": "sector name in Spanish (e.g. 'Servicios Legales', 'E-commerce', 'SaaS B2B', 'Hostelería')",
   "confidence": 0.85,
   "keywords": ["keyword1", "keyword2", "keyword3"],
-  "rationale": "brief one-sentence explanation"
-}`;
+  "rationale": "brief one-sentence explanation",
+  "benchmarks": {
+    "keywordsTop10": {"low": 50, "median": 300, "high": 1500},
+    "organicTrafficMonthly": {"low": 2000, "median": 15000, "high": 80000},
+    "domainRank": {"low": 20, "median": 35, "high": 60},
+    "instagramFollowers": {"low": 500, "median": 3000, "high": 15000},
+    "linkedinFollowers": {"low": 200, "median": 1500, "high": 8000}
+  }
+}
+
+Benchmark rules:
+- Reflect REALISTIC ranges for this specific sector in Spain
+- "low" = bottom 25% of established companies (not early-stage startups)
+- "median" = score of a typical established company in this sector
+- "high" = top 25% / clear sector leader
+- For B2B sectors: instagramFollowers can be lower; linkedinFollowers more important
+- For local/service businesses: all numbers should be much lower than national brands
+- For e-commerce/media: traffic and social benchmarks are much higher
+- Consider the geographic scope (local, national, or international)`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -32,7 +49,7 @@ Respond with ONLY a valid JSON object (no markdown, no explanation):
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
+        max_tokens: 600,
         messages: [{ role: 'user', content: prompt }],
       }),
     });

@@ -1,0 +1,43 @@
+---
+import type { Alert } from '../../lib/demo-data';
+
+export interface Props {
+  alert: Alert;
+  expanded?: boolean;
+}
+
+const { alert, expanded = false } = Astro.props;
+
+const dotColor = alert.severity === 'critical' ? '#ba1a1a' : alert.severity === 'positive' ? '#1d9e75' : '#ba7517';
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return 'Hace menos de 1h';
+  if (h < 24) return `Hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return `Hace ${d} día${d > 1 ? 's' : ''}`;
+}
+
+const typeLabels: Record<string, string> = { seo: 'SEO', geo: 'GEO', competitor: 'Competidor', web: 'Web', paid: 'Paid' };
+---
+
+<details style="background:#ffffff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;" open={expanded}>
+  <summary style="display:flex;align-items:flex-start;gap:16px;padding:16px;cursor:pointer;list-style:none;">
+    <div style={`width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:4px;`}></div>
+    <div style="flex:1;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <p style="font-size:12px;font-weight:700;color:#1a1a2e;">{alert.title}</p>
+        <span style="font-size:10px;background:#efecff;color:#434750;padding:1px 6px;border-radius:4px;">{typeLabels[alert.type] || alert.type}</span>
+      </div>
+      <p style="font-size:11px;color:#434750;line-height:1.4;">{alert.description}</p>
+      <span style="font-size:10px;color:#94a3b8;font-weight:500;display:block;margin-top:8px;">{relativeTime(alert.timestamp)}</span>
+    </div>
+    <span class="material-symbols-outlined" style="font-size:16px;color:#94a3b8;flex-shrink:0;margin-top:2px;">expand_more</span>
+  </summary>
+  {alert.detail && (
+    <div style="padding:0 16px 16px 40px;font-size:12px;color:#434750;line-height:1.6;border-top:1px solid #efecff;">
+      {alert.detail}
+    </div>
+  )}
+</details>

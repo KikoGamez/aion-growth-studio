@@ -67,9 +67,9 @@ function statusStyle(s: AreaStatus): { bg: string; fg: string; label: string } {
 
 // 7-area semaphore
 const statusByArea: { area: string; status: AreaStatus; summary: string; anchor: string }[] = [
-  { area: 'Organic SEO', status: ss(health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visits/mo` : 'No SEO data', anchor: '#seo' },
+  { area: 'Organic SEO', status: ss(r.score?.breakdown?.seoVisibility ?? health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visits/mo` : 'No SEO data', anchor: '#seo' },
   { area: 'AI Visibility', status: ss(geo?.mentionRate ?? 0), summary: geo ? `Mentioned in ${geo.mentionRate ?? 0}% of AI queries` : 'No GEO data', anchor: '#ia' },
-  { area: 'Advertising', status: (seo?.paidKeywordsTotal ?? 0) > 0 ? 'good' : 'bad', summary: (seo?.paidKeywordsTotal ?? 0) > 0 ? `${fmt(seo?.paidKeywordsTotal)} sponsored keywords` : 'No paid advertising detected', anchor: '#ads' },
+  { area: 'Domain Authority', status: ss(seo?.domainRank ?? 0), summary: seo?.domainRank != null ? `Domain rank: ${seo.domainRank}/100, ${fmt(seo.referringDomains)} referring domains` : 'No authority data', anchor: '#autoridad' },
   { area: 'Benchmark', status: hasCompetitorData ? ss(health.competitividad ?? 0) : 'bad', summary: hasCompetitorData ? `${ctItems.length} competitors with data` : 'No competitor data', anchor: '#competidores' },
   { area: 'Web & Speed', status: ss(ps?.mobile?.performance ?? 0), summary: ps ? `Mobile score: ${ps.mobile?.performance ?? '—'}/100` : 'No PageSpeed data', anchor: '#experiencia' },
   { area: 'Conversion', status: ss(cv?.funnelScore ?? health.conversion ?? 0), summary: cv ? `Funnel score: ${cv.funnelScore ?? '—'}/100` : 'No conversion data', anchor: '#experiencia' },
@@ -182,8 +182,34 @@ function buildHorizontalBars(items: Array<{label:string;value:number;color:strin
   return `<svg width="${totalW}" height="${h}" viewBox="0 0 ${totalW} ${h}">${bars}</svg>`;
 }
 
+// displayCompetitors: all known competitors with best available data.
+// Primary: ctItemsRaw (DataForSEO data, even partial). Fallback: AI-detected names.
+const displayCompetitors: any[] = (() => {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const c of ctItemsRaw) {
+    if (c.domain && !seen.has(c.domain)) { seen.add(c.domain); out.push(c); }
+  }
+  for (const c of competitors) {
+    let d = c.url;
+    try { d = new URL(c.url.startsWith('http') ? c.url : `https://${c.url}`).hostname.replace(/^www\./, ''); } catch {}
+    if (d && !seen.has(d)) { seen.add(d); out.push({ name: c.name, domain: d, url: c.url }); }
+  }
+  return out.slice(0, 5);
+})();
+
+// Benchmark header vars
+const benchScore = health.competitividad;
+const benchColor = scoreColor(benchScore);
+const benchSummaryText = (insights as any)?.benchmarkSummary || null;
+
+// Experiencia header vars
+const expScore = health.experiencia;
+const expColor = scoreColor(expScore);
+const expSummaryText = (insights as any)?.experienceSummary || null;
+
 // Radar datasets
-const maxKW = Math.max(seo?.keywordsTop10||0, ...ctItems.map((c:any)=>c.keywordsTop10||0), 1);
+const maxKW = Math.max(seo?.keywordsTop10||0, ...displayCompetitors.map((c:any)=>c.keywordsTop10||0), 1);
 const maxFollowers = Math.max(linkedin?.followers||0, instagram?.followers||0, ...(linkedin?.competitors||[]).map((c:any)=>c.followers||0), ...(instagram?.competitors||[]).map((c:any)=>c.followers||0), 1);
 
 const radarColors = ['#1A4B8C','#D85A30','#888780'];
@@ -195,15 +221,15 @@ const radarDatasets = [
     Math.round((Math.max(linkedin?.followers||0,instagram?.followers||0)/maxFollowers)*100),
     ps?.mobile?.performance??0,
   ]},
-  ...ctItems.slice(0,2).map((ct:any,idx:number)=>({
+  ...displayCompetitors.slice(0,2).map((ct:any, idx:number)=>({
     label: ct.name||ct.domain,
     color: radarColors[idx+1],
     values: [
-      Math.round(((ct.keywordsTop10||0)/maxKW)*100),
+      ct.keywordsTop10 != null ? Math.round((ct.keywordsTop10/maxKW)*100) : 0,
       geo?.competitorMentions?.[idx]?.mentionRate??0,
       (ct.paidKeywordsTotal||0)>0?80:20,
       Math.round((Math.max((linkedin?.competitors||[])[idx]?.followers||0,(instagram?.competitors||[])[idx]?.followers||0)/maxFollowers)*100),
-      compPS?.items?.[idx]?.mobileScore??0,
+      compPS?.items?.find((p:any)=>p.domain===ct.domain)?.mobileScore ?? compPS?.items?.[idx]?.mobileScore ?? 0,
     ],
   })),
 ];
@@ -280,8 +306,8 @@ const allCompGeoZero = (geo?.competitorMentions?.length ?? 0) > 0 && geo.competi
 // SEO → AI gap
 const seoToAiGap: any[] = (seo?.topKeywords || []).slice(0, 5);
 
-// Health summary
-const healthSummaryText = diagnosisHealthSummary(health);
+// Health summary — prefer AI-generated summary from insights, fallback to rule-based
+const healthSummaryText = (insights as any)?.summary || diagnosisHealthSummary(health);
 const heroStatus = statusStyle(ss(health.total));
 ---
 <!DOCTYPE html>
@@ -471,7 +497,7 @@ const heroStatus = statusStyle(ss(health.total));
               <a href="#seo" class="compass-card">
                 <div class="compass-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A4B8C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
                 <div class="compass-card-title">Digital Visibility</div>
-                <div class="compass-card-desc">SEO, AI & Advertising</div>
+                <div class="compass-card-desc">SEO, AI & Authority</div>
                 <div style="font-size:0.85rem;font-weight:700;color:#1A4B8C;margin-top:4px;">{health.visibilidad ?? 0}<span style="font-size:0.65rem;font-weight:400;color:#5A6478;">/100</span></div>
               </a>
               <a href="#competidores" class="compass-card">
@@ -522,7 +548,7 @@ const heroStatus = statusStyle(ss(health.total));
         ═══════════════════════════════════════════════════════════ -->
         <div id="seo" class="report-block reveal">
           <div class="block-title">Digital Visibility</div>
-          <div class="block-subtitle">Analysis of organic presence, artificial intelligence, and paid advertising</div>
+          <div class="block-subtitle">Analysis of organic presence, AI visibility, and external link authority</div>
 
           <!-- ── Layer 1: Organic SEO ── -->
           <div style="font-size:0.88rem;font-weight:700;color:#1A4B8C;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
@@ -794,72 +820,56 @@ const heroStatus = statusStyle(ss(health.total));
             <div class="callout callout-amber">Could not retrieve AI visibility data for this domain.</div>
           )}
 
-          <!-- ── Layer 3: Advertising ── -->
-          <div id="ads" class="sub-section-title">
-            <span style="width:3px;height:16px;background:#D85A30;border-radius:2px;display:inline-block;margin-right:8px;vertical-align:middle;"></span>
-            Advertising
+          <!-- ── Layer 3: Brand Authority ── -->
+          <div id="autoridad" class="sub-section-title">
+            <span style="width:3px;height:16px;background:#7c3aed;border-radius:2px;display:inline-block;margin-right:8px;vertical-align:middle;"></span>
+            Brand Authority
           </div>
-          <div class="sub-section-subtitle">Google Ads and Meta Ads investment detected for your domain and competitors</div>
+          <div class="sub-section-subtitle">External presence: blogs, media, directories and inbound links to your domain</div>
 
-          <div class="grid-2" style="margin-bottom:14px;">
-            <div class="metric-card">
-              <div class="metric-value" style={`color:${clientPaidKw>0?'#1D9E75':'#E24B4A'};`}>{fmt(clientPaidKw)}</div>
-              <div class="metric-label">Google Ads keywords</div>
-              <div class="metric-sub" style="margin-top:4px;">
-                {clientPaidKw > 0 ? `Est. paid traffic: ${fmt(seo?.paidTrafficEstimate)} visits/mo` : 'No Google Ads investment detected'}
+          {seo && (seo.domainRank != null || seo.referringDomains != null) ? (
+            <div>
+              <div class="grid-3" style="margin-bottom:14px;">
+                <div class="metric-card">
+                  <div class="metric-value" style={`color:${(seo.domainRank??0)>=50?'#1D9E75':(seo.domainRank??0)>=25?'#BA7517':'#E24B4A'};`}>{seo.domainRank ?? '—'}</div>
+                  <div class="metric-label">Domain Rank</div>
+                  <div class="metric-sub" style="margin-top:4px;">Domain authority score (0–100)</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value">{fmt(seo.referringDomains)}</div>
+                  <div class="metric-label">Referring Domains</div>
+                  <div class="metric-sub" style="margin-top:4px;">Unique websites linking to your domain</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-value">{fmt(seo.backlinksTotal)}</div>
+                  <div class="metric-label">Total Backlinks</div>
+                  <div class="metric-sub" style="margin-top:4px;">Total inbound links</div>
+                </div>
               </div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value" style={`color:${metaAds?.active?'#1D9E75':'#E24B4A'};`}>
-                {metaAds ? (metaAds.active ? 'Active' : 'Inactive') : '—'}
-              </div>
-              <div class="metric-label">Meta Ads (Facebook/Instagram)</div>
-              <div class="metric-sub" style="margin-top:4px;">
-                {metaAds?.active ? `${fmt(metaAds.adsCount)} ads detected` : 'No active ads detected'}
-              </div>
-            </div>
-          </div>
 
-          {clientPaidKw === 0 && compPaidItems.length === 0 && (
-            <div class="callout callout-amber">
-              Neither you nor your competitors invest in paid search. This is an opportunity to capture demand with less competition in AdWords auctions.
+              {(seo.domainRank ?? 0) < 20 && (
+                <div class="callout callout-red">
+                  Your domain rank is low ({seo.domainRank ?? 0}/100). Getting mentions in relevant media, publishing guest posts, and appearing in industry directories are priority actions to increase your authority.
+                </div>
+              )}
+              {(seo.domainRank ?? 0) >= 20 && (seo.domainRank ?? 0) < 50 && (
+                <div class="callout callout-amber">
+                  Your domain rank is developing ({seo.domainRank ?? 0}/100). Increasing presence in specialist blogs and industry media can accelerate organic growth.
+                </div>
+              )}
+              {(seo.domainRank ?? 0) >= 50 && (
+                <div class="callout callout-green">
+                  Good domain authority ({seo.domainRank ?? 0}/100) with {fmt(seo.referringDomains)} referring domains. Keep up the link building strategy and prioritize quality over quantity.
+                </div>
+              )}
+              {(seo.spamScore ?? 0) > 40 && (
+                <div class="callout callout-red" style="margin-top:8px;">
+                  <strong>Alert:</strong> Your backlink profile has a high spam score ({seo.spamScore}%). Review and disavow toxic links via Google Search Console to avoid penalties.
+                </div>
+              )}
             </div>
-          )}
-
-          {clientPaidKw === 0 && compPaidItems.length > 0 && (
-            <div class="callout callout-red">
-              <strong>Alert:</strong> {compPaidItems.length} of your competitors are investing in Google Ads and you are not. They are capturing customers who are potentially searching for your services.
-            </div>
-          )}
-
-          {clientPaidKw > 0 && compPaidItems.length > 0 && (
-            <div class="callout callout-green">
-              You are investing in paid alongside {compPaidItems.length} competitors. Analyze the keyword gap to maximize ROI and avoid overlap.
-            </div>
-          )}
-
-          {compPaidItems.length > 0 && (
-            <div style="margin-top:14px;">
-              <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Competitors investing in paid</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Competitor</th>
-                    <th>Sponsored keywords</th>
-                    <th>Est. paid traffic</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {compPaidItems.slice(0,5).map((c: any) => (
-                    <tr>
-                      <td style="font-weight:500;">{c.name || c.domain}</td>
-                      <td>{fmt(c.paidKeywordsTotal)}</td>
-                      <td>{fmt(c.paidTrafficEstimate)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          ) : (
+            <div class="callout callout-amber">Could not retrieve domain authority data for this site.</div>
           )}
         </div>
 
@@ -869,6 +879,58 @@ const heroStatus = statusStyle(ss(health.total));
         <div id="competidores" class="report-block reveal">
           <div class="block-title">Competitive Benchmark</div>
           <div class="block-subtitle">Your relative position against key competitors across 5 critical axes</div>
+
+          <!-- ── Benchmark header: gauge + key metrics + Claude summary ── -->
+          <div style="display:flex;align-items:center;gap:32px;background:#F8F9FB;border-radius:14px;padding:20px 24px;margin-bottom:24px;flex-wrap:wrap;">
+            <!-- Gauge -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+              <div style="position:relative;width:88px;height:88px;">
+                <svg viewBox="0 0 36 36" style="width:88px;height:88px;transform:rotate(-90deg);">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke={benchColor} stroke-width="3" stroke-linecap="round" stroke-dasharray={`${benchScore}, 100`}/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style={`font-size:1.4rem;font-weight:800;color:${benchColor};line-height:1;`}>{benchScore}</span>
+                  <span style="font-size:0.55rem;color:#5A6478;">/100</span>
+                </div>
+              </div>
+              <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#5A6478;">Benchmark</span>
+            </div>
+            <!-- Key metrics comparison -->
+            <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
+              {(() => {
+                const topComp = displayCompetitors[0];
+                const clientKW = seo?.keywordsTop10 ?? 0;
+                const compKW = topComp?.keywordsTop10 ?? null;
+                const maxKWVal = Math.max(clientKW, compKW ?? 0, 1);
+                const kgCount = kg?.items?.length ?? 0;
+                const rows = [
+                  { label: `Keywords Top 10 (${domain})`, value: clientKW, max: maxKWVal, color: '#1A4B8C' },
+                  ...(compKW != null ? [{ label: `Keywords Top 10 (${topComp?.name || topComp?.domain || 'top competitor'})`, value: compKW, max: maxKWVal, color: '#D85A30' }] : []),
+                  ...(kgCount > 0 ? [{ label: 'Keyword gap vs competitors', value: kgCount, max: Math.max(kgCount, 10), color: '#BA7517' }] : []),
+                ];
+                return rows.map(row => {
+                  const pct = Math.min(100, Math.round((row.value / row.max) * 100));
+                  return (
+                    <div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="font-size:0.75rem;font-weight:600;color:#1A1A2E;">{row.label}</span>
+                        <span style={`font-size:0.75rem;font-weight:700;color:${row.color};`}>{fmt(row.value)}</span>
+                      </div>
+                      <div style="height:6px;background:rgba(0,0,0,0.08);border-radius:4px;overflow:hidden;">
+                        <div style={`height:100%;width:${pct}%;background:${row.color};border-radius:4px;`}></div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+          {benchSummaryText && (
+            <div style="font-size:0.85rem;color:#434750;font-style:italic;line-height:1.6;margin-bottom:20px;padding-left:4px;border-left:3px solid #D85A30;">
+              {benchSummaryText}
+            </div>
+          )}
 
           {qaSuppressed.includes('competitor_benchmark') ? (
             <div>
@@ -887,12 +949,12 @@ const heroStatus = statusStyle(ss(health.total));
             <div>
 
           <!-- Color legend -->
-          {ctItems.length > 0 && (
+          {displayCompetitors.length > 0 && (
             <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
               <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1A1A2E;font-weight:600;">
                 <span style="width:12px;height:12px;border-radius:3px;background:#1A4B8C;display:inline-block;"></span>{domain}
               </div>
-              {ctItems.slice(0,2).map((ct: any, idx: number) => (
+              {displayCompetitors.slice(0,2).map((ct: any, idx: number) => (
                 <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5A6478;">
                   <span style={`width:12px;height:12px;border-radius:3px;background:${idx===0?'#D85A30':'#888780'};display:inline-block;`}></span>{ct.name || ct.domain}
                 </div>
@@ -901,7 +963,7 @@ const heroStatus = statusStyle(ss(health.total));
           )}
 
           <!-- Competitive data table -->
-          {ctItems.length > 0 && (
+          {displayCompetitors.length > 0 && (
             <div style="margin-bottom:20px;">
               <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Comparative data</div>
               <table>
@@ -922,17 +984,20 @@ const heroStatus = statusStyle(ss(health.total));
                     <td>{fmt(clientPaidKw)}</td>
                     <td>{ps?.mobile?.performance ?? '—'}/100</td>
                   </tr>
-                  {ctItems.slice(0,4).map((ct: any) => (
+                  {displayCompetitors.slice(0,4).map((ct: any) => (
                     <tr>
                       <td style="font-weight:500;">{ct.name || ct.domain}</td>
-                      <td>{fmt(ct.keywordsTop10)}</td>
-                      <td>{fmt(ct.organicTrafficEstimate)}</td>
-                      <td>{fmt(ct.paidKeywordsTotal)}</td>
-                      <td>{compPS?.items?.find((p: any) => p.domain === ct.domain)?.mobileScore ?? '—'}/100</td>
+                      <td>{ct.keywordsTop10 != null ? fmt(ct.keywordsTop10) : <span style="color:#9CA3AF;font-size:11px;">no data</span>}</td>
+                      <td>{ct.organicTrafficEstimate != null ? fmt(ct.organicTrafficEstimate) : <span style="color:#9CA3AF;font-size:11px;">no data</span>}</td>
+                      <td>{ct.paidKeywordsTotal != null ? fmt(ct.paidKeywordsTotal) : '—'}</td>
+                      <td>{compPS?.items?.find((p: any) => p.domain === ct.domain)?.mobileScore ?? compPS?.items?.find((p: any) => p.name === ct.name)?.mobileScore ?? '—'}/100</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              {ctItems.length === 0 && (
+                <div style="font-size:11px;color:#9CA3AF;margin-top:6px;font-style:italic;">* No SEO traffic data in DataForSEO for these competitors. Web speed and AI data shown where available.</div>
+              )}
             </div>
           )}
 
@@ -955,14 +1020,14 @@ const heroStatus = statusStyle(ss(health.total));
                       {seo
                         ? hasCompetitorData && ownETV < avgETV
                           ? `Your organic traffic (~${fmt(ownETV)} visits/mo) is below the competitive average (~${fmt(Math.round(avgETV))} visits/mo). Potential gap: ${fmt(trafficGap)} additional visits/mo.`
-                          : `With ${fmt(seo.keywordsTop10)} keywords in top 10 and ~${fmt(seo.organicTrafficEstimate)} visits/mo, your SEO is ${st==='good'?'solid':'improvable'}.${!hasCompetitorData ? ' No comparable data available for analyzed competitors.' : ''}`
+                          : `With ${fmt(seo.keywordsTop10)} keywords in top 10 and ~${fmt(seo.organicTrafficEstimate)} visits/mo, your SEO is ${st==='good'?'solid':'improvable'}.`
                         : 'No SEO data available.'}
                     </p>
-                    {hasCompetitorData && (
+                    {displayCompetitors.length > 0 && (
                       <div style="display:flex;gap:12px;flex-wrap:wrap;">
                         <span style="font-size:11px;font-weight:700;color:#1A4B8C;">{domain}: {fmt(seo?.keywordsTop10)} kw</span>
-                        {ctItems.slice(0,2).map((ct: any, idx: number) => (
-                          <span style={`font-size:11px;color:${idx===0?'#D85A30':'#888780'};`}>{ct.name||ct.domain}: {fmt(ct.keywordsTop10)}</span>
+                        {displayCompetitors.slice(0,2).map((ct: any, idx: number) => (
+                          <span style={`font-size:11px;color:${idx===0?'#D85A30':'#888780'};`}>{ct.name||ct.domain}: {ct.keywordsTop10 != null ? fmt(ct.keywordsTop10)+' kw' : <span style="color:#9CA3AF;">no SEO data</span>}</span>
                         ))}
                       </div>
                     )}
@@ -1003,22 +1068,41 @@ const heroStatus = statusStyle(ss(health.total));
 
             <!-- Paid axis -->
             {(() => {
-              const stStyle = clientPaidKw>0 ? { fg:'#085041', bg:'#E1F5EE', label:'Active' } : { fg:'#791F1F', bg:'#FCEBEB', label:'No investment' };
+              const hasAnyPaid = clientPaidKw > 0 || metaAds?.hasMetaAds;
+              const stStyle = hasAnyPaid ? { fg:'#085041', bg:'#E1F5EE', label:'Active' } : { fg:'#791F1F', bg:'#FCEBEB', label:'No investment' };
+              const compMetaAdsCount = metaAds?.competitorsWithMetaAds ?? 0;
               return (
                 <div style="display:flex;gap:0;border-radius:8px;border:0.5px solid #E5E7EB;overflow:hidden;">
                   <div style={`width:6px;background:${stStyle.fg};flex-shrink:0;`}></div>
                   <div style="padding:14px 16px;flex:1;">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                       <span style="font-size:0.82rem;font-weight:700;color:#D85A30;">Paid Advertising</span>
-                      <span class="status-badge" style={`background:${stStyle.bg};color:${stStyle.fg};font-size:10px;`}>{clientPaidKw>0?'Active':'No investment'}</span>
+                      <span class="status-badge" style={`background:${stStyle.bg};color:${stStyle.fg};font-size:10px;`}>{stStyle.label}</span>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                      <span style={`font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:${clientPaidKw>0?'#E1F5EE':'#F3F4F6'};color:${clientPaidKw>0?'#085041':'#6B7280'};`}>
+                        Google Ads: {clientPaidKw>0 ? `${fmt(clientPaidKw)} kw` : 'inactive'}
+                      </span>
+                      {metaAds && (
+                        <span style={`font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:${metaAds.hasMetaAds?'#E1F5EE':'#F3F4F6'};color:${metaAds.hasMetaAds?'#085041':'#6B7280'};`}>
+                          Meta Ads: {metaAds.hasMetaAds ? 'active' : 'inactive'}
+                        </span>
+                      )}
                     </div>
                     <p style="font-size:12px;color:#5A6478;line-height:1.5;">
-                      {clientPaidKw > 0
-                        ? `Investing in ${fmt(clientPaidKw)} paid keywords.${compPaidItems.length > 0 ? ` ${compPaidItems.length} competitors also active in paid.` : ' You are one of the few active in paid in your market.'}`
-                        : compPaidItems.length > 0
-                          ? `You're not investing in Google Ads while ${compPaidItems.length} competitors are.`
-                          : 'Neither you nor your analyzed competitors invest in paid search. Lower auction competition than usual.'}
+                      {compPaidItems.length > 0 || compMetaAdsCount > 0
+                        ? `${compPaidItems.length > 0 ? `${compPaidItems.length} competitors on Google Ads` : ''}${compPaidItems.length > 0 && compMetaAdsCount > 0 ? ', ' : ''}${compMetaAdsCount > 0 ? `${compMetaAdsCount} on Meta Ads` : ''}.${!hasAnyPaid ? ' They are capturing demand you are not monetising.' : ''}`
+                        : hasAnyPaid
+                          ? 'You are one of the few active in paid in this market.'
+                          : 'Neither you nor your competitors invest in paid. Lower auction competition.'}
                     </p>
+                    {(metaAds?.competitorDetails?.length ?? 0) > 0 && (
+                      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+                        {metaAds!.competitorDetails!.filter((c:any)=>c.hasMetaAds).slice(0,3).map((c:any)=>(
+                          <span style="font-size:10px;background:#FFF3EE;color:#D85A30;padding:2px 8px;border-radius:4px;font-weight:600;">{c.name}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -1087,6 +1171,51 @@ const heroStatus = statusStyle(ss(health.total));
         <div id="experiencia" class="report-block reveal">
           <div class="block-title">Web, Speed & Conversion</div>
           <div class="block-subtitle">User experience, technical performance, traffic channels and measurement stack</div>
+
+          <!-- ── Experience header: gauge + sub-scores + Claude summary ── -->
+          <div style="display:flex;align-items:center;gap:32px;background:#F8F9FB;border-radius:14px;padding:20px 24px;margin-bottom:24px;flex-wrap:wrap;">
+            <!-- Gauge -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+              <div style="position:relative;width:88px;height:88px;">
+                <svg viewBox="0 0 36 36" style="width:88px;height:88px;transform:rotate(-90deg);">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="3"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke={expColor} stroke-width="3" stroke-linecap="round" stroke-dasharray={`${expScore}, 100`}/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <span style={`font-size:1.4rem;font-weight:800;color:${expColor};line-height:1;`}>{expScore}</span>
+                  <span style="font-size:0.55rem;color:#5A6478;">/100</span>
+                </div>
+              </div>
+              <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#5A6478;">Experience</span>
+            </div>
+            <!-- Sub-scores -->
+            <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
+              {[
+                { label: 'Web speed (mobile)', value: ps?.mobile?.performance ?? 0, weight: '40%' },
+                { label: 'Lead capture & conversion', value: cv?.funnelScore ?? 0, weight: '40%' },
+                { label: 'Measurement stack maturity', value: ts?.maturityScore ?? 0, weight: '20%' },
+              ].map(sub => {
+                const c = sub.value >= 70 ? '#1D9E75' : sub.value >= 40 ? '#BA7517' : '#E24B4A';
+                return (
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                      <span style="font-size:0.75rem;font-weight:600;color:#1A1A2E;">{sub.label}</span>
+                      <span style={`font-size:0.75rem;font-weight:700;color:${c};`}>{sub.value}<span style="font-size:0.6rem;color:#5A6478;font-weight:400;">/100</span></span>
+                    </div>
+                    <div style="height:6px;background:rgba(0,0,0,0.08);border-radius:4px;overflow:hidden;">
+                      <div style={`height:100%;width:${sub.value}%;background:${c};border-radius:4px;transition:width 0.6s ease;`}></div>
+                    </div>
+                    <div style="font-size:0.6rem;color:#9CA3AF;margin-top:2px;">weight {sub.weight}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {expSummaryText && (
+            <div style="font-size:0.85rem;color:#434750;font-style:italic;line-height:1.6;margin-bottom:20px;padding-left:4px;border-left:3px solid #1D9E75;">
+              {expSummaryText}
+            </div>
+          )}
 
           <!-- Traffic metrics -->
           {traffic && (
@@ -1411,12 +1540,19 @@ const heroStatus = statusStyle(ss(health.total));
 
           <hr class="section-divider" />
 
-          <!-- CTA card -->
-          <div style="border:1px solid #4A7FD4;border-radius:10px;padding:24px;background:#F0F6FF;">
-            <div style="font-size:1rem;font-weight:700;color:#1A4B8C;margin-bottom:8px;">Want us to track this every month?</div>
-            <p style="font-size:0.84rem;color:#5A6478;line-height:1.6;margin-bottom:0;">
-              With <strong style="color:#1A4B8C;">Radar</strong>, you'll receive a monthly report tracking all these indicators, alerts when something changes, and a review call with your Growth Advisor. No surprises — with success metrics defined from day one.
+          <!-- CTA card — dashboard onboarding -->
+          <div style="border:2px solid #4A7FD4;border-radius:12px;padding:24px;text-align:center;margin-top:32px;">
+            <h3 style="font-size:1.1rem;font-weight:700;color:#1A1A2E;margin-bottom:8px;">
+              Want us to monitor this every month?
+            </h3>
+            <p style="font-size:0.875rem;color:#5A6478;margin-bottom:16px;">
+              Connect your tools, choose your plan, and receive this analysis every month — updated with
+              real data, trends, and a prioritized action plan.
             </p>
+            <a href="/dashboard/onboarding" style="display:inline-block;background:#1A4B8C;color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:0.95rem;">
+              Get started →
+            </a>
+            <p style="font-size:11px;color:#9CA3AF;margin-top:12px;">No commitment. Cancel anytime.</p>
           </div>
         </div>
 

@@ -1,0 +1,154 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getClient, IS_DEMO, listClientUsers } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const tier: Tier = client.tier;
+const users = await listClientUsers(client.id);
+const currentUserRole = Astro.locals.user?.role ?? 'viewer';
+const canManageTeam = currentUserRole === 'admin' || currentUserRole === 'superuser';
+
+const apiConnections = [
+  { name: 'Google Analytics 4', icon: 'analytics', status: 'connected', color: '#1d9e75' },
+  { name: 'Google Ads', icon: 'ads_click', status: 'connected', color: '#1d9e75' },
+  { name: 'Meta Ads', icon: 'thumb_up', status: 'connected', color: '#1d9e75' },
+  { name: 'Google Search Console', icon: 'manage_search', status: 'connected', color: '#1d9e75' },
+];
+
+const tiers: Tier[] = ['radar', 'señales', 'palancas'];
+const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales', palancas: 'Palancas' };
+---
+
+<DashboardLayout title="Ajustes" currentPath="/dashboard/settings" tier={tier} clientName={client.name} domain={client.domain}>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Ajustes</h1>
+      <p style="font-size:14px;color:#434750;margin-top:4px;">Configuración de tu cuenta y conexiones</p>
+    </div>
+
+    <!-- Demo tier switcher -->
+    {IS_DEMO && (
+      <div style="background:#fefce8;border:1px solid #fbbf24;border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span class="material-symbols-outlined" style="color:#92400e;font-size:20px;">science</span>
+          <p style="font-size:14px;font-weight:700;color:#92400e;">Modo demo — Cambiar tier para probar funcionalidades</p>
+        </div>
+        <form method="POST" action="/api/dashboard/set-tier" style="display:flex;gap:12px;flex-wrap:wrap;">
+          {tiers.map(t => (
+            <button
+              type="submit"
+              name="tier"
+              value={t}
+              style={`padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;border:2px solid;cursor:pointer;transition:all 0.15s;${tier === t ? 'background:#1a4b8c;color:white;border-color:#1a4b8c;' : 'background:white;color:#1a4b8c;border-color:#1a4b8c;'}`}
+            >
+              {tierLabels[t]}
+              {tier === t && ' ✓'}
+            </button>
+          ))}
+        </form>
+      </div>
+    )}
+
+    <!-- Company profile -->
+    <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:24px;">Perfil de empresa</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        {[
+          { label: 'Nombre', value: client.name },
+          { label: 'Dominio', value: client.domain },
+          { label: 'Sector', value: client.sector },
+          { label: 'Plan actual', value: tierLabels[tier] },
+        ].map(f => (
+          <div>
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#434750;margin-bottom:6px;">{f.label}</p>
+            <p style="font-size:15px;font-weight:600;color:#1a1a2e;">{f.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Team -->
+    <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+        <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin:0;">Equipo</h2>
+        {canManageTeam && !IS_DEMO && (
+          <button
+            onclick="document.getElementById('invite-form').style.display='block';this.style.display='none'"
+            style="background:#1a4b8c;color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;"
+          >
+            <span class="material-symbols-outlined" style="font-size:16px;">person_add</span>
+            Invitar
+          </button>
+        )}
+      </div>
+
+      <!-- Invite form (hidden by default) -->
+      <div id="invite-form" style="display:none;background:#f5f2ff;border-radius:10px;padding:20px;margin-bottom:20px;">
+        <form method="POST" action="/api/dashboard/invite-user" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:200px;">
+            <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;margin-bottom:6px;">Email</label>
+            <input type="email" name="email" placeholder="nuevo@empresa.com" required style="width:100%;padding:10px 14px;border:1px solid #e2e0fc;border-radius:8px;font-size:14px;font-family:inherit;outline:none;" />
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;margin-bottom:6px;">Rol</label>
+            <select name="role" style="padding:10px 14px;border:1px solid #e2e0fc;border-radius:8px;font-size:14px;font-family:inherit;background:white;outline:none;">
+              <option value="viewer">Viewer (solo lectura)</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button type="submit" style="background:#1a4b8c;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">
+            Enviar invitación
+          </button>
+        </form>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        {users.map(u => (
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:8px;background:#f8f9fb;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:#e2e0fc;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#325ea0;flex-shrink:0;">
+                {(u.name || u.email).charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p style="font-size:14px;font-weight:600;color:#1a1a2e;margin:0;">{u.name}</p>
+                <p style="font-size:12px;color:#434750;margin:0;">{u.email}</p>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style={`font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 10px;border-radius:20px;${u.role === 'admin' ? 'background:#d6e3ff;color:#1a4b8c;' : 'background:#f0eeff;color:#434750;'}`}>
+                {u.role}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- API Connections -->
+    <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:24px;">Conexiones API</h2>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {apiConnections.map(api => (
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#f5f2ff;border-radius:10px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:10px;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                <span class="material-symbols-outlined" style="font-size:18px;color:#1a1a2e;">{api.icon}</span>
+              </div>
+              <p style="font-size:14px;font-weight:600;color:#1a1a2e;">{api.name}</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style={`width:8px;height:8px;border-radius:50%;background:${api.color};`}></div>
+              <span style={`font-size:12px;font-weight:700;color:${api.color};`}>
+                {IS_DEMO ? 'Conectado ✓' : api.status === 'connected' ? 'Conectado' : 'Sin conectar'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+  </div>
+</DashboardLayout>

@@ -1,0 +1,200 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import MetricCard from '../../components/dashboard/MetricCard.astro';
+import AlertCard from '../../components/dashboard/AlertCard.astro';
+import ActionItem from '../../components/dashboard/ActionItem.astro';
+import TierGate from '../../components/dashboard/TierGate.astro';
+import UpsellCallout from '../../components/dashboard/UpsellCallout.astro';
+import GEOProgressBar from '../../components/charts/GEOProgressBar.astro';
+import { getClient, getLatestSnapshot, getAlerts, getContextEntries } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const snapshot = await getLatestSnapshot(client.id);
+const alerts = await getAlerts(client.id);
+const contextEntries = await getContextEntries(client.id);
+const tier: Tier = client.tier;
+
+const canAccessSeñales = tier === 'señales' || tier === 'palancas';
+
+const r = snapshot.pipeline_output;
+const score = snapshot.score;
+const prevScore = 68; // previous snapshot
+const geo = r.geo || {};
+const seo = r.seo || {};
+const visits = seo.organicTrafficEstimate || 12400;
+const visits_prev = 10800;
+
+// Action items: combine insights bullets + context entries
+interface ActionEntry { title: string; status: 'done' | 'in_progress' | 'pending'; impact: 'high' | 'medium' | 'low'; }
+const actionItems: ActionEntry[] = [
+  ...contextEntries
+    .filter(e => e.type === 'action')
+    .map(e => ({
+      title: e.title,
+      status: (e.status as 'done' | 'in_progress' | 'pending') || 'pending',
+      impact: (e.impact as 'high' | 'medium' | 'low') || 'medium',
+    })),
+  ...(r.insights?.bullets || []).slice(0, 3).map((b: string) => ({
+    title: b,
+    status: 'pending' as const,
+    impact: 'medium' as const,
+  })),
+];
+
+const doneCount = actionItems.filter(a => a.status === 'done').length;
+const progressPct = actionItems.length > 0 ? Math.round((doneCount / actionItems.length) * 100) : 0;
+
+// Next review date
+const nextReview = new Date();
+nextReview.setMonth(nextReview.getMonth() + 1);
+nextReview.setDate(12);
+const reviewDay = nextReview.getDate();
+const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase();
+---
+
+<DashboardLayout
+  title="Overview"
+  currentPath="/dashboard"
+  tier={tier}
+  clientName={client.name}
+  domain={client.domain}
+  lastReportMonth="Mar 2026"
+>
+  <div style="display:flex;flex-direction:column;gap:32px;">
+
+    <!-- Metric Cards -->
+    <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+      <MetricCard
+        label="Score Presencia Digital"
+        value={score}
+        delta={`+${score - prevScore}`}
+        deltaDir="up"
+        badge="Actualizado"
+        badgeBg="#e1f5ee"
+        badgeColor="#085041"
+      >
+        <div style="margin-top:24px;height:48px;display:flex;align-items:flex-end;gap:3px;">
+          {[62,65,68,66,70,72,74].map((v, i) => {
+            const h = Math.round((v / 80) * 48);
+            const op = i === 6 ? 1 : 0.1 + (i / 7) * 0.7;
+            return <div style={`flex:1;background:#00346d;height:${h}px;opacity:${op};border-radius:2px 2px 0 0;`}></div>;
+          })}
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
+          <span>Score: {prevScore}</span>
+          <span>Score: {score}</span>
+        </div>
+      </MetricCard>
+
+      <MetricCard
+        label="Visitas Mensuales"
+        value={visits >= 1000 ? `${(visits/1000).toFixed(1)}K` : String(visits)}
+        delta="+18%"
+        deltaDir="up"
+        badge="GA4"
+        note="Incremento sostenido orgánico impulsado por contenido estacional."
+      />
+
+      <MetricCard
+        label="Visibilidad GEO"
+        value={`${geo.mentions || 4}/${geo.totalQueries || 15}`}
+        delta="+1"
+        deltaDir="up"
+        badge="menciones IA"
+        badgeBg="#d6e3ff"
+        badgeColor="#00346d"
+        note="Menciones en Local Pack han crecido un 4% este mes."
+      >
+        <GEOProgressBar current={geo.mentions || 4} total={geo.totalQueries || 15} />
+      </MetricCard>
+    </section>
+
+    <!-- Bento: Alerts + Plan de Acción -->
+    <section style="display:grid;grid-template-columns:4fr 8fr;gap:32px;align-items:start;">
+
+      <!-- Alertas -->
+      <div style="background:#f5f2ff;padding:32px;border-radius:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 style="font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#1a1a2e;">Alertas Activas</h3>
+          <a href="/dashboard/alerts" style="font-size:12px;color:#205db0;font-weight:600;text-decoration:none;">Ver todas →</a>
+        </div>
+
+        {canAccessSeñales ? (
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            {alerts.slice(0, 4).map(alert => (
+              <AlertCard alert={alert} />
+            ))}
+          </div>
+        ) : (
+          <TierGate requiredTier="señales" currentTier={tier} featureName="Alertas">
+            <div slot="preview" style="display:flex;flex-direction:column;gap:12px;">
+              {alerts.slice(0, 2).map(alert => (
+                <AlertCard alert={alert} />
+              ))}
+            </div>
+          </TierGate>
+        )}
+
+        {!canAccessSeñales && (
+          <div style="margin-top:16px;">
+            <UpsellCallout tier="señales" text="Activa Señales para recibir alertas automáticas sobre tu SEO, GEO y competidores." />
+          </div>
+        )}
+      </div>
+
+      <!-- Plan de Acción -->
+      <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;">
+          <div>
+            <h3 style="font-size:18px;font-weight:900;letter-spacing:-0.03em;color:#1a1a2e;">Plan de Acción Estratégico</h3>
+            <p style="font-size:14px;color:#434750;margin-top:4px;">Próximos pasos validados por tu Advisor</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;">Progreso: {progressPct}%</span>
+            <div style="width:96px;height:8px;background:#e8e5ff;border-radius:999px;overflow:hidden;">
+              <div style={`background:#00346d;height:100%;width:${progressPct}%;`}></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          {actionItems.map(item => (
+            <ActionItem title={item.title} status={item.status} impact={item.impact} />
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Próxima Revisión -->
+    <section style="display:flex;justify-content:center;">
+      <div style="width:100%;max-width:640px;background:#1a1a2e;color:white;border-radius:16px;padding:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 20px 40px -12px rgba(0,0,0,0.3);">
+        <div style="display:flex;align-items:center;gap:24px;">
+          <div style="background:rgba(255,255,255,0.1);padding:16px;border-radius:12px;text-align:center;">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;">{reviewMonth}</p>
+            <p style="font-size:24px;font-weight:900;">{reviewDay}</p>
+          </div>
+          <div>
+            <h4 style="font-size:14px;font-weight:700;">Sesión de Crecimiento Mensual</h4>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+              <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#94a3b8;">
+                <span class="material-symbols-outlined" style="font-size:14px;">schedule</span>
+                30 min
+              </span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#94a3b8;">
+                <span class="material-symbols-outlined" style="font-size:14px;">person</span>
+                Tu Advisor AION
+              </span>
+            </div>
+          </div>
+        </div>
+        <a href="/advisor" style="background:#1a4b8c;color:white;padding:10px 24px;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">calendar_add_on</span>
+          Añadir al calendario
+        </a>
+      </div>
+    </section>
+
+  </div>
+</DashboardLayout>
