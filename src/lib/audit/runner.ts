@@ -193,7 +193,8 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
     case 'competitor_traffic': {
       const comps: Array<{ name: string; url: string }> =
         (results.competitors as any)?.competitors || [];
-      return runCompetitorTraffic(comps);
+      const clientKw: number | undefined = (results.seo as any)?.keywordsTop10;
+      return runCompetitorTraffic(comps, clientKw);
     }
 
     case 'keyword_gap': {

@@ -75,8 +75,29 @@ async function fetchSingle(
   }
 }
 
+/**
+ * After fetching traffic data, reclassify competitors that are >MAX_RATIO× the client's
+ * keyword count as "aspirational". These are excluded from the benchmark score calculation
+ * but still shown in the report with a note.
+ */
+function labelCompetitorsBySize(
+  items: ReturnType<typeof parseDFSItem>[],
+  clientKw: number,
+): ReturnType<typeof parseDFSItem>[] {
+  const MAX_RATIO = 30;
+  const threshold = Math.max(clientKw * MAX_RATIO, 2000); // never reclassify if client has <67 kw
+  return items.map((item) => {
+    const kw = (item as any).keywordsTop10 ?? 0;
+    if (kw > threshold && !(item as any).apiError) {
+      return { ...item, type: 'aspirational' as const };
+    }
+    return item;
+  });
+}
+
 export async function runCompetitorTraffic(
-  competitors: Array<{ name: string; url: string }>,
+  competitors: Array<{ name: string; url: string; type?: string }>,
+  clientKw?: number,
 ): Promise<CompetitorTrafficResult> {
   if (!DFS_LOGIN || !DFS_PASSWORD) {
     return { skipped: true, reason: 'DATAFORSEO credentials not configured' };
@@ -115,5 +136,9 @@ export async function runCompetitorTraffic(
     }),
   );
 
-  return { items: results };
+  const labeled = clientKw != null && clientKw > 0
+    ? labelCompetitorsBySize(results, clientKw)
+    : results;
+
+  return { items: labeled };
 }

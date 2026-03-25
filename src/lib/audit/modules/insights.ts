@@ -80,8 +80,34 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
 
   const lines: string[] = [];
 
+  // ── DATOS CLAVE PARA EL VEREDICTO (top-of-prompt for LLM salience) ──
+  const lcpMs = ps?.mobile?.lcp;
+  const lcpS = lcpMs != null ? (lcpMs / 1000).toFixed(1) : null;
+  const geoMR = geo?.mentionRate ?? 0; // 0-100
+  const kgCount = (kg?.items || []).length;
+  const kw4to10 = seo?.keywordsPos4to10 ?? Math.max(0, (seo?.keywordsTop10 ?? 0) - (seo?.keywordsTop3 ?? 0));
+  const compGeo: string[] = (geo?.competitorMentions || []).map(
+    (m: any) => `${m.name || m.domain} (${m.mentionRate ?? 0}% IA)`
+  );
+  const compBench: string[] = (compTraffic?.items || [])
+    .filter((c: any) => !c.apiError && c.keywordsTop10 != null)
+    .map((c: any) => `${c.name || c.domain} (${c.keywordsTop10} kw${c.type === 'aspirational' ? ' — referencia' : ''})`);
+  lines.push('=== DATOS CLAVE PARA EL VEREDICTO ===');
+  lines.push(`Dominio analizado: ${domain}`);
+  lines.push(`Sector: ${sector?.sector || 'desconocido'} | Tipo de negocio: ${(crawl as any)?.businessType || 'unknown'}`);
+  lines.push(`Score global: ${score?.total ?? '?'}/100`);
+  lines.push(`Keywords top 10: ${seo?.keywordsTop10 ?? '?'} | Keywords posición 4-10 (optimizables): ${kw4to10}`);
+  lines.push(`Tráfico orgánico estimado: ${seo?.organicTrafficEstimate ?? '?'} visitas/mes`);
+  lines.push(`Visibilidad en IA (GEO): ${geoMR}% de consultas con mención`);
+  lines.push(`PageSpeed móvil: ${ps?.mobile?.performance ?? '?'}/100${lcpS ? ` | LCP: ${lcpS}s (Google recomienda <2.5s)` : ''}`);
+  lines.push(`Funnel score: ${conversion?.funnelScore ?? '?'}/100`);
+  lines.push(`Blog activo: ${(r.content_cadence as any)?.totalPosts > 0 ? 'sí' : 'no'} | Sitemap: ${(crawl as any)?.hasSitemap ? 'sí' : 'no'}`);
+  lines.push(`Keyword gaps detectados: ${kgCount}`);
+  if (compBench.length > 0) lines.push(`Competidores benchmark: ${compBench.join(', ')}`);
+  if (compGeo.length > 0) lines.push(`Competidores en IA: ${compGeo.join(', ')}`);
+
   // ── Identidad ────────────────────────────────────────────────────
-  lines.push('=== IDENTIDAD DE LA MARCA ===');
+  lines.push('\n=== IDENTIDAD DE LA MARCA ===');
   lines.push(`Dominio: ${domain}`);
   lines.push(`Sector: ${sector?.sector || 'desconocido'} (confianza: ${sector?.confidence ? Math.round(sector.confidence * 100) + '%' : '?'})`);
   lines.push(`Tipo de negocio: ${(crawl as any)?.businessType || 'unknown'}`);
@@ -93,12 +119,11 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
   lines.push('\n=== AION DIGITAL HEALTH SCORE ===');
   lines.push(`Score global: ${score?.total ?? '?'}/100`);
   if (bd) {
-    lines.push(`  · Pilar 1 — Técnico:       ${bd.technical ?? '?'}/100`);
-    lines.push(`  · Pilar 2 — SEO orgánico:  ${bd.seoVisibility ?? '?'}/100`);
-    lines.push(`  · Pilar 3 — Contenido:     ${bd.content ?? '?'}/100`);
-    lines.push(`  · Pilar 4 — Social/Rep.:   ${bd.socialReputation ?? '?'}/100`);
-    lines.push(`  · Pilar 5 — Conversión:    ${bd.conversion ?? '?'}/100`);
-    lines.push(`  · Pilar 6 — Medición:      ${bd.measurement ?? '?'}/100`);
+    lines.push(`  · Pilar 1 — SEO orgánico:   ${bd.seo ?? bd.seoVisibility ?? '?'}/100`);
+    lines.push(`  · Pilar 2 — Visibilidad IA: ${bd.geo ?? '?'}/100`);
+    lines.push(`  · Pilar 3 — Web & técnico:  ${bd.web ?? bd.technical ?? '?'}/100`);
+    lines.push(`  · Pilar 4 — Conversión:     ${bd.conversion ?? '?'}/100`);
+    lines.push(`  · Pilar 5 — Reputación:     ${bd.reputation ?? bd.socialReputation ?? '?'}/100`);
   }
 
   // ── Técnico ──────────────────────────────────────────────────────
@@ -110,14 +135,14 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
   lines.push(`Schema.org: ${crawl?.hasSchemaMarkup ? 'sí' : 'no'} · Canonical: ${crawl?.hasCanonical ? 'sí' : 'no'} · Sitemap: ${crawl?.hasSitemap ? 'sí' : 'no'}`);
 
   // ── SEO orgánico ─────────────────────────────────────────────────
-  lines.push('\n=== SEO ORGÁNICO (Pilar 2) ===');
+  lines.push('\n=== SEO ORGÁNICO (Pilar 1) ===');
   if (!seo?.skipped && seo?.domainRank != null) {
     lines.push(`Domain Rank: ${seo.domainRank}/100 (0=sin autoridad, 100=dominio top mundial)`);
-    lines.push(`Keywords en top 3: ${seo.keywordsTop3 ?? 0} · top 10: ${seo.keywordsTop10 ?? 0} · top 30: ${seo.keywordsTop30 ?? 0}`);
+    lines.push(`Keywords en top 3: ${seo.keywordsTop3 ?? 0} · top 10: ${seo.keywordsTop10 ?? 0} · posición 4-10 (optimizables): ${seo.keywordsPos4to10 ?? kw4to10} · top 30: ${seo.keywordsTop30 ?? 0}`);
     lines.push(`Tráfico orgánico estimado: ${seo.organicTrafficEstimate ?? 0} visitas/mes`);
     lines.push(`Dominios referentes: ${seo.referringDomains ?? 0} · Backlinks totales: ${seo.backlinksTotal ?? 0}`);
   } else {
-    lines.push('DataForSEO: no disponible');
+    lines.push('SEO orgánico: sin datos disponibles');
   }
 
   // ── Tráfico ──────────────────────────────────────────────────────
@@ -245,14 +270,35 @@ ${summary}
 
 REGLAS DE COHERENCIA — OBLIGATORIAS (violarlas hace que el QA rechace el output):
 
-C1. VEREDICTO CON DATOS: El "summary" DEBE incluir al menos 2 datos numéricos reales del análisis. MAL: "Tu presencia digital tiene bases técnicas aceptables". BIEN: "Andbank aparece en el 67% de consultas en IA pero con 69 keywords en top 10 y un PageSpeed de 65/100 móvil, estás perdiendo el tráfico que esa visibilidad genera."
+C1. REGLA DEL VEREDICTO — OBLIGATORIA:
+El "summary" es lo primero que lee el Director de Marketing. Debe demostrar en 3-4 frases que hemos analizado SU empresa, no una plantilla genérica.
+
+ESTRUCTURA OBLIGATORIA del veredicto:
+1. Una frase sobre lo MEJOR del análisis — con el dato numérico concreto
+2. Una frase sobre lo PEOR — con dato numérico y comparación (vs competidor o vs benchmark)
+3. Una frase sobre la OPORTUNIDAD más clara — qué podría ganar si actúa
+
+REGLAS DEL VEREDICTO:
+- MÍNIMO 4 datos numéricos concretos (keywords, %, segundos, score, conteos)
+- DEBE mencionar el dominio analizado o el nombre de la empresa
+- DEBE comparar al menos 1 dato con un competidor real O con un benchmark conocido (ej: "Google recomienda <2.5s")
+- PROHIBIDO usar: "bases técnicas aceptables", "déficits significativos", "oportunidades de captación", "presencia digital" sin dato
+- PROHIBIDO un veredicto que sea 100% genérico (que podría aplicarse a cualquier empresa)
+
+EJEMPLO CORRECTO DE VEREDICTO:
+"Andbank aparece en el 45% de las consultas de IA — por encima de Lombard Odier (0%) pero por debajo de Banco Sabadell (73%). Con 69 keywords en top 10 hay tracción orgánica real, pero la web tarda 6s en cargar en móvil (Google recomienda <2.5s) y no hay blog ni sitemap XML. Optimizar las 37 keywords en posición 4-10 es la acción de mayor retorno inmediato."
+
+EJEMPLO INCORRECTO DE VEREDICTO (RECHAZAR):
+"Tu presencia digital tiene bases técnicas aceptables pero déficits significativos en visibilidad y posicionamiento. Estás perdiendo oportunidades de captación cada día."
+→ Rechazado: 0 datos concretos, 0 menciones del dominio, 0 comparaciones, 100% genérico.
 
 C2. NO CONTRADECIR DATOS: Si el análisis dice 0 keyword gaps, NO recomendes "atacar gaps de keywords". Si GEO es ≥60%, NO digas que la marca es invisible en IA. Lee los datos antes de escribir.
 
-C3. SECTOR-AWARE: Las recomendaciones DEBEN adaptarse al tipo de negocio.
-  - Banca, finanzas, wealth management, seguros, servicios financieros: NO recomendes "formulario de contacto visible" ni "chat de soporte". SÍ recomienda "canal de contacto privado", "solicitar cita con advisor", "acceso a plataforma segura". Adapta el lenguaje al sector regulado.
-  - Ecommerce: SÍ aplica formulario, carrito, chat de soporte.
-  - Servicios B2B: prioriza credibilidad, casos de éxito, propuesta de valor clara.
+C3. SECTOR-AWARE — OBLIGATORIO: Las recomendaciones DEBEN adaptarse al tipo de negocio.
+  - Banca privada, wealth management, finanzas, seguros: NO recomendes "formulario de contacto visible" ni "chat de soporte en tiempo real". SÍ recomienda "canal de contacto privado", "solicitar cita con advisor", "calculadora de rentabilidad", "acceso a plataforma segura". El lenguaje es de asesoramiento, no de captación masiva.
+  - Hostelería / restauración: SÍ "reservas online", "menú visible", "Google Business Profile optimizado".
+  - Ecommerce: SÍ formulario, carrito, chat de soporte, valoraciones de producto.
+  - Servicios B2B: prioriza credibilidad, casos de éxito, solicitar presupuesto / agendar llamada.
 
 C4. ACCIONES, NO DIAGNÓSTICOS: Los títulos de iniciativas deben ser verbos imperativos orientados a resultado. MAL: "Tu presencia digital obtiene un 57/100". BIEN: "Optimizar 37 keywords en posición 4–10 para doblar el tráfico".
 

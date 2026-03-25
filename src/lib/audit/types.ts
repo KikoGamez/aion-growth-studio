@@ -280,6 +280,7 @@ export interface Competitor {
   name: string;
   url: string;
   snippet: string;
+  type?: 'direct' | 'aspirational'; // aspirational = reference only, excluded from benchmark score
 }
 
 export interface CompetitorsResult extends ModuleResult {
@@ -297,6 +298,8 @@ export interface CompetitorTrafficItem {
   paidKeywordsTotal?: number;
   paidTrafficEstimate?: number;
   paidTrafficValue?: number;
+  type?: 'direct' | 'aspirational'; // aspirational = too large for benchmark score, reference only
+  apiError?: string;
 }
 
 export interface CompetitorTrafficResult extends ModuleResult {

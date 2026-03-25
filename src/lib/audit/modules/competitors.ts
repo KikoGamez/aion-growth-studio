@@ -147,7 +147,7 @@ export async function runCompetitors(
   const brandName = crawl.title?.split(/[-|]/)[0]?.trim() || domain;
   const description = crawl.description?.slice(0, 200) || '';
 
-  const prompt = `Identify 3-4 direct competitors for this business.
+  const prompt = `Identify 3-4 competitors for this business.
 
 Domain: ${domain}
 Brand: ${brandName}
@@ -155,15 +155,22 @@ Sector: ${sector}
 Description: ${description}
 
 Reply ONLY with a valid JSON object (no explanation, no markdown):
-{"competitors": [{"name": "Company Name", "url": "https://exactdomain.com", "snippet": "One sentence why they compete"}]}
+{"competitors": [{"name": "Company Name", "url": "https://exactdomain.com", "snippet": "One sentence why they compete", "type": "direct"}]}
+
+The "type" field must be "direct" (same subsector, similar size) or "aspirational" (larger reference, include max 1).
 
 CRITICAL RULES — read carefully:
 1. Only include companies whose EXACT website URL you know with 100% certainty from your training data
 2. If you are not completely sure the URL exists, DO NOT include that company
-3. The "name" field MUST be a real brand/company name (e.g. "Mercadona", "FrutaVerde S.L.") — NEVER a category description like "productores de frutas" or "mejores distribuidores"
-4. Match the business scope: local Spanish SME → prefer Spanish competitors of similar size
-5. Do not include ${domain} itself
-6. It is better to return 2 verified competitors than 4 guessed ones`;
+3. The "name" field MUST be a real brand/company name — NEVER a category description like "productores de frutas"
+4. MISMO SUBSECTOR: Match the specific niche, NOT the broader sector category.
+   - Banca privada / wealth management (Andbank, Creand, Lombard Odier) ≠ banca retail (Santander, BBVA, Sabadell, CaixaBank). NEVER include retail banks as competitors for a private bank.
+   - Consultoría boutique ≠ Big4 (Deloitte, PwC, McKinsey). NEVER include Big4 as direct competitors for a small consultancy.
+   - SaaS de nicho ≠ plataformas horizontales (Salesforce, HubSpot). Match the vertical.
+5. TAMAÑO SIMILAR: Prioritize competitors of similar digital size. Mark as "aspirational" (max 1) any competitor that is clearly 10x+ larger.
+6. At least 2 of the 3-4 competitors must be "direct" (same subsector + comparable size).
+7. Do not include ${domain} itself
+8. It is better to return 2 verified direct competitors than 4 guessed ones`;
 
   const validated = await callHaikuWithValidation('competitors', prompt, 15000, 2);
 
