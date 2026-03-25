@@ -34,14 +34,40 @@ const DENIAL_PHRASES = [
   "no information available about", "i have no information about",
 ];
 
+// Common prefixes/suffixes in business domains that AIs omit when naming a brand.
+// e.g. "bancsabadell.com" → AI says "Banco Sabadell" → strip "banc" → detect "sabadell"
+const DOMAIN_PREFIXES = ['banco', 'banc', 'bank', 'banque', 'banca', 'caixa', 'caja', 'grupo', 'group'];
+const DOMAIN_SUFFIXES = ['banco', 'bank', 'finance', 'group', 'holding', 'capital', 'invest'];
+
+function getDomainStems(domainBase: string): string[] {
+  const stems: string[] = [];
+  const base = domainBase.toLowerCase();
+  for (const prefix of DOMAIN_PREFIXES) {
+    if (base.startsWith(prefix) && base.length > prefix.length + 4) {
+      stems.push(base.slice(prefix.length));
+    }
+  }
+  for (const suffix of DOMAIN_SUFFIXES) {
+    if (base.endsWith(suffix) && base.length > suffix.length + 4) {
+      stems.push(base.slice(0, base.length - suffix.length));
+    }
+  }
+  return stems;
+}
+
 function detectMention(answer: string, domain: string, brandName: string): boolean {
   const lower = answer.toLowerCase();
+  // Full domain URL
   if (lower.includes(domain.toLowerCase())) return true;
   // Full brand name (only if >=4 chars to avoid false positives like "el", "la", etc.)
   if (brandName.length >= 4 && lower.includes(brandName.toLowerCase())) return true;
   // Domain base without TLD (e.g. "loom" from "loom.es")
-  const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '');
-  if (domainBase.length >= 4 && lower.includes(domainBase.toLowerCase())) return true;
+  const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '').toLowerCase();
+  if (domainBase.length >= 4 && lower.includes(domainBase)) return true;
+  // Stems: strip banking/group prefixes+suffixes so "bancsabadell" → also checks "sabadell"
+  for (const stem of getDomainStems(domainBase)) {
+    if (stem.length >= 5 && lower.includes(stem)) return true;
+  }
   return false;
 }
 
