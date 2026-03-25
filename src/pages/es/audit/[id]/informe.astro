@@ -59,8 +59,8 @@ const newsCountEs: number = repRaw.newsCount ?? 0;
 const newsHeadlinesEs: Array<{title:string;source:string;date?:string}> = repRaw.newsHeadlines || [];
 
 // Visibility sub-scores (for the Visibilidad Digital block header)
-const visSeoSub     = r.score?.breakdown?.seoVisibility ?? 0;
-const visGeoSub     = geo?.overallScore ?? 0;
+const visSeoSub     = r.score?.breakdown?.seo ?? r.score?.breakdown?.seoVisibility ?? 0;
+const visGeoSub     = r.score?.breakdown?.geo ?? geo?.overallScore ?? 0;
 const _trafficCh    = (r.traffic?.channels || {}) as Record<string, any>;
 const _totalTraf    = Object.values(_trafficCh).reduce((s: number, c: any) => s + (c.visits || 0), 0);
 const _organicTraf  = _trafficCh.organic?.visits || 0;
@@ -133,7 +133,7 @@ function statusStyle(s: AreaStatus): { bg: string; fg: string; label: string } {
 
 // 7-area semaphore
 const statusByArea: { area: string; status: AreaStatus; summary: string; anchor: string }[] = [
-  { area: 'SEO Orgánico', status: ss(r.score?.breakdown?.seoVisibility ?? health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visitas/mes` : 'Sin datos SEO', anchor: '#seo' },
+  { area: 'SEO Orgánico', status: ss(visSeoSub ?? health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visitas/mes` : 'Sin datos SEO', anchor: '#seo' },
   { area: 'Visibilidad IA', status: ss(geo?.mentionRate ?? 0), summary: geo ? `Mencionado en ${geo.mentionRate ?? 0}% de las consultas` : 'Sin datos GEO', anchor: '#ia' },
   { area: 'Autoridad Web', status: ss(brandAuthorityScoreEs), summary: seo?.domainRank != null ? `Domain rank: ${seo.domainRank}/100, ${fmt(seo.referringDomains)} dominios enlazantes` : 'Sin datos de backlinks', anchor: '#autoridad' },
   { area: 'Benchmark', status: hasCompetitorData ? ss(health.competitividad ?? 0) : 'bad', summary: hasCompetitorData ? `${ctItems.length} competidores con datos` : 'Sin datos de competidores', anchor: '#competidores' },
@@ -633,9 +633,9 @@ const heroStatus = statusStyle(ss(health.total));
             <!-- Sub-scores -->
             <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
               {[
-                { label: 'SEO Orgánico', value: visSeoSub, weight: '75%' },
-                { label: 'Visibilidad IA (GEO)', value: visGeoSub, weight: '15%' },
-                { label: 'Autoridad de Marca', value: brandAuthorityScoreEs, weight: '10%' },
+                { label: 'SEO Orgánico', value: visSeoSub, weight: '35%' },
+                { label: 'Visibilidad IA (GEO)', value: visGeoSub, weight: '25%' },
+                { label: 'Reputación', value: r.score?.breakdown?.reputation ?? brandAuthorityScoreEs, weight: '10%' },
               ].map(sub => {
                 const c = sub.value >= 70 ? '#1D9E75' : sub.value >= 40 ? '#BA7517' : '#E24B4A';
                 return (
@@ -718,9 +718,9 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               )}
 
-              {pos4to10Keywords.length > 0 && (
+              {(seo?.keywordsPos4to10 ?? pos4to10Keywords.length) > 0 && (
                 <div class="callout callout-green" style="margin-bottom:10px;">
-                  Tienes <strong>{pos4to10Keywords.length} keywords entre posición 4-10</strong> — a un buen artículo del top 3. Optimizar esas URLs puede multiplicar el tráfico sin coste adicional.
+                  Tienes <strong>{fmt(seo?.keywordsPos4to10 ?? pos4to10Keywords.length)} keywords entre posición 4-10</strong> — a un buen artículo del top 3. Optimizar esas URLs puede multiplicar el tráfico sin coste adicional.
                 </div>
               )}
 
@@ -927,15 +927,19 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               )}
 
-              {/* Query table — mentioned queries first so there's always a ✓ example */}
+              {/* Query table — all queries, sorted by stage (tofu→mofu→bofu) */}
               {(geo.queries?.length ?? 0) > 0 && (() => {
-                const mentioned = geo.queries.filter((q: any) => q.mentioned);
-                const notMentioned = geo.queries.filter((q: any) => !q.mentioned);
-                // Always show at least 1 ✓ and 1 ✗ (if both types exist); then fill up to 8
-                const sample = [...mentioned.slice(0, 3), ...notMentioned.slice(0, 5)].slice(0, 8);
+                const STAGE_ORDER = { tofu: 0, mofu: 1, bofu: 2 } as const;
+                const sorted = [...geo.queries].sort((a: any, b: any) =>
+                  (STAGE_ORDER[a.stage] ?? 3) - (STAGE_ORDER[b.stage] ?? 3)
+                );
+                const mentionedCount = sorted.filter((q: any) => q.mentioned).length;
                 return (
                   <div style="margin-bottom:14px;overflow-x:auto;">
-                    <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Algunas consultas analizadas — ¿apareces en la respuesta?</div>
+                    <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">
+                      Consultas analizadas — ¿apareces en la respuesta?
+                      <span style="font-weight:400;color:#9CA3AF;margin-left:8px;">({mentionedCount} de {sorted.length} con mención)</span>
+                    </div>
                     <table>
                       <thead>
                         <tr>
@@ -945,7 +949,7 @@ const heroStatus = statusStyle(ss(health.total));
                         </tr>
                       </thead>
                       <tbody>
-                        {sample.map((q: any) => (
+                        {sorted.map((q: any) => (
                           <tr>
                             <td>
                               <span class="tag" style={`background:${q.stage==='tofu'?'#EBF2FF':q.stage==='mofu'?'#FAEEDA':'#E1F5EE'};color:${q.stage==='tofu'?'#1A4B8C':q.stage==='mofu'?'#BA7517':'#1D9E75'};`}>

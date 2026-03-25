@@ -1,227 +1,181 @@
 import type {
   ScoreResult, ScoreBreakdown, ModuleResult,
-  CrawlResult, SSLResult, PageSpeedResult, ContentResult,
-  GeoResult, GBPResult, TrafficResult, InstagramResult,
+  CrawlResult, SSLResult, PageSpeedResult,
+  GeoResult, GBPResult, TrafficResult,
   LinkedInResult, TechStackResult, ConversionResult, SEOResult,
-  SectorResult, SectorBenchmarks,
 } from '../types';
 
 /**
- * Score a metric relative to sector/competitor reference points.
- *
- * Scale:
- *   value = 0          →   0  (absent)
- *   value = low        →  25  (below average)
- *   value = median     →  50  (sector average)
- *   value = high       →  75  (top performer)
- *   value ≥ 2× high   → 100  (sector leader)
+ * Logarithmic scale — values the journey, not absolute position.
+ * ceiling is the value that maps to 100.
+ * Examples with ceiling=2000: 10→32, 69→56, 500→82, 2000→100
+ * Examples with ceiling=5_000_000: 1K→43, 7K→55, 50K→67, 500K→81
  */
-function scoreVsReference(
-  value: number,
-  low: number,
-  median: number,
-  high: number,
-): number {
+function logScore(value: number, ceiling: number): number {
   if (value <= 0) return 0;
-  if (low <= 0) low = 1;
-  if (value >= high * 2) return 100;
-  if (value >= high)   return 75 + Math.round(((value - high) / high) * 25);
-  if (value >= median) return 50 + Math.round(((value - median) / (high - median)) * 25);
-  if (value >= low)    return 25 + Math.round(((value - low) / (median - low)) * 25);
-  return Math.max(5, Math.round((value / low) * 25));
+  return Math.min(100, Math.round(
+    (Math.log10(value + 1) / Math.log10(ceiling + 1)) * 100,
+  ));
 }
 
 export async function runScore(results: Record<string, ModuleResult>): Promise<ScoreResult> {
   const crawl      = (results.crawl      || {}) as CrawlResult;
   const ssl        = (results.ssl        || {}) as SSLResult;
   const pagespeed  = (results.pagespeed  || {}) as PageSpeedResult;
-  const content    = (results.content    || {}) as ContentResult;
   const geo        = (results.geo        || {}) as GeoResult;
   const gbp        = (results.gbp        || {}) as GBPResult;
-  const traffic    = (results.traffic    || {}) as TrafficResult;
   const seo        = (results.seo        || {}) as SEOResult;
-  const instagram  = (results.instagram  || {}) as InstagramResult;
   const linkedin   = (results.linkedin   || {}) as LinkedInResult;
   const techstack  = (results.techstack  || {}) as TechStackResult;
   const conversion = (results.conversion || {}) as ConversionResult;
-  const sector     = (results.sector     || {}) as SectorResult;
+  const reputation = (results.reputation || {}) as any;
+  const cc         = (results.content_cadence || {}) as any;
 
-  const bm: SectorBenchmarks | undefined = sector.benchmarks;
-
-  // Competitor traffic items with real data (require >0 values — zero-data fake
-  // competitors would inflate the client's score to 100 via scoreVsReference)
-  const ctItems: any[] = ((results.competitor_traffic as any)?.items || []).filter(
-    (c: any) => !c.apiError && ((c.organicTrafficEstimate ?? 0) > 0 || (c.keywordsTop10 ?? 0) > 0),
-  );
-  const hasCompetitors = ctItems.length > 0;
-  const hasBenchmarks  = bm != null;
-
-  // ── Pilar 1: Fundamentos técnicos (15%) ─────────────────────────
-  let technical = 30; // baseline — site is live
-  if (!ssl.skipped && ssl.valid) technical += 20;
-  if (crawl.hasCanonical)    technical += 10;
-  if (crawl.hasSchemaMarkup) technical += 15;
-  if (crawl.hasSitemap)      technical += 10;
-  if (crawl.hasRobots)       technical += 5;
-  if (!pagespeed.skipped && pagespeed.mobile) {
-    if      (pagespeed.mobile.performance >= 90) technical += 10;
-    else if (pagespeed.mobile.performance >= 50) technical += 5;
-  }
-  technical = Math.min(100, technical);
-
-  // ── Pilar 2: Visibilidad orgánica (25%) — contextual ────────────
-  let seoVisibility = 0;
+  // ── Pilar 1: SEO orgánico (35%) — escala logarítmica ────────────
+  // Logarithmic scale removes the cliff-edge from competitor comparison.
+  // A domain with 69 kw gets ~56 (reasonable) not ~1 (penalized by Sabadell's 7K).
+  let seoScore: number | null = null;
 
   if (!seo.skipped && (seo.keywordsTop10 != null || seo.organicTrafficEstimate != null)) {
     const kw  = seo.keywordsTop10 ?? 0;
     const etv = seo.organicTrafficEstimate ?? 0;
 
-    let kwScore      = 0;
-    let trafficScore = 0;
+    const kwScore      = logScore(kw, 2000);        // 2000 kw = perfect
+    const trafficScore = logScore(etv, 5_000_000);  // 5M visits/month = perfect
 
-    if (hasCompetitors) {
-      // ── A: Competitor-relative (most accurate) ───────────────────
-      const compKW      = ctItems.map((c: any) => c.keywordsTop10 ?? 0);
-      const compTraffic = ctItems.map((c: any) => c.organicTrafficEstimate ?? 0);
-      const avgKW      = compKW.reduce((s, v) => s + v, 0) / compKW.length;
-      const avgTraffic = compTraffic.reduce((s, v) => s + v, 0) / compTraffic.length;
-      const maxKW      = Math.max(...compKW, 1);
-      const maxTraffic = Math.max(...compTraffic, 1);
-
-      kwScore      = scoreVsReference(kw,  avgKW * 0.5,      avgKW,      maxKW);
-      trafficScore = scoreVsReference(etv, avgTraffic * 0.5, avgTraffic, maxTraffic);
-
-    } else if (hasBenchmarks) {
-      // ── B: Sector benchmark-relative ─────────────────────────────
-      kwScore      = scoreVsReference(kw,  bm!.keywordsTop10.low,         bm!.keywordsTop10.median,         bm!.keywordsTop10.high);
-      trafficScore = scoreVsReference(etv, bm!.organicTrafficMonthly.low, bm!.organicTrafficMonthly.median, bm!.organicTrafficMonthly.high);
-
-    } else {
-      // ── C: Legacy absolute fallback ───────────────────────────────
-      if      (kw >= 1000) kwScore = 85;
-      else if (kw >= 300)  kwScore = 70;
-      else if (kw >= 100)  kwScore = 55;
-      else if (kw >= 20)   kwScore = 40;
-      else if (kw >= 5)    kwScore = 25;
-      else if (kw >= 1)    kwScore = 10;
-
-      if      (etv >= 10000) trafficScore = 80;
-      else if (etv >= 2000)  trafficScore = 60;
-      else if (etv >= 500)   trafficScore = 40;
-      else if (etv >= 50)    trafficScore = 20;
-    }
-
-    // Keywords weight 60%, traffic 40% (keywords are more reliable signal)
-    seoVisibility = Math.round(kwScore * 0.6 + trafficScore * 0.4);
+    let s = Math.round(kwScore * 0.6 + trafficScore * 0.4);
 
     // Top-3 bonus: strong positioning signals authority (up to +8 pts)
     const top3 = seo.keywordsTop3 ?? 0;
-    if (top3 > 0) {
-      const top3Ratio = kw > 0 ? top3 / kw : 0;
-      seoVisibility += Math.round(Math.min(8, top3Ratio * 16));
+    if (top3 > 0 && kw > 0) {
+      s = Math.min(100, s + Math.round((top3 / kw) * 10));
     }
 
-    // GEO boost (up to +8 pts): brand visible in AI = discoverability signal
-    if (!geo.skipped && geo.overallScore) {
-      seoVisibility += Math.round(geo.overallScore * 0.08);
-    }
-
-    seoVisibility = Math.min(100, seoVisibility);
-
-  } else if (!traffic.skipped && traffic.visits) {
-    // No keyword data from DataForSEO SEO API — use DataForSEO Traffic Analytics as proxy
-    const annualVisits = traffic.visits;
-    if (hasBenchmarks) {
-      const monthly = bm!.organicTrafficMonthly;
-      seoVisibility = scoreVsReference(annualVisits / 12, monthly.low, monthly.median, monthly.high);
-    } else {
-      if      (annualVisits >= 240000) seoVisibility = 70;
-      else if (annualVisits >= 60000)  seoVisibility = 50;
-      else if (annualVisits >= 12000)  seoVisibility = 30;
-      else                             seoVisibility = 15;
-    }
-  } else {
-    seoVisibility = 15; // site exists but no visibility data
+    seoScore = s;
   }
 
-  // ── Pilar 3: Contenido y propuesta de valor (20%) ───────────────
-  const contentScore: number = (!content.skipped && content.clarity != null)
-    ? content.clarity
-    : 50;
-
-  // ── Pilar 4: Presencia social y reputación (15%) — contextual ───
-  let socialReputation = 10; // baseline
-
-  // Instagram
-  if (!instagram.skipped && instagram.found === true) {
-    const followers = instagram.followers ?? 0;
-    const igBm = bm?.instagramFollowers;
-
-    if (igBm) {
-      socialReputation += Math.round(scoreVsReference(followers, igBm.low, igBm.median, igBm.high) * 0.2);
-    } else {
-      if      (followers > 50000) socialReputation += 20;
-      else if (followers > 5000)  socialReputation += 14;
-      else if (followers > 500)   socialReputation += 8;
-      else                        socialReputation += 4;
-    }
-    const er = instagram.engagementRate ?? 0;
-    if      (er >= 3) socialReputation += 15;
-    else if (er >= 1) socialReputation += 8;
-    else              socialReputation += 2;
+  // ── Pilar 2: Visibilidad IA / GEO (25%) ─────────────────────────
+  // mentionRate is already 0-100 (% of queries the brand is mentioned)
+  let geoScore: number | null = null;
+  if (!geo.skipped && geo.mentionRate != null) {
+    geoScore = geo.mentionRate;
+  } else if (!geo.skipped && geo.overallScore != null) {
+    geoScore = geo.overallScore;
   }
 
-  // LinkedIn
-  if (!linkedin.skipped && linkedin.found === true) {
-    const liFollowers = linkedin.followers ?? 0;
-    const liBm = bm?.linkedinFollowers;
+  // ── Pilar 3: Web & técnico (15%) ─────────────────────────────────
+  // PageSpeed is the dominant signal — users experience it directly.
+  // Technical checks (SSL, schema, sitemap, canonical) add reliability bonus.
+  const psScore = pagespeed.mobile?.performance ?? 0;
+  let techChecks = 0;
+  if (!ssl.skipped && ssl.valid)  techChecks += 25;
+  if (crawl.hasCanonical)         techChecks += 20;
+  if (crawl.hasSchemaMarkup)      techChecks += 30;
+  if (crawl.hasSitemap)           techChecks += 20;
+  if (crawl.hasRobots)            techChecks += 5;
+  // PageSpeed 70% + technical checks 30%
+  const webScore = Math.min(100, Math.round(psScore * 0.7 + techChecks * 0.3));
 
-    if (liBm) {
-      socialReputation += Math.round(scoreVsReference(liFollowers, liBm.low, liBm.median, liBm.high) * 0.15);
-    } else {
-      if      (liFollowers > 5000) socialReputation += 15;
-      else if (liFollowers > 500)  socialReputation += 8;
-      else if (linkedin.url)       socialReputation += 4;
-    }
-  }
-
-  // Google Business Profile
-  if (!gbp.skipped && gbp.found) {
-    socialReputation += 15;
-    const rating  = gbp.rating ?? 0;
-    const reviews = gbp.reviewCount ?? 0;
-    if      (rating >= 4.5) socialReputation += 10;
-    else if (rating >= 4.0) socialReputation += 5;
-    if      (reviews >= 100) socialReputation += 5;
-    else if (reviews >= 20)  socialReputation += 2;
-  }
-
-  socialReputation = Math.min(100, socialReputation);
-
-  // ── Pilar 5: Capacidad de conversión (15%) ──────────────────────
+  // ── Pilar 4: Conversión (15%) ────────────────────────────────────
   const conversionScore = Math.min(100, conversion.funnelScore ?? 20);
 
-  // ── Pilar 6: Datos y medición (10%) ─────────────────────────────
-  const measurementScore = Math.min(100, techstack.maturityScore ?? 20);
+  // ── Pilar 5: Reputación (10%) ─────────────────────────────────────
+  // Composite from available signals. LinkedIn is graceful — if Apify
+  // fails the score still runs, just slightly less precise.
+  const repComponents: { value: number; weight: number }[] = [];
 
-  // ── Weighted total ───────────────────────────────────────────────
-  // Weights: 15% + 25% + 20% + 15% + 15% + 10% = 100%
-  const total = Math.round(
-    technical        * 0.15 +
-    seoVisibility    * 0.25 +
-    contentScore     * 0.20 +
-    socialReputation * 0.15 +
-    conversionScore  * 0.15 +
-    measurementScore * 0.10,
-  );
+  // Domain authority (when available — not always indexed by backlink API)
+  if (seo.domainRank != null && seo.domainRank > 0) {
+    repComponents.push({ value: Math.min(100, seo.domainRank), weight: 0.25 });
+  }
+
+  // Google Business Profile rating
+  if (gbp.rating != null) {
+    // 2.0 → 0, 3.0 → 33, 4.0 → 67, 4.5 → 83, 5.0 → 100
+    const ratingScore = Math.min(100, Math.max(0, Math.round((gbp.rating - 2) / 3 * 100)));
+    const reviewBonus = Math.min(15, logScore(gbp.reviewCount ?? 0, 500) * 0.15);
+    repComponents.push({ value: Math.min(100, ratingScore + reviewBonus), weight: 0.25 });
+  } else if (reputation.combinedRating != null) {
+    const ratingScore = Math.min(100, Math.max(0, Math.round((reputation.combinedRating - 2) / 3 * 100)));
+    repComponents.push({ value: ratingScore, weight: 0.25 });
+  }
+
+  // Press / Google News
+  const pressCount = reputation.newsCount ?? 0;
+  if (pressCount > 0 || gbp.found || reputation.reputationLevel) {
+    // 0→0, 3→40, 5→60, 10→80, 20+→100
+    repComponents.push({ value: Math.min(100, pressCount * 8), weight: 0.20 });
+  }
+
+  // Blog activity
+  const hasBlog = !!(crawl.hasBlog || (cc.totalPosts ?? 0) >= 1);
+  const postsLast90 = cc.postsLast90Days ?? 0;
+  const postsPerMonth = postsLast90 / 3;
+  const blogScore = hasBlog
+    ? (postsPerMonth >= 2 ? 100 : postsPerMonth >= 1 ? 70 : postsPerMonth >= 0.33 ? 40 : 20)
+    : 0;
+  repComponents.push({ value: blogScore, weight: 0.15 });
+
+  // LinkedIn followers — ONLY if scraped successfully (never penalizes if Apify fails)
+  if (!linkedin.skipped && linkedin.found && (linkedin.followers ?? 0) > 0) {
+    // <500→20, 1K→40, 5K→60, 10K→80, 50K+→100
+    const liScore = logScore(linkedin.followers!, 50000);
+    repComponents.push({ value: liScore, weight: 0.15 });
+  }
+
+  // Tech stack maturity feeds into reputation (measurement = trustworthiness signal)
+  if (techstack.maturityScore != null && techstack.maturityScore > 0) {
+    repComponents.push({ value: techstack.maturityScore, weight: 0.10 });
+  }
+
+  let reputationScore: number | null = null;
+  if (repComponents.length > 0) {
+    const totalW = repComponents.reduce((s, c) => s + c.weight, 0);
+    reputationScore = Math.min(100, Math.round(
+      repComponents.reduce((s, c) => s + c.value * c.weight, 0) / totalW,
+    ));
+  }
+
+  // ── Weighted total with normalized weights ───────────────────────
+  // Normalize so missing pillars don't penalize — they simply redistribute weight.
+  const BASE_WEIGHTS = { seo: 0.35, geo: 0.25, web: 0.15, conversion: 0.15, reputation: 0.10 };
+
+  const pillars: { key: keyof typeof BASE_WEIGHTS; value: number | null }[] = [
+    { key: 'seo',        value: seoScore },
+    { key: 'geo',        value: geoScore },
+    { key: 'web',        value: webScore },          // always present
+    { key: 'conversion', value: conversionScore },   // always present (defaults to 20)
+    { key: 'reputation', value: reputationScore },
+  ];
+
+  const active = pillars.filter((p) => p.value !== null) as { key: keyof typeof BASE_WEIGHTS; value: number }[];
+  const totalWeight = active.reduce((s, p) => s + BASE_WEIGHTS[p.key], 0);
+  const total = totalWeight > 0
+    ? Math.round(active.reduce((s, p) => s + p.value * BASE_WEIGHTS[p.key], 0) / totalWeight)
+    : 0;
+
+  // Guardrail: if we get 0 with real data, something is wrong — use simple mean
+  if (total === 0 && active.length >= 2) {
+    const mean = Math.round(active.reduce((s, p) => s + p.value, 0) / active.length);
+    console.error('[SCORE BUG] Score 0 with data, using mean', JSON.stringify(active));
+    return {
+      total: mean,
+      breakdown: {
+        seo: seoScore ?? 0,
+        geo: geoScore ?? 0,
+        web: webScore,
+        conversion: conversionScore,
+        reputation: reputationScore ?? 0,
+      },
+    };
+  }
 
   const breakdown: ScoreBreakdown = {
-    technical,
-    seoVisibility,
-    content:          contentScore,
-    socialReputation,
-    conversion:       conversionScore,
-    measurement:      measurementScore,
+    seo:        seoScore ?? 0,
+    geo:        geoScore ?? 0,
+    web:        webScore,
+    conversion: conversionScore,
+    reputation: reputationScore ?? 0,
   };
 
   return { total, breakdown };

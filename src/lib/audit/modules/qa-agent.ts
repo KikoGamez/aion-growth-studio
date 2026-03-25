@@ -19,14 +19,20 @@ function buildQAPrompt(results: Record<string, any>): string {
   const noCompetitorData = ctItems.length === 0 || allCompetitorsEmpty;
   const health = results.score || {};
 
+  const kg = results.keyword_gap || {};
+  const kgItemsCount = (kg.items || []).length;
+
   const summary = {
     sector,
+    business_type: crawl.businessType || 'unknown',
     url: crawl.title || '',
     seo_etv: seo.organicTrafficEstimate,
     seo_keywords_top10: seo.keywordsTop10,
+    seo_keywords_pos4to10: seo.keywordsPos4to10,
     seo_trend_lost: seo.trendLost,
     seo_trend_up: seo.trendUp,
     geo_score: geo.overallScore,
+    geo_mention_rate: geo.mentionRate,
     geo_queries_count: geo.queries?.length ?? 0,
     geo_mentioned_count: geo.queries?.filter((q: any) => q.mentioned).length ?? 0,
     rep_level: rep.reputationLevel,
@@ -40,6 +46,7 @@ function buildQAPrompt(results: Record<string, any>): string {
     competitors_total_count: ctItems.length,
     health_competitividad: health.competitividad ?? null,
     paid_investing: seo.isInvestingPaid,
+    keyword_gap_count: kgItemsCount,
   };
 
   return `Eres un consultor senior de growth y marketing digital con 10 años de experiencia auditando empresas medianas.
@@ -115,6 +122,14 @@ REGLAS ADICIONALES DE CALIDAD DE INSIGHTS:
 12. VEREDICTO COHERENTE CON DATOS: Si los bullets mencionan datos positivos (ej: buena reputación, keywords en top 10), el overall_assessment no puede ser completamente negativo, y viceversa.
 
 13. NO CONTRADECIR LOS DATOS: Si seo.keywordsTop10 >= 50 y un bullet dice "sin presencia en Google", es una contradicción grave. Corrige el bullet.
+
+14. KEYWORD GAPS: Si keyword_gap_count === 0, rechaza cualquier recomendación que mencione "gap de keywords", "keywords donde no posicionas", "gap competitivo de palabras clave" o similar. Sin datos de gaps no puede haber recomendación de gaps.
+
+15. SECTOR FINANCIERO: Si business_type o sector contiene alguno de [banca, banco, bank, finanzas, wealth, seguros, privada, insurance, finance]: rechaza "formulario de contacto" como acción recomendada y sustitúyelo por "canal de contacto privado" o "sección de contacto cualificado". La banca no capta leads con formularios genéricos.
+
+16. COHERENCIA NUMÉRICA: Si el informe cita un número concreto (ej: "1 keyword") pero seo_keywords_pos4to10 > 5, es un error factual. Corrige el número en el bullet o iniciativa afectada usando seo_keywords_pos4to10.
+
+17. SCORE vs DESCRIPCIÓN: Si geo_mention_rate > 60 y el informe describe la presencia en IA como "invisible" o "crítica", es una contradicción. Suaviza a "mejorable" o "parcial". Si el score total > 60 y un bullet usa "deficiente" o "crítico" para describir la situación global, corrígelo a "en desarrollo" o "mejorable".
 
 Si aplicas correcciones a bullets o iniciativas, SIEMPRE incluye el objeto "corrected_insights" completo con los bullets e iniciativas corregidos.`;
 }

@@ -13,11 +13,9 @@ export function computeHealthScore(results: Record<string, any>): HealthScore {
   const ctItems: any[] = results.competitor_traffic?.items || [];
 
   // ── VISIBILIDAD (30%) ─────────────────────────────────────────
-  // SEO (75%) + GEO/AI visibility (15%) + organic traffic mix (10%)
-  // GEO counts but shouldn't dominate — a great SEO presence still
-  // scores well even without GEO optimisation yet.
-  const seoNorm = breakdown.seoVisibility ?? 0;
-  const geoNorm = geo?.overallScore ?? 0;
+  // SEO (65%) + GEO/AI visibility (25%) + organic traffic mix (10%)
+  const seoNorm = breakdown.seo ?? breakdown.seoVisibility ?? 0; // new name → legacy fallback
+  const geoNorm = breakdown.geo ?? geo?.overallScore ?? 0;
 
   const trafficChannels: Record<string, any> = results.traffic?.channels || {};
   const totalVisits = Object.values(trafficChannels).reduce(
@@ -25,10 +23,9 @@ export function computeHealthScore(results: Record<string, any>): HealthScore {
   );
   const organicVisits = trafficChannels.organic?.visits || 0;
   const organicPct = totalVisits > 0 ? (organicVisits / totalVisits) * 100 : 0;
-  // DataForSEO Traffic Analytics: 67%+ organic → 100 pts; 0% → 0 pts
   const trafficNorm = Math.min(100, organicPct * 1.5);
 
-  const visibilidad = Math.round(seoNorm * 0.75 + geoNorm * 0.15 + trafficNorm * 0.10);
+  const visibilidad = Math.round(seoNorm * 0.65 + geoNorm * 0.25 + trafficNorm * 0.10);
 
   // ── COMPETITIVIDAD (25%) ──────────────────────────────────────
   // null = datos insuficientes — nunca mostrar un número inventado
@@ -41,7 +38,6 @@ export function computeHealthScore(results: Record<string, any>): HealthScore {
     if (anyHasData) {
       const avgETV = ctItems.reduce((s: number, c: any) => s + (c.organicTrafficEstimate || 0), 0) / ctItems.length;
       const avgKW  = ctItems.reduce((s: number, c: any) => s + (c.keywordsTop10 || 0), 0) / ctItems.length;
-      // ratio: 1.0 = parity, 2.0 = double → capped at 2.0 → maps to 0-100
       const etvRatio = avgETV > 0 ? Math.min(2, (seo.organicTrafficEstimate || 0) / avgETV) : 0;
       const kwRatio  = avgKW  > 0 ? Math.min(2, (seo.keywordsTop10 || 0) / avgKW) : 0;
       competitividad = Math.min(100, Math.round(((etvRatio + kwRatio) / 2) * 50));
@@ -49,16 +45,14 @@ export function computeHealthScore(results: Record<string, any>): HealthScore {
   }
 
   // ── EXPERIENCIA (20%) ─────────────────────────────────────────
-  // Technical foundations (PageSpeed, SSL, schema) + measurement/stack
-  const technical = breakdown.technical ?? 0;
-  const measurement = breakdown.measurement ?? 0;
-  const experiencia = Math.round(technical * 0.7 + measurement * 0.3);
+  // Web quality + reputation signal
+  const webScore = breakdown.web ?? breakdown.technical ?? 0;
+  const repScore = breakdown.reputation ?? breakdown.measurement ?? 0;
+  const experiencia = Math.round(webScore * 0.8 + repScore * 0.2);
 
   // ── CONVERSIÓN (25%) ─────────────────────────────────────────
-  // Funnel score + content quality
   const convScore = breakdown.conversion ?? 0;
-  const contentScore = breakdown.content ?? 0;
-  const conversion = Math.round(convScore * 0.7 + contentScore * 0.3);
+  const conversion = convScore;
 
   // Redistribute weights proportionally if competitividad is null
   const pillars = [

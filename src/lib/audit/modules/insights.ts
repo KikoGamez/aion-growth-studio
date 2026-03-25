@@ -84,6 +84,7 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
   lines.push('=== IDENTIDAD DE LA MARCA ===');
   lines.push(`Dominio: ${domain}`);
   lines.push(`Sector: ${sector?.sector || 'desconocido'} (confianza: ${sector?.confidence ? Math.round(sector.confidence * 100) + '%' : '?'})`);
+  lines.push(`Tipo de negocio: ${(crawl as any)?.businessType || 'unknown'}`);
   lines.push(`Propuesta de valor detectada: "${content?.valueProposition || 'no detectada'}"`);
   lines.push(`CTA principal en la web: "${content?.cta || 'no detectado'}"`);
   lines.push(`Palabras en la web: ${crawl?.wordCount ?? '?'}`);
@@ -109,7 +110,7 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
   lines.push(`Schema.org: ${crawl?.hasSchemaMarkup ? 'sí' : 'no'} · Canonical: ${crawl?.hasCanonical ? 'sí' : 'no'} · Sitemap: ${crawl?.hasSitemap ? 'sí' : 'no'}`);
 
   // ── SEO orgánico ─────────────────────────────────────────────────
-  lines.push('\n=== SEO ORGÁNICO (Pilar 2) — DataForSEO ===');
+  lines.push('\n=== SEO ORGÁNICO (Pilar 2) ===');
   if (!seo?.skipped && seo?.domainRank != null) {
     lines.push(`Domain Rank: ${seo.domainRank}/100 (0=sin autoridad, 100=dominio top mundial)`);
     lines.push(`Keywords en top 3: ${seo.keywordsTop3 ?? 0} · top 10: ${seo.keywordsTop10 ?? 0} · top 30: ${seo.keywordsTop30 ?? 0}`);
@@ -119,9 +120,9 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
     lines.push('DataForSEO: no disponible');
   }
 
-  // ── Tráfico Similarweb ───────────────────────────────────────────
+  // ── Tráfico ──────────────────────────────────────────────────────
   if (!traffic?.skipped && traffic?.visits) {
-    lines.push('\n=== TRÁFICO — Similarweb ===');
+    lines.push('\n=== TRÁFICO ===');
     lines.push(`Visitas anuales estimadas: ${traffic.visits}`);
     if (traffic.channels) {
       const ch = traffic.channels;
@@ -213,7 +214,7 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
   // ── Benchmark competitivo (tráfico SEO comparativo) ───────────────
   const ctItems: any[] = (compTraffic?.items || []).filter((c: any) => !c.apiError && (c.organicTrafficEstimate != null || c.keywordsTop10 != null));
   if (ctItems.length > 0) {
-    lines.push('\n=== BENCHMARK COMPETITIVO (DataForSEO) ===');
+    lines.push('\n=== BENCHMARK COMPETITIVO ===');
     lines.push(`Cliente — Keywords Top 10: ${seo?.keywordsTop10 ?? 0} · Tráfico orgánico est.: ${seo?.organicTrafficEstimate ?? 0}/mes · Domain Rank: ${seo?.domainRank ?? '?'}/100`);
     ctItems.slice(0, 3).forEach((c: any) => {
       lines.push(`${c.name || c.domain}: kw top10=${c.keywordsTop10 ?? '?'} · tráfico est.=${c.organicTrafficEstimate ?? '?'}/mes · paid kw=${c.paidKeywordsTotal ?? 0}`);
@@ -221,6 +222,8 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
     const kgItems: any[] = kg?.items || [];
     if (kgItems.length > 0) {
       lines.push(`Keyword gap vs competidores: ${kgItems.length} keywords donde el competidor posiciona y el cliente no. Top: ${kgItems.slice(0, 3).map((k: any) => `"${k.keyword}" (vol ${k.searchVolume ?? '?'})`).join(', ')}`);
+    } else {
+      lines.push('Keyword gap: 0 gaps detectados — NO recomiendes atacar gaps de keywords.');
     }
   } else {
     lines.push('\n=== BENCHMARK COMPETITIVO ===');
@@ -239,6 +242,21 @@ Genera seis cosas: (1) un resumen ejecutivo de 2 frases para el hero del informe
 
 DATOS DEL ANÁLISIS:
 ${summary}
+
+REGLAS DE COHERENCIA — OBLIGATORIAS (violarlas hace que el QA rechace el output):
+
+C1. VEREDICTO CON DATOS: El "summary" DEBE incluir al menos 2 datos numéricos reales del análisis. MAL: "Tu presencia digital tiene bases técnicas aceptables". BIEN: "Andbank aparece en el 67% de consultas en IA pero con 69 keywords en top 10 y un PageSpeed de 65/100 móvil, estás perdiendo el tráfico que esa visibilidad genera."
+
+C2. NO CONTRADECIR DATOS: Si el análisis dice 0 keyword gaps, NO recomendes "atacar gaps de keywords". Si GEO es ≥60%, NO digas que la marca es invisible en IA. Lee los datos antes de escribir.
+
+C3. SECTOR-AWARE: Las recomendaciones DEBEN adaptarse al tipo de negocio.
+  - Banca, finanzas, wealth management, seguros, servicios financieros: NO recomendes "formulario de contacto visible" ni "chat de soporte". SÍ recomienda "canal de contacto privado", "solicitar cita con advisor", "acceso a plataforma segura". Adapta el lenguaje al sector regulado.
+  - Ecommerce: SÍ aplica formulario, carrito, chat de soporte.
+  - Servicios B2B: prioriza credibilidad, casos de éxito, propuesta de valor clara.
+
+C4. ACCIONES, NO DIAGNÓSTICOS: Los títulos de iniciativas deben ser verbos imperativos orientados a resultado. MAL: "Tu presencia digital obtiene un 57/100". BIEN: "Optimizar 37 keywords en posición 4–10 para doblar el tráfico".
+
+C5. KEYWORDS GAP HONESTO: Si keyword_gap tiene 0 items o está vacío, NO recomiendes "atacar el gap de keywords". Recomenda en su lugar optimizar las keywords en posición 4-10 o crear contenido nuevo.
 
 REGLAS DE REDACCIÓN ESTRICTAS:
 0. El campo "summary" es 1-2 frases que capturan la situación real del negocio con UN dato clave. Es lo primero que leerá el CEO. Sé directo y específico: di qué tiene bien y cuál es el mayor gap, con el dato que lo demuestra. Si no hay datos de competidores, NO menciones comparativas con competidores.

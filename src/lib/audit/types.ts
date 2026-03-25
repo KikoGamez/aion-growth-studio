@@ -303,14 +303,13 @@ export interface CompetitorTrafficResult extends ModuleResult {
   items?: CompetitorTrafficItem[];
 }
 
-// ── 6-pillar score breakdown ──────────────────────────────────────
+// ── 5-pillar score breakdown ──────────────────────────────────────
 export interface ScoreBreakdown {
-  technical: number;      // Pilar 1: Fundamentos técnicos (15%)
-  seoVisibility: number;  // Pilar 2: Visibilidad orgánica (25%)
-  content: number;        // Pilar 3: Contenido y propuesta de valor (20%)
-  socialReputation: number; // Pilar 4: Presencia social y reputación (15%)
-  conversion: number;     // Pilar 5: Capacidad de conversión (15%)
-  measurement: number;    // Pilar 6: Datos y medición (10%)
+  seo: number;         // Pilar 1: SEO orgánico — escala log (35%)
+  geo: number;         // Pilar 2: Visibilidad IA / GEO (25%)
+  web: number;         // Pilar 3: Web & técnico — PageSpeed + fundamentos (15%)
+  conversion: number;  // Pilar 4: Conversión — funnel score (15%)
+  reputation: number;  // Pilar 5: Reputación — prensa + reviews + blog (10%)
 }
 
 export interface ScoreResult extends ModuleResult {
