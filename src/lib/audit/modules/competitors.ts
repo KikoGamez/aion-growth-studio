@@ -58,22 +58,30 @@ export async function runCompetitors(
   // Titles that indicate the page wasn't the real site (Cloudflare challenge, 404, etc.)
   const BAD_TITLE_RE = /^(just a moment|attention required|403|404|400|500|error|access denied|not found|forbidden|please wait|one moment|verifying|checking your browser|ddos protection|enable javascript|page not found|redirecting|site not found|domain for sale|coming soon|parked)/i;
 
-  // If user selected competitors, fetch their names and use them directly
+  // If user selected competitors, fetch their names and use them directly.
+  // Always fetch the ROOT DOMAIN homepage for brand name — users often paste subpage
+  // URLs (e.g. /es/banca-privada) whose titles are section descriptions, not brand names.
   if (userCompetitorUrls && userCompetitorUrls.length > 0) {
     const competitors = await Promise.all(
       userCompetitorUrls.slice(0, 5).map(async (compUrl) => {
         const normalized = compUrl.startsWith('http') ? compUrl : `https://${compUrl}`;
-        const compDomain = new URL(normalized).hostname.replace(/^www\./, '');
+        const parsed = new URL(normalized);
+        const compDomain = parsed.hostname.replace(/^www\./, '');
+        // Use root URL for name extraction — subpage titles are often section labels, not brands
+        const rootUrl = `${parsed.protocol}//${parsed.hostname}`;
         try {
-          const res = await axios.get(normalized, {
+          const res = await axios.get(rootUrl, {
             timeout: 6000,
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
             validateStatus: (s) => s < 500,
           });
           const $ = cheerio.load(res.data as string);
-          const rawTitle = $('title').first().text().split(/[-|·—]/)[0].trim().slice(0, 80);
+          // Try og:site_name first (most reliable brand name signal)
+          const ogSite = $('meta[property="og:site_name"]').attr('content')?.trim();
+          const titleRaw = $('title').first().text().split(/[-–—|·:]/)[0].trim().slice(0, 80);
+          const rawName = (ogSite && ogSite.length > 1) ? ogSite : titleRaw;
           // Reject generic error/challenge page titles — fall back to domain
-          const name = (rawTitle && !BAD_TITLE_RE.test(rawTitle)) ? rawTitle : compDomain;
+          const name = (rawName && !BAD_TITLE_RE.test(rawName)) ? rawName : compDomain;
           return { name, url: compUrl, snippet: 'Competidor seleccionado' };
         } catch {
           return { name: compDomain, url: compUrl, snippet: 'Competidor seleccionado' };
@@ -96,8 +104,10 @@ export async function runCompetitors(
             validateStatus: (s) => s < 500,
           });
           const $ = cheerio.load(res.data as string);
-          const rawTitle = $('title').first().text().split(/[-|·—]/)[0].trim().slice(0, 80);
-          const name = (rawTitle && !BAD_TITLE_RE.test(rawTitle)) ? rawTitle : comp.domain;
+          const ogSite = $('meta[property="og:site_name"]').attr('content')?.trim();
+          const titleRaw = $('title').first().text().split(/[-–—|·:]/)[0].trim().slice(0, 80);
+          const rawName = (ogSite && ogSite.length > 1) ? ogSite : titleRaw;
+          const name = (rawName && !BAD_TITLE_RE.test(rawName)) ? rawName : comp.domain;
           return { name, url: normalized, snippet: `${comp.intersections} shared keywords` };
         } catch {
           return { name: comp.domain, url: normalized, snippet: `${comp.intersections} shared keywords` };
