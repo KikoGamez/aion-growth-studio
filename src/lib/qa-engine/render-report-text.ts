@@ -1,0 +1,186 @@
+/**
+ * Converts pipeline results into the plain-text equivalent of the HTML report.
+ * Used as input for the Opus quality evaluator.
+ */
+export function renderReportText(results: Record<string, any>, domain: string): string {
+  const seo       = results.seo || {};
+  const geo       = results.geo || {};
+  const ps        = results.pagespeed || {};
+  const mobile    = ps.mobile || {};
+  const comps     = results.competitors || {};
+  const ct        = results.competitor_traffic || {};
+  const ctItems   = (ct.items || []).filter((c: any) => !c.apiError);
+  const insights  = results.insights || {};
+  const rep       = results.reputation || {};
+  const conv      = results.conversion || {};
+  const score     = results.score || {};
+  const sector    = results.sector?.sector || 'desconocido';
+  const kg        = results.keyword_gap || {};
+  const crawl     = results.crawl || {};
+  const techstack = results.techstack || {};
+
+  const lines: string[] = [];
+
+  // ── Header ─────────────────────────────────────────────────────────
+  lines.push('═══════════════════════════════════════════════════');
+  lines.push(`DIAGNÓSTICO DIGITAL — ${domain.toUpperCase()}`);
+  lines.push(`Sector: ${sector}  |  Score global: ${score.total ?? 'N/A'}/100`);
+  if (crawl.companyName) lines.push(`Empresa: ${crawl.companyName}`);
+  lines.push('═══════════════════════════════════════════════════');
+  lines.push('');
+
+  // ── Veredicto ejecutivo ───────────────────────────────────────────
+  lines.push('【 VEREDICTO EJECUTIVO 】');
+  const firstBullet = insights.bullets?.[0];
+  if (firstBullet) {
+    lines.push(firstBullet);
+  } else {
+    lines.push('(Sin veredicto generado)');
+  }
+  lines.push('');
+
+  // ── SEO ───────────────────────────────────────────────────────────
+  lines.push('【 SEO — VISIBILIDAD ORGÁNICA 】');
+  lines.push(`Keywords en top 10:   ${seo.keywordsTop10 ?? 'N/A'}`);
+  lines.push(`Keywords en top 3:    ${seo.keywordsTop3 ?? 'N/A'}`);
+  lines.push(`Keywords pos. 4-10:   ${seo.keywordsPos4to10 ?? 'N/A'}`);
+  lines.push(`Tráfico estimado:     ${fmtNum(seo.organicTrafficEstimate)} visitas/mes`);
+  lines.push(`Domain rank:          ${seo.domainRank ?? 'N/A'}`);
+  if (seo.trendLost > 0 || seo.trendUp > 0) {
+    lines.push(`Tendencia:            +${seo.trendUp ?? 0} subidas / -${seo.trendLost ?? 0} bajadas`);
+  }
+  if (seo.topKeywords?.length) {
+    lines.push(`Top keywords:`);
+    seo.topKeywords.slice(0, 6).forEach((k: any) => {
+      lines.push(`  "${k.keyword}"  pos ${k.position}  vol ${fmtNum(k.searchVolume)}`);
+    });
+  }
+  lines.push('');
+
+  // ── GEO (IA visibility) ───────────────────────────────────────────
+  lines.push('【 GEO — VISIBILIDAD EN IA 】');
+  lines.push(`Score GEO:       ${geo.overallScore ?? 'N/A'}/100`);
+  lines.push(`Tasa de mención: ${geo.mentionRate ?? 'N/A'}%`);
+  lines.push(`Score de marca:  ${geo.brandScore ?? 'N/A'}/100`);
+  lines.push(`Score de sector: ${geo.sectorScore ?? 'N/A'}/100`);
+  if (geo.queries?.length) {
+    const mentioned = geo.queries.filter((q: any) => q.mentioned).length;
+    lines.push(`Aparece en: ${mentioned} de ${geo.queries.length} respuestas IA`);
+    lines.push('Consultas evaluadas:');
+    geo.queries.slice(0, 5).forEach((q: any) => {
+      const mark = q.mentioned ? '✓' : '✗';
+      lines.push(`  ${mark} "${q.query}"`);
+    });
+  }
+  if (geo.competitorMentions?.length) {
+    lines.push('Menciones de competidores en IA:');
+    geo.competitorMentions.slice(0, 3).forEach((m: any) => {
+      lines.push(`  ${m.name}: ${m.mentionRate ?? '?'}% de mención`);
+    });
+  }
+  lines.push('');
+
+  // ── Competidores ──────────────────────────────────────────────────
+  lines.push('【 COMPETIDORES Y BENCHMARK 】');
+  const compList = comps.competitors || [];
+  if (compList.length) {
+    lines.push(`Competidores identificados: ${compList.map((c: any) => c.name || c.url).join(', ')}`);
+  }
+  if (ctItems.length) {
+    lines.push('Comparativa de tráfico:');
+    lines.push(`  ${domain}: ${seo.keywordsTop10 ?? 0} kw top10 | ${fmtNum(seo.organicTrafficEstimate)} vis/mes | DR ${seo.domainRank ?? 'N/A'}`);
+    ctItems.forEach((c: any) => {
+      const tag = c.type === 'aspirational' ? ' [aspiracional]' : '';
+      lines.push(`  ${c.name}${tag}: ${c.keywordsTop10 ?? 'N/A'} kw | ${fmtNum(c.organicTrafficEstimate)} vis/mes | DR ${c.domainRank ?? 'N/A'}`);
+    });
+  } else {
+    lines.push('Sin datos de competidores disponibles.');
+  }
+  lines.push('');
+
+  // ── Rendimiento web ───────────────────────────────────────────────
+  lines.push('【 RENDIMIENTO WEB 】');
+  lines.push(`Performance móvil:   ${mobile.performance ?? 'N/A'}/100`);
+  if (mobile.lcp) {
+    const lcpSec = (mobile.lcp / 1000).toFixed(1);
+    const lcpLabel = mobile.lcp < 2500 ? 'bueno' : mobile.lcp < 4000 ? 'mejorable' : 'lento';
+    lines.push(`LCP:                 ${lcpSec}s (${lcpLabel})`);
+  }
+  if (mobile.cls != null) lines.push(`CLS:                 ${mobile.cls}`);
+  if (mobile.fcp) lines.push(`FCP:                 ${(mobile.fcp / 1000).toFixed(1)}s`);
+  const desktop = ps.desktop || {};
+  if (desktop.performance) lines.push(`Performance desktop: ${desktop.performance}/100`);
+  lines.push('');
+
+  // ── Reputación ────────────────────────────────────────────────────
+  lines.push('【 REPUTACIÓN Y PRESENCIA DE MARCA 】');
+  if (rep.combinedRating) {
+    lines.push(`Rating combinado: ${rep.combinedRating}/5`);
+    lines.push(`Total reseñas:    ${rep.totalReviews ?? rep.gbpReviews ?? 'N/A'}`);
+    lines.push(`Nivel:            ${rep.reputationLevel ?? 'N/A'}`);
+  } else {
+    lines.push('Sin datos de reputación suficientes.');
+  }
+  if (rep.newsCount > 0) {
+    lines.push(`Noticias de prensa: ${rep.newsCount}`);
+    rep.newsHeadlines?.slice(0, 3).forEach((h: string) => lines.push(`  • ${h}`));
+  }
+  lines.push('');
+
+  // ── Conversión ────────────────────────────────────────────────────
+  lines.push('【 CONVERSIÓN 】');
+  lines.push(`Funnel score:          ${conv.funnelScore ?? 'N/A'}/100`);
+  lines.push(`Formulario de contacto: ${conv.hasContactForm ? 'Sí' : 'No'}`);
+  lines.push(`Tiene CTA:              ${conv.hasCTA ? 'Sí' : 'No'}`);
+  lines.push(`Tiene testimonios:      ${conv.hasTestimonials ? 'Sí' : 'No'}`);
+  lines.push(`Tiene pricing:          ${conv.hasPricing ? 'Sí' : 'No'}`);
+  if (conv.strengths?.length) lines.push(`Puntos fuertes: ${conv.strengths.join(', ')}`);
+  if (conv.weaknesses?.length) lines.push(`Puntos débiles: ${conv.weaknesses.join(', ')}`);
+  lines.push('');
+
+  // ── Tech stack ────────────────────────────────────────────────────
+  if (techstack.cms || techstack.analytics?.length) {
+    lines.push('【 TECNOLOGÍA 】');
+    if (techstack.cms) lines.push(`CMS: ${techstack.cms}`);
+    if (techstack.analytics?.length) lines.push(`Analytics: ${techstack.analytics.join(', ')}`);
+    lines.push(`Madurez digital: ${techstack.maturityScore ?? 'N/A'}/100`);
+    lines.push('');
+  }
+
+  // ── Keyword gaps ──────────────────────────────────────────────────
+  if (kg.items?.length) {
+    lines.push('【 GAPS DE KEYWORDS 】');
+    lines.push(`Oportunidades encontradas: ${kg.items.length}`);
+    kg.items.slice(0, 5).forEach((item: any) => {
+      lines.push(`  "${item.keyword}" — vol ${fmtNum(item.searchVolume)}, dificultad ${item.difficulty ?? '?'}`);
+    });
+    lines.push('');
+  }
+
+  // ── Diagnóstico y plan ────────────────────────────────────────────
+  lines.push('【 DIAGNÓSTICO 】');
+  if (insights.bullets?.length > 1) {
+    insights.bullets.slice(1).forEach((b: string) => lines.push(`• ${b}`));
+  } else {
+    lines.push('(Sin bullets de diagnóstico)');
+  }
+  lines.push('');
+
+  lines.push('【 PLAN DE ACCIÓN 】');
+  if (insights.initiatives?.length) {
+    insights.initiatives.forEach((init: any) => {
+      lines.push(`→ ${init.title}`);
+      lines.push(`  ${init.description}`);
+    });
+  } else {
+    lines.push('(Sin iniciativas generadas)');
+  }
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+function fmtNum(n: number | null | undefined): string {
+  if (n == null) return 'N/A';
+  return n.toLocaleString('es-ES');
+}
