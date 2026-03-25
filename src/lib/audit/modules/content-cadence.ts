@@ -34,6 +34,26 @@ function parseBlogDates(xml: string, requireBlogPath: boolean): Date[] {
   return dates;
 }
 
+function deriveBlogUrl(sitemapUrl: string, origin: string, xml: string, requireBlogPath: boolean): string | undefined {
+  // If the sitemap is at /blog/sitemap.xml → blog is at /blog
+  const sitemapPath = sitemapUrl.replace(origin, '');
+  const dirMatch = sitemapPath.match(/^\/([^\/]+)\/sitemap\.xml$/i);
+  if (dirMatch && /blog|noticias|news|articulos/.test(dirMatch[1])) {
+    return `${origin}/${dirMatch[1]}`;
+  }
+  // Otherwise extract root path from first matching post URL in sitemap
+  const urlBlocks = xml.match(/<url>[\s\S]*?<\/url>/gi) || [];
+  for (const block of urlBlocks) {
+    const locMatch = block.match(/<loc>([\s\S]*?)<\/loc>/i);
+    if (!locMatch) continue;
+    const loc = locMatch[1].trim();
+    if (requireBlogPath && !BLOG_PATH_RE.test(loc)) continue;
+    const m = loc.match(/^https?:\/\/[^\/]+\/(blog|noticias|news|articulos|actualidad)\//i);
+    if (m) return `${origin}/${m[1]}`;
+  }
+  return undefined;
+}
+
 export async function runContentCadence(url: string): Promise<ContentCadenceResult> {
   try {
     const origin = new URL(url.startsWith('http') ? url : `https://${url}`).origin;
@@ -46,12 +66,14 @@ export async function runContentCadence(url: string): Promise<ContentCadenceResu
     ];
 
     let dates: Date[] = [];
+    let blogUrl: string | undefined;
     for (const candidate of candidates) {
       const xml = await fetchSitemapXml(candidate.url);
       if (!xml) continue;
       const parsed = parseBlogDates(xml, candidate.requireBlogPath);
       if (parsed.length >= 1) {
         dates = parsed;
+        blogUrl = deriveBlogUrl(candidate.url, origin, xml, candidate.requireBlogPath);
         break;
       }
     }
@@ -96,6 +118,7 @@ export async function runContentCadence(url: string): Promise<ContentCadenceResu
       avgDaysBetweenPosts,
       postsLast90Days,
       cadenceLevel,
+      ...(blogUrl && { blogUrl }),
     };
   } catch {
     return { skipped: true, reason: 'Error al analizar sitemap de contenido' };

@@ -128,6 +128,8 @@ export interface CrawlResult extends ModuleResult {
   businessType?: BusinessType;
   companyName?: string;     // Cleaned brand name (not generic titles like "Inicio")
   locationHint?: string;    // City/region extracted from schema/HTML/domain
+  hasBlog?: boolean;        // Blog section detected in nav/links
+  blogUrl?: string;         // URL of the blog section root
 }
 
 export interface SSLResult extends ModuleResult {
@@ -487,10 +489,17 @@ export interface ContentCadenceResult extends ModuleResult {
   avgDaysBetweenPosts?: number;
   postsLast90Days?: number;
   cadenceLevel?: ContentCadenceLevel;
+  blogUrl?: string;             // Root URL of the blog (e.g. https://example.com/blog)
 }
 
 // ── New: Online reputation ────────────────────────────────────────
 export type ReputationLevel = 'strong' | 'moderate' | 'weak' | 'no_data';
+
+export interface NewsHeadline {
+  title: string;
+  source: string;
+  date?: string;
+}
 
 export interface ReputationResult extends ModuleResult {
   gbpRating?: number | null;
@@ -502,6 +511,8 @@ export interface ReputationResult extends ModuleResult {
   combinedRating?: number | null;
   totalReviews?: number;
   reputationLevel?: ReputationLevel;
+  newsCount?: number;           // Articles found in Google News for brand name
+  newsHeadlines?: NewsHeadline[]; // Top 5 headlines
 }
 
 export interface AuditPageData {

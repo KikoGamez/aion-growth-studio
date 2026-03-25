@@ -278,6 +278,26 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       if (translated) description = translated;
     }
 
+    // ── Blog detection: nav/footer links pointing to blog section root ──
+    const siteOrigin = new URL(url.startsWith('http') ? url : `https://${url}`).origin;
+    const BLOG_ROOT_RE = /^(https?:\/\/[^\/]+)?\/(blog|noticias|news|articulos|actualidad|insights|magazine|recursos|journal)(?:\/|$)/i;
+    const blogRootHrefs = allLinks.filter(l => {
+      const abs = l.startsWith('http') ? l : `${siteOrigin}${l.startsWith('/') ? '' : '/'}${l}`;
+      return abs.startsWith(siteOrigin) && BLOG_ROOT_RE.test(l);
+    });
+    const blogPostHrefs = allLinks.filter(l =>
+      /\/(blog|noticias|news|articulos|actualidad|insights)\/[^\/]{3,}/.test(l),
+    );
+    const hasBlog = blogRootHrefs.length > 0 || blogPostHrefs.length >= 2;
+    let blogUrl: string | undefined;
+    if (blogRootHrefs.length > 0) {
+      const shortest = [...blogRootHrefs].sort((a, b) => a.length - b.length)[0];
+      try { blogUrl = new URL(shortest.startsWith('http') ? shortest : shortest, url).href.split('?')[0].split('#')[0]; } catch {}
+    } else if (blogPostHrefs.length >= 2) {
+      const m = blogPostHrefs[0].match(/^(?:https?:\/\/[^\/]+)?\/(blog|noticias|news|articulos|actualidad|insights)\//i);
+      if (m) blogUrl = `${siteOrigin}/${m[1]}`;
+    }
+
     return {
       title,
       description,
@@ -300,6 +320,8 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       ...(twitterHandle && { twitterHandle }),
       ...(linkedinUrl && { linkedinUrl }),
       ...(hreflangAlternates.length > 0 && { hreflangAlternates }),
+      ...(hasBlog && { hasBlog }),
+      ...(blogUrl && { blogUrl }),
     };
   } catch (err: any) {
     return {

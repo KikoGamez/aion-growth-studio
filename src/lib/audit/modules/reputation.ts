@@ -1,4 +1,4 @@
-import type { ReputationResult, CrawlResult } from '../types';
+import type { ReputationResult, NewsHeadline, CrawlResult } from '../types';
 
 const PLACES_API_KEY =
   import.meta.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_PLACES_API_KEY;
@@ -139,6 +139,64 @@ async function fetchTrustpilot(
   }
 }
 
+// ── DataForSEO — Google News (brand mentions) ─────────────────────
+
+async function fetchNewsPresence(
+  brandName: string,
+): Promise<{ newsCount: number; newsHeadlines: NewsHeadline[] }> {
+  if (!DFS_LOGIN || !DFS_PASSWORD) return { newsCount: 0, newsHeadlines: [] };
+
+  const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    const res = await fetch(
+      'https://api.dataforseo.com/v3/serp/google/news/live/advanced',
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${auth}`,
+        },
+        body: JSON.stringify([{
+          keyword: brandName,
+          location_code: 2724,   // Spain
+          language_code: 'es',
+          depth: 10,
+        }]),
+      },
+    );
+
+    if (!res.ok) return { newsCount: 0, newsHeadlines: [] };
+    const data = await res.json();
+
+    const result = data?.tasks?.[0]?.result?.[0];
+    const items: any[] = result?.items || [];
+
+    // Keep items that look like actual news entries
+    const newsItems = items.filter(
+      (it: any) => it.title && (it.type === 'news_search' || it.source || it.domain),
+    );
+
+    const headlines: NewsHeadline[] = newsItems.slice(0, 5).map((it: any) => ({
+      title: String(it.title || '').slice(0, 120),
+      source: String(it.source || it.domain || ''),
+      ...(it.date && { date: String(it.date).slice(0, 20) }),
+    }));
+
+    return {
+      newsCount: Math.max(result?.items_count ?? 0, newsItems.length),
+      newsHeadlines: headlines,
+    };
+  } catch {
+    return { newsCount: 0, newsHeadlines: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Helper: try to extract a city from GBP address ───────────────
 
 function extractCity(address: string | undefined): string {
@@ -168,10 +226,11 @@ export async function runReputation(
   const companyName = crawl.title?.split(/[-|]/)[0]?.trim() || domain;
   const cityHint = extractCity(existingGbp?.address);
 
-  // Run Places + Trustpilot in parallel
-  const [gbp, tp] = await Promise.all([
+  // Run Places + Trustpilot + Google News in parallel
+  const [gbp, tp, news] = await Promise.all([
     fetchGBPReputation(companyName, domain, cityHint),
     fetchTrustpilot(companyName),
+    fetchNewsPresence(companyName),
   ]);
 
   if (!gbp.found && !tp.found) {
@@ -180,6 +239,8 @@ export async function runReputation(
       trustpilotFound: false,
       totalReviews: 0,
       reputationLevel: 'no_data',
+      newsCount: news.newsCount,
+      ...(news.newsHeadlines.length > 0 && { newsHeadlines: news.newsHeadlines }),
     };
   }
 
@@ -218,5 +279,7 @@ export async function runReputation(
     combinedRating,
     totalReviews,
     reputationLevel,
+    newsCount: news.newsCount,
+    ...(news.newsHeadlines.length > 0 && { newsHeadlines: news.newsHeadlines }),
   };
 }

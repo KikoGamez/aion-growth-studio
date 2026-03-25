@@ -34,6 +34,7 @@ const ts = (!r.techstack?.skipped && r.techstack) ? r.techstack : null;
 const cv = (!r.conversion?.skipped && r.conversion) ? r.conversion : null;
 const cc = (!r.content_cadence?.skipped && (r.content_cadence?.totalPosts ?? 0) >= 3) ? r.content_cadence : null;
 const rep = (!r.reputation?.skipped && r.reputation?.reputationLevel && r.reputation.reputationLevel !== 'no_data') ? r.reputation : null;
+const repRaw = r.reputation || {};
 const metaAds = (!r.meta_ads?.skipped && r.meta_ads) ? r.meta_ads : null;
 const qa = r.qa || null;
 const qaSuppressed: string[] = qa?.suppressedSections || [];
@@ -47,6 +48,12 @@ const businessType: string = crawl.businessType || 'unknown';
 // New module results
 const compPS = (r.competitor_pagespeed && !r.competitor_pagespeed?.skipped) ? r.competitor_pagespeed : null;
 const kwGap = kg;
+
+// Brand authority: blog + news
+const hasBlogEn = !!(crawl.hasBlog || (cc && cc.totalPosts >= 1));
+const blogUrlEn: string | undefined = cc?.blogUrl || crawl.blogUrl;
+const newsCountEn: number = repRaw.newsCount ?? 0;
+const newsHeadlinesEn: Array<{title:string;source:string;date?:string}> = repRaw.newsHeadlines || [];
 
 // Helpers
 function fmt(n: number | undefined | null): string {
@@ -836,51 +843,113 @@ const heroStatus = statusStyle(ss(health.total));
             <span style="width:3px;height:16px;background:#7c3aed;border-radius:2px;display:inline-block;margin-right:8px;vertical-align:middle;"></span>
             Brand Authority
           </div>
-          <div class="sub-section-subtitle">External presence: blogs, media, directories and inbound links to your domain</div>
+          <div class="sub-section-subtitle">Own blog, press coverage and external link authority</div>
 
-          {seo && (seo.domainRank != null || seo.referringDomains != null) ? (
-            <div>
-              <div class="grid-3" style="margin-bottom:14px;">
-                <div class="metric-card">
-                  <div class="metric-value" style={`color:${(seo.domainRank??0)>=50?'#1D9E75':(seo.domainRank??0)>=25?'#BA7517':'#E24B4A'};`}>{seo.domainRank ?? '—'}</div>
-                  <div class="metric-label">Domain Rank</div>
-                  <div class="metric-sub" style="margin-top:4px;">Domain authority score (0–100)</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-value">{fmt(seo.referringDomains)}</div>
-                  <div class="metric-label">Referring Domains</div>
-                  <div class="metric-sub" style="margin-top:4px;">Unique websites linking to your domain</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-value">{fmt(seo.backlinksTotal)}</div>
-                  <div class="metric-label">Total Backlinks</div>
-                  <div class="metric-sub" style="margin-top:4px;">Total inbound links</div>
-                </div>
+          <!-- Blog + Press cards -->
+          <div class="grid-2" style="margin-bottom:14px;">
+            <!-- Blog -->
+            <div class="metric-card" style={hasBlogEn ? 'border-left:3px solid #1D9E75;' : ''}>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style={`font-size:1.1rem;font-weight:800;color:${hasBlogEn?'#1D9E75':'#9CA3AF'};`}>{hasBlogEn ? '✓' : '—'}</span>
+                <span class="metric-label" style="margin:0;">Blog / Own Content</span>
               </div>
-
-              {(seo.domainRank ?? 0) < 20 && (
-                <div class="callout callout-red">
-                  Your domain rank is low ({seo.domainRank ?? 0}/100). Getting mentions in relevant media, publishing guest posts, and appearing in industry directories are priority actions to increase your authority.
+              {hasBlogEn ? (
+                <div>
+                  {cc?.totalPosts && <div style="font-size:0.85rem;color:#374151;">{cc.totalPosts} articles published
+                    {cc.daysSinceLastPost != null && <span style="color:#6B7280;"> · Last {cc.daysSinceLastPost}d ago</span>}
+                  </div>}
+                  {blogUrlEn && (
+                    <div style="margin-top:6px;">
+                      <a href={blogUrlEn} target="_blank" rel="noopener noreferrer" style="font-size:0.78rem;color:#4A7FD4;text-decoration:none;">
+                        → {blogUrlEn.replace(/^https?:\/\//, '')}
+                      </a>
+                    </div>
+                  )}
+                  {!cc && <div style="font-size:0.82rem;color:#6B7280;margin-top:4px;">Detected on site — no publication frequency data</div>}
                 </div>
-              )}
-              {(seo.domainRank ?? 0) >= 20 && (seo.domainRank ?? 0) < 50 && (
-                <div class="callout callout-amber">
-                  Your domain rank is developing ({seo.domainRank ?? 0}/100). Increasing presence in specialist blogs and industry media can accelerate organic growth.
-                </div>
-              )}
-              {(seo.domainRank ?? 0) >= 50 && (
-                <div class="callout callout-green">
-                  Good domain authority ({seo.domainRank ?? 0}/100) with {fmt(seo.referringDomains)} referring domains. Keep up the link building strategy and prioritize quality over quantity.
-                </div>
-              )}
-              {(seo.spamScore ?? 0) > 40 && (
-                <div class="callout callout-red" style="margin-top:8px;">
-                  <strong>Alert:</strong> Your backlink profile has a high spam score ({seo.spamScore}%). Review and disavow toxic links via Google Search Console to avoid penalties.
-                </div>
+              ) : (
+                <div style="font-size:0.82rem;color:#6B7280;">No blog section or published articles detected.</div>
               )}
             </div>
-          ) : (
-            <div class="callout callout-amber">Could not retrieve domain authority data for this site.</div>
+
+            <!-- Press / Google News -->
+            <div class="metric-card" style={newsCountEn > 0 ? 'border-left:3px solid #4A7FD4;' : ''}>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style={`font-size:1.1rem;font-weight:800;color:${newsCountEn>0?'#1A4B8C':'#9CA3AF'};`}>{newsCountEn > 0 ? newsCountEn : '—'}</span>
+                <span class="metric-label" style="margin:0;">Press appearances</span>
+              </div>
+              {newsCountEn > 0 ? (
+                <div style="font-size:0.82rem;color:#374151;">Mentions found in Google News in recent months</div>
+              ) : (
+                <div style="font-size:0.82rem;color:#6B7280;">No coverage detected in Google News.</div>
+              )}
+            </div>
+          </div>
+
+          <!-- Backlinks (only when available) -->
+          {seo && (seo.domainRank != null || seo.referringDomains != null) && (
+            <div class="grid-3" style="margin-bottom:14px;">
+              <div class="metric-card">
+                <div class="metric-value" style={`color:${(seo.domainRank??0)>=50?'#1D9E75':(seo.domainRank??0)>=25?'#BA7517':'#E24B4A'};`}>{seo.domainRank ?? '—'}</div>
+                <div class="metric-label">Domain Rank</div>
+                <div class="metric-sub" style="margin-top:4px;">Domain authority score (0–100)</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{fmt(seo.referringDomains)}</div>
+                <div class="metric-label">Referring Domains</div>
+                <div class="metric-sub" style="margin-top:4px;">Unique websites linking to your domain</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">{fmt(seo.backlinksTotal)}</div>
+                <div class="metric-label">Total Backlinks</div>
+                <div class="metric-sub" style="margin-top:4px;">Total inbound links</div>
+              </div>
+            </div>
+          )}
+
+          <!-- News headlines list -->
+          {newsHeadlinesEn.length > 0 && (
+            <div style="background:#F0F5FF;border-radius:8px;padding:12px 16px;margin-bottom:14px;">
+              <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#5A6478;margin-bottom:8px;">Latest press appearances</div>
+              <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;">
+                {newsHeadlinesEn.map((h: {title:string;source:string;date?:string}) => (
+                  <li style="font-size:0.82rem;color:#1A1A2E;display:flex;gap:8px;align-items:baseline;">
+                    <span style="color:#4A7FD4;flex-shrink:0;">•</span>
+                    <span>
+                      <strong>{h.title}</strong>
+                      {(h.source || h.date) && (
+                        <span style="color:#6B7280;font-size:0.75rem;"> — {h.source}{h.date ? ` · ${h.date}` : ''}</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <!-- Contextual callout -->
+          {seo && (seo.domainRank ?? 0) < 20 && (
+            <div class="callout callout-red">
+              Your domain rank is low ({seo.domainRank ?? 0}/100). Getting mentions in relevant media, publishing guest posts, and appearing in industry directories are priority actions.
+            </div>
+          )}
+          {seo && (seo.domainRank ?? 0) >= 20 && (seo.domainRank ?? 0) < 50 && (
+            <div class="callout callout-amber">
+              Domain rank developing ({seo.domainRank ?? 0}/100). Increasing presence in specialist blogs and industry media can accelerate organic growth.
+            </div>
+          )}
+          {seo && (seo.domainRank ?? 0) >= 50 && (
+            <div class="callout callout-green">
+              Good domain authority ({seo.domainRank ?? 0}/100) with {fmt(seo.referringDomains)} referring domains.
+            </div>
+          )}
+          {(!seo || (seo.domainRank == null && seo.referringDomains == null)) && !hasBlogEn && newsCountEn === 0 && (
+            <div class="callout callout-amber">Could not retrieve authority data for this site.</div>
+          )}
+          {(seo?.spamScore ?? 0) > 40 && (
+            <div class="callout callout-red" style="margin-top:8px;">
+              <strong>Alert:</strong> Your backlink profile has a high spam score ({seo?.spamScore}%). Review and disavow toxic links via Google Search Console.
+            </div>
           )}
         </div>
 
