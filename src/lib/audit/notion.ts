@@ -69,12 +69,25 @@ export async function getAuditPage(pageId: string): Promise<AuditPageData> {
       try {
         const parsed = JSON.parse(text);
         if (parsed.m && parsed.d !== undefined) {
-          results[parsed.m] = parsed.d;
+          // Merge insights_ext back into insights
+          if (parsed.m === 'insights_ext' && results['insights']) {
+            results['insights'] = { ...results['insights'], ...parsed.d };
+          } else if (parsed.m === 'insights_ext') {
+            // insights_ext arrived before insights — store temporarily
+            results['_insights_ext'] = parsed.d;
+          } else {
+            results[parsed.m] = parsed.d;
+          }
         }
       } catch {
         // ignore parse errors
       }
     }
+  }
+  // Merge deferred insights_ext if insights was saved in a later block
+  if (results['_insights_ext'] && results['insights']) {
+    results['insights'] = { ...results['insights'], ...results['_insights_ext'] };
+    delete results['_insights_ext'];
   }
 
   return { notionPageId: pageId, url, email, status, currentStep, score, sector, userInstagram, userLinkedin, userCompetitors, results };
@@ -87,21 +100,12 @@ export async function saveModuleResult(
   nextStep: AuditStepOrDone,
   extraProps?: { score?: number; sector?: string },
 ): Promise<void> {
-  const content = prepareBlockContent(moduleKey, moduleResult);
+  const blocks = prepareBlocks(moduleKey, moduleResult);
 
-  // Append result block to page
+  // Append result block(s) to page
   await notion.blocks.children.append({
     block_id: pageId,
-    children: [
-      {
-        object: 'block',
-        type: 'code',
-        code: {
-          rich_text: [{ type: 'text', text: { content } }],
-          language: 'json',
-        },
-      },
-    ] as any[],
+    children: blocks as any[],
   });
 
   // Update page properties
@@ -135,14 +139,7 @@ export async function savePhaseResults(
   extraProps?: { score?: number; sector?: string },
 ): Promise<void> {
   // Batch-append all result blocks in a single Notion call (max 100 blocks — always safe here)
-  const children = moduleResults.map(({ moduleKey, result }) => ({
-    object: 'block',
-    type: 'code',
-    code: {
-      rich_text: [{ type: 'text', text: { content: prepareBlockContent(moduleKey, result) } }],
-      language: 'json',
-    },
-  }));
+  const children = moduleResults.flatMap(({ moduleKey, result }) => prepareBlocks(moduleKey, result));
 
   await notion.blocks.children.append({ block_id: pageId, children: children as any[] });
 
@@ -164,6 +161,44 @@ export async function markAuditError(pageId: string): Promise<void> {
     page_id: pageId,
     properties: { Status: { select: { name: 'error' } } },
   });
+}
+
+/** Create one or more code blocks for a module result.
+ *  Insights is split into 2 blocks to avoid the 2000-char Notion limit. */
+function prepareBlocks(module: string, data: ModuleResult): Array<{ object: string; type: string; code: any }> {
+  const makeBlock = (content: string) => ({
+    object: 'block',
+    type: 'code',
+    code: { rich_text: [{ type: 'text', text: { content } }], language: 'json' },
+  });
+
+  // Insights: split into core (summary + bullets) and extras (initiatives)
+  // so we never lose the executive summary bullets to truncation
+  if (module === 'insights' && data && !data.skipped && !data._truncated) {
+    const core: any = {
+      summary: data.summary,
+      visibilitySummary: data.visibilitySummary,
+      benchmarkSummary: data.benchmarkSummary,
+      experienceSummary: data.experienceSummary,
+      bullets: data.bullets,
+    };
+    const extras: any = { initiatives: data.initiatives };
+    const coreStr = JSON.stringify({ m: 'insights', d: core });
+    const extrasStr = JSON.stringify({ m: 'insights_ext', d: extras });
+
+    // If both fit in single blocks, use 2 blocks
+    if (coreStr.length <= 1990 && extrasStr.length <= 1990) {
+      return [makeBlock(coreStr), makeBlock(extrasStr)];
+    }
+    // If core alone fits, just save core (initiatives are less critical)
+    if (coreStr.length <= 1990) {
+      return [makeBlock(coreStr)];
+    }
+    // Fall through to standard truncation
+  }
+
+  const content = prepareBlockContent(module, data);
+  return [makeBlock(content)];
 }
 
 function prepareBlockContent(module: string, data: ModuleResult): string {
