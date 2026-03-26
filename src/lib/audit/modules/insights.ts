@@ -34,11 +34,37 @@ export async function runInsights(
 
     const data = await res.json();
     const text: string = data?.content?.[0]?.text || '';
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('No JSON in response');
 
-    const parsed = JSON.parse(match[0]);
-    return {
+    // Extract balanced JSON object (not greedy regex)
+    function extractJSON(str: string): string | null {
+      const start = str.indexOf('{');
+      if (start === -1) return null;
+      let depth = 0;
+      let inString = false;
+      let escape = false;
+      for (let i = start; i < str.length; i++) {
+        const c = str[i];
+        if (escape) { escape = false; continue; }
+        if (c === '\\' && inString) { escape = true; continue; }
+        if (c === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (c === '{') depth++;
+        if (c === '}') { depth--; if (depth === 0) return str.slice(start, i + 1); }
+      }
+      return null;
+    }
+
+    const jsonStr = extractJSON(text);
+    if (!jsonStr) throw new Error('No JSON in response');
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      const fixed = jsonStr.replace(/,\s*([\]}])/g, '$1');
+      parsed = JSON.parse(fixed);
+    }
+    const result = {
       summary: parsed.summary || undefined,
       visibilitySummary: parsed.visibilitySummary || undefined,
       benchmarkSummary: parsed.benchmarkSummary || undefined,
@@ -46,6 +72,8 @@ export async function runInsights(
       bullets: (parsed.bullets || []).slice(0, 6),
       initiatives: (parsed.initiatives || []).slice(0, 3),
     };
+    console.log(`[audit:insights] OK — ${result.bullets.length} bullets, ${result.initiatives.length} initiatives`);
+    return result;
   } catch (err: any) {
     const msg = err.name === 'AbortError' ? 'Insights timed out (55s)' : err.message?.slice(0, 100);
     return { bullets: [], initiatives: [], error: msg };
