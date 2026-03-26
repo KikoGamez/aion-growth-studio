@@ -345,27 +345,25 @@ function fmtDate(iso: string) {
 
 </div>
 
-<script>
+<script is:inline>
   function toggleDetail(idx) {
-    const row = document.getElementById('detail-' + idx);
+    var row = document.getElementById('detail-' + idx);
     if (!row) return;
-    const isHidden = row.style.display === 'none';
+    var isHidden = row.style.display === 'none';
     row.style.display = isHidden ? 'table-row' : 'none';
-    // Update button text
-    const btn = document.querySelector('#row-' + idx + ' .expand-btn');
+    var btn = document.querySelector('#row-' + idx + ' .expand-btn');
     if (btn) btn.textContent = isHidden ? 'Cerrar' : 'Ver';
   }
 
   function copyPrompt(id) {
-    const el = document.getElementById('prompt-' + id);
+    var el = document.getElementById('prompt-' + id);
     if (!el) return;
-    navigator.clipboard.writeText(el.textContent || '').then(() => {
-      // Find button and flash
-      const btn = el.nextElementSibling;
+    navigator.clipboard.writeText(el.textContent || '').then(function() {
+      var btn = el.nextElementSibling;
       if (btn) {
-        const orig = btn.textContent;
+        var orig = btn.textContent;
         btn.textContent = '✓ Copiado';
-        setTimeout(() => { btn.textContent = orig; }, 2000);
+        setTimeout(function() { btn.textContent = orig; }, 2000);
       }
     });
   }
