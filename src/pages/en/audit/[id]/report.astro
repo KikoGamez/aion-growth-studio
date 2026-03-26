@@ -240,6 +240,9 @@ const displayCompetitors: any[] = (() => {
   return out.slice(0, 5);
 })();
 
+// Visibility header var
+const visSummaryText = (insights as any)?.visibilitySummary || null;
+
 // Benchmark header vars
 const benchScore = health.competitividad;
 const benchColor = scoreColor(benchScore);
@@ -530,10 +533,32 @@ const heroStatus = statusStyle(ss(health.total));
 
             <!-- Verdict -->
             <div>
-              <h1 style="font-size:1.3rem;font-weight:700;color:#1A1A2E;margin-bottom:8px;line-height:1.3;">
+              <h1 style="font-size:1.3rem;font-weight:700;color:#1A1A2E;margin-bottom:10px;line-height:1.3;">
                 {scoreLabel(health.total)} — {domain}
               </h1>
-              <p style="font-size:0.875rem;color:#5A6478;line-height:1.6;margin-bottom:12px;">{healthSummaryText}</p>
+              {healthSummaryText && (
+                <p style="font-size:0.875rem;color:#1A1A2E;line-height:1.65;margin-bottom:10px;font-weight:500;">{healthSummaryText}</p>
+              )}
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                {visSummaryText && (
+                  <div style="display:flex;align-items:baseline;gap:8px;font-size:0.8rem;line-height:1.5;">
+                    <span style="flex-shrink:0;width:6px;height:6px;border-radius:50%;background:#1A4B8C;margin-top:6px;"></span>
+                    <span style="color:#3A4458;"><strong style="color:#1A1A2E;">Visibility:</strong> {visSummaryText}</span>
+                  </div>
+                )}
+                {benchSummaryText && (
+                  <div style="display:flex;align-items:baseline;gap:8px;font-size:0.8rem;line-height:1.5;">
+                    <span style="flex-shrink:0;width:6px;height:6px;border-radius:50%;background:#1A4B8C;margin-top:6px;"></span>
+                    <span style="color:#3A4458;"><strong style="color:#1A1A2E;">Competitors:</strong> {benchSummaryText}</span>
+                  </div>
+                )}
+                {expSummaryText && (
+                  <div style="display:flex;align-items:baseline;gap:8px;font-size:0.8rem;line-height:1.5;">
+                    <span style="flex-shrink:0;width:6px;height:6px;border-radius:50%;background:#1A4B8C;margin-top:6px;"></span>
+                    <span style="color:#3A4458;"><strong style="color:#1A1A2E;">Experience:</strong> {expSummaryText}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
