@@ -10,7 +10,8 @@ const isSeñales = tier === 'señales';
 const bg = isSeñales ? '#fefce8' : '#f5f3ff';
 const border = isSeñales ? '#fbbf24' : '#a78bfa';
 const color = isSeñales ? '#92400e' : '#5b21b6';
-const btnBg = isSeñales ? '#205db0' : '#7c3aed';
+const btnBg = '#69ff87';
+const btnColor = '#000e41';
 const label = isSeñales ? 'Señales' : 'Palancas';
 const defaultText = isSeñales
   ? 'Activa el plan Señales para recibir alertas en tiempo real y oportunidades SEO automáticas.'
@@ -23,7 +24,7 @@ const icon = isSeñales ? 'bolt' : 'rocket_launch';
   <div style="flex:1;min-width:200px;">
     <p style={`font-size:13px;color:${color};font-weight:600;line-height:1.5;`}>{text || defaultText}</p>
   </div>
-  <a href="/dashboard/subscription" style={`display:inline-block;padding:10px 20px;border-radius:8px;background:${btnBg};color:white;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;`}>
+  <a href="/dashboard/subscription" style={`display:inline-block;padding:10px 20px;border-radius:8px;background:${btnBg};color:${btnColor};font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0;`}>
     Ver plan {label} →
   </a>
 </div>
