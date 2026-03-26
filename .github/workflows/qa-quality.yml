@@ -3,13 +3,8 @@ name: QA Quality Engine
 on:
   schedule:
     - cron: '0 4 * * *'   # Daily 4am UTC — quality tests
-    - cron: '0 8 * * *'   # Daily 8am UTC — email summary
   workflow_dispatch:
     inputs:
-      mode:
-        description: 'Run mode: quality | email | both'
-        required: false
-        default: 'both'
       domain:
         description: 'Optional single domain to test (e.g. andbank.com)'
         required: false
@@ -26,10 +21,6 @@ jobs:
     name: Run Quality Evaluations
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    # Run at 4am, or on manual trigger with mode=quality/both
-    if: |
-      (github.event_name == 'schedule' && github.event.schedule == '0 4 * * *') ||
-      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'quality' || inputs.mode == 'both' || inputs.mode == ''))
 
     env:
       ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
@@ -59,33 +50,3 @@ jobs:
           else
             npx tsx scripts/run-quality-engine.ts --count "${{ inputs.count || '5' }}"
           fi
-
-  email:
-    name: Send Daily Email
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # Run at 8am, or on manual trigger with mode=email/both
-    if: |
-      (github.event_name == 'schedule' && github.event.schedule == '0 8 * * *') ||
-      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'email' || inputs.mode == 'both'))
-
-    env:
-      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-      RESEND_API_KEY:       ${{ secrets.RESEND_API_KEY }}
-      QA_REPORT_EMAIL:      ${{ secrets.QA_REPORT_EMAIL }}
-      PUBLIC_SITE_URL:      'https://aiongrowth.studio'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Send daily report email
-        run: npx tsx scripts/send-qa-email.ts
