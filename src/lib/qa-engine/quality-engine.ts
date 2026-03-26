@@ -90,8 +90,8 @@ async function evaluateWithOpus(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-opus-4-6',
-      max_tokens: 3000,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
       temperature: 0,
       system: QUALITY_EVAL_PROMPT,
       messages: [
@@ -110,23 +110,40 @@ async function evaluateWithOpus(
 
   const data = await res.json();
   const text: string = data?.content?.[0]?.text || '';
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Opus returned non-JSON response');
+
+  // Extract balanced JSON object from response
+  function extractJSON(str: string): string | null {
+    const start = str.indexOf('{');
+    if (start === -1) return null;
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = start; i < str.length; i++) {
+      const c = str[i];
+      if (escape) { escape = false; continue; }
+      if (c === '\\' && inString) { escape = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === '{') depth++;
+      if (c === '}') { depth--; if (depth === 0) return str.slice(start, i + 1); }
+    }
+    return null;
+  }
+
+  const jsonStr = extractJSON(text);
+  if (!jsonStr) throw new Error('No JSON object found in response');
 
   let parsed: any;
   try {
-    parsed = JSON.parse(match[0]);
+    parsed = JSON.parse(jsonStr);
   } catch {
-    // Try to fix common JSON issues: trailing commas, unescaped quotes
-    let fixed = match[0]
-      .replace(/,\s*([\]}])/g, '$1')           // trailing commas
-      .replace(/\n/g, ' ')                       // collapse newlines
-      .replace(/([{,]\s*)"?(\w+)"?\s*:/g, '$1"$2":'); // unquoted keys
+    // Try to fix trailing commas
+    const fixed = jsonStr.replace(/,\s*([\]}])/g, '$1');
     try {
       parsed = JSON.parse(fixed);
     } catch (e2) {
-      console.error('[QA:quality] JSON repair failed, raw length:', match[0].length);
-      throw new Error(`Opus JSON parse error: ${(e2 as Error).message}`);
+      console.error('[QA:quality] JSON parse failed, first 500 chars:', jsonStr.slice(0, 500));
+      throw new Error(`JSON parse error: ${(e2 as Error).message}`);
     }
   }
   return {
