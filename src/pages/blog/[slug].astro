@@ -2,142 +2,17 @@
 export const prerender = false;
 
 import '../../styles/global.css';
-
-const blogPosts: Record<string, any> = {
-  'futuro-ia-marketing': {
-    title: 'El Futuro de la IA en Marketing Growth',
-    author: 'Alex Rivera',
-    date: '2024-03-15',
-    category: 'IA',
-    content: `# El Futuro de la IA en Marketing Growth
-
-La inteligencia artificial ha dejado de ser una novedad para convertirse en una necesidad fundamental en las estrategias de marketing moderno. Los equipos de growth que adopten tecnología IA verán incrementos exponenciales en ROI.
-
-## ¿Por Qué la IA es Diferente Ahora?
-
-Hace cinco años, la IA era experimental. Hoy es operacional. Las plataformas de machine learning pueden procesar millones de puntos de datos en segundos, identificando patrones que los humanos nunca podrían encontrar.
-
-## Casos de Éxito Reales
-
-Las empresas que implementaron sistemas IA vieron:
-- Incremento de 140% en eficiencia operacional
-- Reducción de 60% en tiempo de decisión
-- Aumento de 280% en precisión de targeting
-
-## Lo Que Viene Next
-
-El futuro del growth está en la automatización inteligente. No es solo sobre datos, es sobre decisiones autónomas que optimizan en tiempo real.
-
-La pregunta ya no es: "¿Deberíamos usar IA?" sino "¿Cómo la usamos para mantenernos competitivos?"`,
-  },
-  'growth-sovereignty': {
-    title: 'Growth Sovereignty: La Nueva Frontera del Control de Datos',
-    author: 'Sofia Chen',
-    date: '2024-03-10',
-    category: 'Strategy',
-    content: `# Growth Sovereignty: La Nueva Frontera del Control de Datos
-
-En la era de las plataformas centralizadas, la soberanía de datos se ha convertido en un activo competitivo directo. Las empresas que controlan sus datos y cómo se utilizan tienen ventajas estratégicas incomparables.
-
-## El Problema de la Dependencia
-
-Confiar en plataformas de terceros para gestionar tus datos de marketing significa ceder control. Cuando los algoritmos de esas plataformas cambian, tu estrategia sufre.
-
-## La Solución: Growth Sovereignty
-
-Growth Sovereignty es un protocolo que te permite:
-- Poseer completamente tus datos de marketing
-- Implementar tu propio stack de IA
-- Controlar cada decisión de targeting
-- Escalar independientemente de limitaciones de plataforma
-
-## Beneficios Medibles
-
-- ROI 3-5x más alto
-- Velocidad de implementación 10x mayor
-- Independencia operacional total
-
-El futuro es descentralizado. Las marcas que adopten soberanía de datos liderarán en sus industrias.`,
-  },
-  'neural-media-buying': {
-    title: 'Neural Media Buying: La Revolución de la Compra Programática',
-    author: 'Marcus Torres',
-    date: '2024-03-05',
-    category: 'Technology',
-    content: `# Neural Media Buying: La Revolución de la Compra Programática
-
-La compra de media programática ha evolucionado desde simples reglas a redes neuronales complejas que toman decisiones en milisegundos. Este cambio es tan fundamental como fue el pasado de la TV a digital.
-
-## Del CPM al Brain Power
-
-Históricamente, los anunciantes pagaban por mil impresiones sin importar su relevancia. Con Neural Media Buying, pagas por decisiones inteligentes.
-
-Cada impresión se evalúa en contexto de:
-- Historial del usuario
-- Momento del día
-- Contexto competitivo
-- Probabilidad de conversión
-
-## Resultados Documentados
-
-Nuestros clientes reportan:
-- Reducción de 45% en CPA
-- Incremento de 280% en conversion rate
-- Automatización de 95% del planning de media
-
-## Implementación Práctica
-
-Neural Media Buying no es una característica, es una filosofía de cómo aproximarse a la publicidad digital. Requiere redefinir tu stack tecnológico, pero el ROI lo justifica.`,
-  },
-  'sentiment-mapping': {
-    title: 'Predictive Sentiment Mapping: Lee la Mente del Mercado',
-    author: 'Elena Vasquez',
-    date: '2024-02-28',
-    category: 'Analytics',
-    content: `# Predictive Sentiment Mapping: Lee la Mente del Mercado
-
-El sentiment analysis ha dejado de ser análisis post-hoc. Ahora es predictivo. Podemos identificar tendencias de sentimiento del mercado 3-6 meses antes de que se materialicen en comportamiento de compra.
-
-## Cómo Funciona
-
-Mediante análisis de conversaciones en redes sociales, foros, comentarios y menciones de marca, creamos mapas de sentimiento multidimensionales que predicen movimientos de mercado.
-
-## Aplicaciones Reales
-
-- Anticipar cambios en preferencia de consumidor
-- Identificar crisis de reputación antes de que escalen
-- Detectar nuevas oportunidades de mercado
-- Optimizar messaging por momento temporal
-
-## Ventaja Competitiva
-
-Las marcas que leen el sentimiento del mercado 6 meses por adelantado pueden:
-- Ajustar estrategia antes que competidores
-- Capturar market share en transiciones
-- Evitar PR disasters identificando problemas temprano
-
-El futuro es predictivo. Quién mapee el sentimiento, controla el mercado.`,
-  },
-};
+import { fetchPostBySlug, fetchPostContent } from '../../lib/notion';
 
 const { slug } = Astro.params;
-const post = blogPosts[slug!];
+const post = await fetchPostBySlug(slug!);
 
 if (!post) {
   return Astro.redirect('/blog');
 }
 
-function renderContent(content: string) {
-  return content.trim().split('\n').map(line => {
-    if (line.startsWith('# ')) return `<h1 class="text-4xl font-bold mt-12 mb-6 text-foreground">${line.substring(2)}</h1>`;
-    if (line.startsWith('## ')) return `<h2 class="text-2xl font-bold mt-8 mb-4 text-foreground">${line.substring(3)}</h2>`;
-    if (line.startsWith('- ')) return `<li class="ml-6 mb-2 text-foreground/80">${line.substring(2)}</li>`;
-    if (line.trim() === '') return '<br />';
-    return `<p class="mb-4 leading-relaxed text-foreground/80">${line}</p>`;
-  }).join('\n');
-}
-
-const renderedContent = renderContent(post.content);
+const content = await fetchPostContent(post.id);
+const dateLocale = 'es-ES';
 ---
 
 <!doctype html>
@@ -145,7 +20,7 @@ const renderedContent = renderContent(post.content);
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width" />
-  <meta name="description" content={post.title} />
+  <meta name="description" content={post.description} />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -178,29 +53,61 @@ const renderedContent = renderContent(post.content);
   </nav>
 
   <main class="min-h-screen pt-20">
-    <article class="max-w-3xl mx-auto px-8 py-20">
-      <a href="/blog" class="inline-flex items-center gap-2 text-accent hover:opacity-80 transition-opacity mb-8">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        <span>Volver al Blog</span>
-      </a>
+    <!-- Hero header -->
+    <div class="bg-primary relative overflow-hidden py-16">
+      <div class="absolute inset-0 opacity-[0.04]" style="background-image: radial-gradient(rgba(255,255,255,0.3) 1px, transparent 1px); background-size: 32px 32px;"></div>
+      <div class="relative max-w-3xl mx-auto px-8">
+        <a href="/blog" class="inline-flex items-center gap-2 text-white/50 hover:text-white text-sm mb-8 transition-colors group">
+          <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Volver al blog
+        </a>
 
-      <header class="mb-12">
-        <div class="mb-4">
-          <span class="inline-block px-3 py-1 bg-accent/20 text-accent text-sm font-semibold rounded-full">{post.category}</span>
-        </div>
-        <h1 class="text-5xl font-bold text-foreground mb-6 text-balance">{post.title}</h1>
-        <div class="flex items-center gap-4 text-foreground/60">
-          <span>{post.author}</span>
-          <span>•</span>
-          <time>{post.date}</time>
-        </div>
-      </header>
+        {post.category && (
+          <span class="inline-block px-3 py-1 bg-accent/20 text-accent text-xs font-semibold rounded-full mb-6 tracking-wide uppercase">
+            {post.category}
+          </span>
+        )}
 
-      <div class="prose max-w-none mb-12" set:html={renderedContent} />
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-8 leading-tight tracking-tight">
+          {post.title}
+        </h1>
+
+        <div class="flex flex-wrap items-center gap-4 text-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+              <span class="text-white text-sm font-bold">{post.author?.charAt(0) || 'A'}</span>
+            </div>
+            <div>
+              <p class="text-white font-medium">{post.author}</p>
+              <p class="text-white/50 text-xs">
+                <time datetime={post.date}>
+                  {post.date ? new Date(post.date).toLocaleDateString(dateLocale, { year: 'numeric', month: 'long', day: 'numeric' }) : ''}
+                </time>
+                {post.readTime && <span> &middot; {post.readTime}</span>}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Featured image -->
+    {post.image && (
+      <div class="max-w-3xl mx-auto px-8 -mt-8 relative z-10">
+        <img src={post.image} alt={post.title} class="w-full rounded-2xl shadow-2xl" />
+      </div>
+    )}
+
+    <!-- Content -->
+    <article class="max-w-3xl mx-auto px-8 py-12 md:py-20">
+      <div class="prose max-w-none">
+        <Fragment set:html={content} />
+      </div>
 
       <div class="border-t border-border pt-8 mt-12">
-        <a href="/blog" class="inline-block px-6 py-3 bg-accent text-primary font-semibold rounded-lg hover:opacity-90 transition-opacity">
-          Volver al Blog
+        <a href="/blog" class="inline-flex items-center gap-2 text-sm font-medium text-accent hover:opacity-80 transition-opacity group">
+          <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Volver al blog
         </a>
       </div>
     </article>
@@ -218,3 +125,23 @@ const renderedContent = renderContent(post.content);
   </footer>
 </body>
 </html>
+
+<style is:global>
+  .prose { color: #43474d; }
+  .prose h2 { font-size: 1.875rem; font-weight: 700; color: #001d32; margin-top: 3rem; margin-bottom: 1.5rem; }
+  .prose h3 { font-size: 1.5rem; font-weight: 600; color: #001d32; margin-top: 2rem; margin-bottom: 1rem; }
+  .prose p { font-size: 1.125rem; line-height: 1.75; margin-bottom: 1.5rem; }
+  .prose a { color: #000e41; font-weight: 500; text-decoration: underline; text-decoration-color: rgba(0,14,65,0.3); text-underline-offset: 2px; transition: text-decoration-color 0.2s; }
+  .prose a:hover { color: #001f70; text-decoration-color: #001f70; }
+  .prose strong { color: #001d32; font-weight: 600; }
+  .prose ul, .prose ol { margin: 1.5rem 0; padding-left: 1.5rem; }
+  .prose li { font-size: 1.125rem; margin-bottom: 0.5rem; }
+  .prose li::marker { color: #000e41; }
+  .prose blockquote { border-left: 3px solid #000e41; padding: 1.5rem; font-style: italic; margin: 2rem 0; color: #43474d; background: rgba(0,14,65,0.03); border-radius: 0 0.75rem 0.75rem 0; }
+  .prose code { background: #edf4ff; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; color: #000e41; }
+  .prose pre { background: #000e41; color: #e3efff; border-radius: 0.75rem; padding: 1.5rem; overflow-x: auto; margin: 2rem 0; }
+  .prose pre code { background: transparent; color: inherit; padding: 0; }
+  .prose img { border-radius: 0.75rem; margin: 2rem 0; }
+  .prose > p:first-child > img:only-child { display: none; }
+  .prose hr { border-color: #c3c6ce; margin: 3rem 0; }
+</style>

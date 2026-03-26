@@ -1,44 +1,12 @@
 ---
-import '../../styles/global.css';
+export const prerender = false;
 
-const blogPosts = [
-  {
-    slug: 'futuro-ia-marketing',
-    titleEs: 'El Futuro de la IA en Marketing Growth',
-    descriptionEs: 'Descubre cómo la inteligencia artificial está revolucionando la forma en que las marcas crecen y escalan sus operaciones.',
-    author: 'Alex Rivera',
-    date: '2024-03-15',
-    category: 'IA',
-    image: 'https://images.unsplash.com/photo-1677442d019cecf8f6a3c44eae308d8dcc1b330b?w=800&h=400&fit=crop',
-  },
-  {
-    slug: 'growth-sovereignty',
-    titleEs: 'Growth Sovereignty: La Nueva Frontera del Control de Datos',
-    descriptionEs: 'Por qué el control total de tus datos de marketing es el factor diferenciador más importante en 2024.',
-    author: 'Sofia Chen',
-    date: '2024-03-10',
-    category: 'Strategy',
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop',
-  },
-  {
-    slug: 'neural-media-buying',
-    titleEs: 'Neural Media Buying: La Revolución de la Compra Programática',
-    descriptionEs: 'Cómo los algoritmos neuronales están transformando la compra de media digital y reduciendo costos.',
-    author: 'Marcus Torres',
-    date: '2024-03-05',
-    category: 'Technology',
-    image: 'https://images.unsplash.com/photo-1573607891914-a68fb5baaf45?w=800&h=400&fit=crop',
-  },
-  {
-    slug: 'sentiment-mapping',
-    titleEs: 'Predictive Sentiment Mapping: Lee la Mente del Mercado',
-    descriptionEs: 'Técnicas avanzadas para predecir el sentimiento del mercado antes de que ocurra.',
-    author: 'Elena Vasquez',
-    date: '2024-02-28',
-    category: 'Analytics',
-    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=400&fit=crop',
-  },
-];
+import '../../styles/global.css';
+import { fetchPublishedPosts } from '../../lib/notion';
+
+const posts = await fetchPublishedPosts('es');
+
+Astro.response.headers.set('Cache-Control', 'no-store');
 ---
 
 <!doctype html>
@@ -83,23 +51,29 @@ const blogPosts = [
       <h1 class="text-5xl font-bold text-foreground mb-12 text-balance">Blog de IA y Growth</h1>
 
       <div class="grid md:grid-cols-2 gap-8">
-        {blogPosts.map((post) => (
+        {posts.map((post) => (
           <a href={`/blog/${post.slug}`}>
             <div class="group cursor-pointer rounded-xl overflow-hidden border border-border hover:border-accent/50 transition-all duration-300 bg-surface-container h-full flex flex-col">
-              <div class="relative h-48 overflow-hidden bg-background">
-                <img src={post.image} alt={post.titleEs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              </div>
-              <div class="p-6 flex flex-col flex-grow">
-                <div class="flex gap-2 mb-3">
-                  <span class="inline-block px-3 py-1 bg-accent/20 text-accent text-xs font-semibold rounded-full">{post.category}</span>
+              {post.image && (
+                <div class="relative h-48 overflow-hidden bg-background">
+                  <img src={post.image} alt={post.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                 </div>
-                <h2 class="text-xl font-bold text-foreground mb-3 group-hover:text-accent transition-colors line-clamp-2">{post.titleEs}</h2>
-                <p class="text-foreground/70 text-sm mb-4 flex-grow line-clamp-3">{post.descriptionEs}</p>
+              )}
+              <div class="p-6 flex flex-col flex-grow">
+                {post.category && (
+                  <div class="flex gap-2 mb-3">
+                    <span class="inline-block px-3 py-1 bg-accent/20 text-accent text-xs font-semibold rounded-full">{post.category}</span>
+                  </div>
+                )}
+                <h2 class="text-xl font-bold text-foreground mb-3 group-hover:text-accent transition-colors line-clamp-2">{post.title}</h2>
+                <p class="text-foreground/70 text-sm mb-4 flex-grow line-clamp-3">{post.description}</p>
                 <div class="flex items-center justify-between pt-4 border-t border-border/30">
                   <div>
                     <p class="text-xs text-foreground/60">{post.author}</p>
-                    <p class="text-xs text-foreground/50">{post.date}</p>
+                    <p class="text-xs text-foreground/50">
+                      {post.date ? new Date(post.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                    </p>
                   </div>
                   <span class="text-accent font-semibold text-sm">→</span>
                 </div>
@@ -108,6 +82,12 @@ const blogPosts = [
           </a>
         ))}
       </div>
+
+      {posts.length === 0 && (
+        <div class="text-center py-20">
+          <p class="text-on-surface-variant text-lg">Pronto publicaremos nuevos artículos.</p>
+        </div>
+      )}
     </section>
   </main>
 
@@ -129,3 +109,18 @@ const blogPosts = [
   </footer>
 </body>
 </html>
+
+<style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
