@@ -1,26 +1,728 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import Hero from '../../components/Hero.astro';
-import About from '../../components/About.astro';
-import Testimonial from '../../components/Testimonial.astro';
-import Benefits from '../../components/Benefits.astro';
-import Cases from '../../components/Cases.astro';
-import CTASection from '../../components/CTASection.astro';
-import Footer from '../../components/Footer.astro';
-import ScrollNav from '../../components/ScrollNav.astro';
-import WhatWeDo from '../../components/WhatWeDo.astro';
+import '../../styles/global.css';
 
 const lang = 'en';
+const t: Record<string, string> = {
+  'nav.solutions': 'Solutions',
+  'nav.blog': 'Blog',
+  'nav.contact': 'Contact',
+  'nav.login': 'Log In',
+  'nav.free_diagnosis': 'Free Diagnosis',
+  'hero.badge': 'THE ERA OF "GUESS AND CHECK" IS DEAD',
+  'hero.title': 'Growth is no longer marketing. It is',
+  'hero.title_ai': 'AI infrastructure.',
+  'hero.description': 'We transform legacy brands into autonomous growth ecosystems. Processes. Solutions. Momentum.',
+  'hero.cta_primary': 'Free Diagnosis',
+  'hero.cta_secondary': 'Contact us',
+  'mission.title': 'Curating the future of brand intelligence.',
+  'mission.description': 'The era of intuition-based marketing is over. Growth no longer depends on campaigns, but on systems. We replace intuition with data-driven decisions and AI-powered automation. We deliver tools that enable brands to truly grow autonomously.',
+  'solutions.title': 'AI-Augmented Growth Solutions',
+  'solutions.diagnosis_tag': 'FREE',
+  'solutions.diagnosis_title': 'AION Diagnosis',
+  'solutions.diagnosis_desc': 'Complete SEO, GEO, Visibility and competitive Benchmark audit of your brand. Know exactly where you stand before investing.',
+  'solutions.diagnosis_cta': 'Try now',
+  'solutions.radar_title': 'AION Radar',
+  'solutions.radar_desc': 'Every month, your company generates thousands of digital signals that nobody is reading. Radar captures them all — SEO, generative AI visibility, competitors, web performance — and turns them into a verdict-ready report for your board.',
+  'solutions.signals_title': 'AION Signals',
+  'solutions.signals_desc': "The monthly report tells you where you are. Signals warns you before it's too late. Weekly monitoring with actionable alerts: a competitor launches a campaign, a key keyword drops, your site slows down.",
+  'solutions.levers_title': 'AION Levers',
+  'solutions.levers_desc': "Knowing what to do isn't enough if you have no one to execute it. Levers closes that gap: generates content optimised for Google and ChatGPT, produces exact technical instructions, and creates schema markup ready to publish.",
+  'custom.badge': 'PATENTED METHODOLOGY',
+  'custom.title': 'Custom Solutions',
+  'custom.subtitle': 'AION Method',
+  'custom.description': 'We transform your operations and personalize your automation with our unique AI transformation method — developed, tested, and patented by AION.',
+  'custom.cta': 'Deploy your company in AI-on mode',
+  'custom.phase1': 'Diagnosis',
+  'custom.phase1_desc': 'Deep analysis of your current operation',
+  'custom.phase2': 'Design',
+  'custom.phase2_desc': 'Custom automation architecture',
+  'custom.phase3': 'Implementation',
+  'custom.phase3_desc': 'Deployment with integrated AI',
+  'custom.phase4': 'Optimization',
+  'custom.phase4_desc': 'Continuous improvement with machine learning',
+  'leads.title': 'Do you have an agency?',
+  'leads.description': 'Offer our products as white-label to add value to your clients.',
+  'leads.subtitle': 'Simplify your operations and improve your results with automated diagnosis and recommendation tools.',
+  'leads.benefit1': 'Products with your brand',
+  'leads.benefit2': 'Automated diagnostics for your clients',
+  'leads.benefit3': 'Customizable reports',
+  'leads.benefit4': 'Dedicated technical support',
+  'leads.cta': 'Contact us',
+  'cta.title': 'AI is already transforming your industry',
+  'cta.description': 'The question is not whether to adopt AI, but who designs the operational infrastructure on which you will grow for the next five years.',
+  'cta.button_diagnosis': 'Get free diagnosis',
+  'cta.button_contact': 'Contact us',
+  'footer.tagline': 'Agentic AI growth infrastructure',
+  'footer.copyright': '© 2024 AION Growth Studio. All rights reserved.',
+  'footer.privacy': 'Privacy',
+  'footer.terms': 'Terms of Service',
+  'footer.contact': 'Contact',
+};
 ---
 
-<Layout title="AION Growth Studio — Growth infrastructure with agentic AI" lang={lang}>
-  <ScrollNav lang={lang} />
-  <Hero lang={lang} />
-  <About lang={lang} />
-  <WhatWeDo lang={lang} />
-  <Testimonial lang={lang} />
-  <Benefits lang={lang} />
-  <Cases lang={lang} />
-  <CTASection lang={lang} />
-  <Footer lang={lang} />
-</Layout>
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="description" content="AION Growth Studio — Agentic AI growth infrastructure" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <title>AION Growth Studio — Agentic AI growth infrastructure</title>
+</head>
+<body class="font-sans antialiased bg-background text-on-surface">
+  <main class="min-h-screen bg-background">
+
+    <!-- ═══════════════ NAVBAR ═══════════════ -->
+    <nav id="main-nav" class="fixed top-0 w-full z-50 bg-primary">
+      <div class="relative flex justify-between items-center px-8 py-3 max-w-7xl mx-auto">
+        <!-- Logo -->
+        <a href="/en/" class="flex items-center gap-2 h-12 overflow-hidden">
+          <img src="/images/aion-logo-dark.png" alt="AION Growth Studio" class="h-24 w-auto" />
+        </a>
+
+        <!-- Desktop nav links -->
+        <div class="hidden lg:flex items-center gap-8">
+          <a href="#solutions" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">{t['nav.solutions']}</a>
+          <a href="/blog" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">{t['nav.blog']}</a>
+          <a href="/contacto" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">{t['nav.contact']}</a>
+        </div>
+
+        <!-- Right actions -->
+        <div class="flex items-center gap-2">
+          <!-- Language toggle -->
+          <a href="/es/" class="hidden md:flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white px-3 py-2 rounded-full bg-white/10 transition-all hover:bg-white/20">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg>
+            <span class="uppercase tracking-widest">ES</span>
+          </a>
+
+          <!-- Login → /login -->
+          <a href="/login" class="hidden md:flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white px-3 py-2 rounded-full bg-white/10 transition-all hover:bg-white/20">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>{t['nav.login']}</span>
+          </a>
+
+          <!-- Free Diagnosis CTA → /en/diagnostic -->
+          <a href="/en/diagnostic" class="hidden md:block bg-accent text-primary px-5 py-2.5 rounded-full font-bold text-xs hover:brightness-110 transition-all" style="box-shadow: 0 4px 20px rgba(105,255,135,0.35);">
+            {t['nav.free_diagnosis']}
+          </a>
+
+          <!-- Mobile hamburger -->
+          <button id="mobile-menu-btn" class="lg:hidden flex items-center justify-center w-9 h-9 rounded-full text-white bg-white/10 hover:bg-white/20 transition-all" aria-label="Toggle menu">
+            <svg id="menu-icon-open" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <svg id="menu-icon-close" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div id="mobile-menu" class="lg:hidden hidden border-t border-white/10 px-8 py-6 bg-primary">
+        <div class="flex flex-col gap-4">
+          <a href="#solutions" class="font-sans tracking-tight font-medium text-sm text-white/80 mobile-nav-close">{t['nav.solutions']}</a>
+          <a href="/blog" class="font-sans tracking-tight font-medium text-sm text-white/80 mobile-nav-close">{t['nav.blog']}</a>
+          <a href="/contacto" class="font-sans tracking-tight font-medium text-sm text-white/80 mobile-nav-close">{t['nav.contact']}</a>
+
+          <div class="flex items-center gap-3 mt-2 pt-4 border-t border-white/10">
+            <a href="/es/" class="flex items-center gap-1.5 text-xs font-semibold text-white/80 px-3 py-2 rounded-full bg-white/10">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg>
+              <span class="uppercase">ES</span>
+            </a>
+            <a href="/login" class="flex items-center gap-1.5 text-xs font-semibold text-white/80 px-3 py-2 rounded-full bg-white/10">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>{t['nav.login']}</span>
+            </a>
+          </div>
+
+          <a href="/en/diagnostic" class="bg-accent text-primary px-6 py-3 rounded-full font-bold text-sm hover:brightness-110 transition-all mt-2 w-full text-center">
+            {t['nav.free_diagnosis']}
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ═══════════════ HERO ═══════════════ -->
+    <section class="relative min-h-screen flex items-center pt-20 overflow-hidden bg-primary">
+      <!-- Grid pattern -->
+      <div class="absolute inset-0 opacity-[0.055]" style="background-image: linear-gradient(rgba(105,255,135,1) 1px, transparent 1px), linear-gradient(90deg, rgba(105,255,135,1) 1px, transparent 1px); background-size: 60px 60px;"></div>
+
+      <!-- Radial depth glows -->
+      <div class="absolute inset-0" style="background: radial-gradient(ellipse 70% 60% at 20% 50%, rgba(0,31,112,0.5) 0%, transparent 70%), radial-gradient(ellipse 50% 50% at 80% 20%, rgba(0,58,20,0.3) 0%, transparent 70%);"></div>
+
+      <!-- Canvas animated background -->
+      <canvas id="hero-canvas" class="absolute inset-0 w-full h-full" style="mix-blend-mode: screen; opacity: 0.75;"></canvas>
+
+      <!-- Vignette -->
+      <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,14,65,0.7) 100%);"></div>
+
+      <!-- Content -->
+      <div class="relative max-w-5xl mx-auto px-8 w-full text-center py-24">
+        <!-- Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/15 border border-accent/20 text-accent text-[10px] uppercase tracking-[0.2em] font-bold mb-10">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          {t['hero.badge']}
+        </div>
+
+        <!-- Headline -->
+        <h1 class="text-white text-4xl sm:text-5xl md:text-[72px] font-extrabold tracking-tighter leading-[1.08] mb-8 text-balance">
+          {t['hero.title']}{" "}
+          <span class="text-accent">{t['hero.title_ai']}</span>
+        </h1>
+
+        <!-- Subheadline -->
+        <p class="text-white/60 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-light mb-14">
+          {t['hero.description']}
+        </p>
+
+        <!-- CTAs -->
+        <div class="flex flex-wrap justify-center gap-4 sm:gap-5">
+          <a href="/en/diagnostic" class="bg-accent text-primary px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:brightness-110 transition-all inline-block" style="box-shadow: 0 6px 30px rgba(105,255,135,0.4);">
+            {t['hero.cta_primary']}
+          </a>
+          <a href="/contacto" class="border border-white/20 text-white px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-white/5 transition-all inline-block">
+            {t['hero.cta_secondary']}
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ MISSION ═══════════════ -->
+    <section class="py-24 md:py-32 bg-surface">
+      <div class="max-w-7xl mx-auto px-8">
+        <div class="grid md:grid-cols-2 gap-12 md:gap-24 items-start">
+          <div>
+            <span class="text-on-secondary-container font-sans text-xs tracking-[0.2em] uppercase block mb-6">Our Mission</span>
+            <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-on-surface leading-tight mb-8 text-balance">
+              {t['mission.title']}
+            </h2>
+          </div>
+          <div class="space-y-8">
+            <p class="text-on-surface-variant leading-relaxed text-lg md:text-xl">
+              {t['mission.description']}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ SOLUTIONS ═══════════════ -->
+    <section id="solutions" class="py-24 md:py-32 bg-surface-container-low">
+      <div class="max-w-7xl mx-auto px-8">
+        <div class="mb-16 md:mb-20">
+          <h2 class="text-3xl md:text-5xl font-bold tracking-tighter text-primary text-balance">{t['solutions.title']}</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <!-- Card 1 — Diagnosis: full width hero -->
+          <div class="md:col-span-12 bg-primary rounded-2xl p-8 md:p-12 flex flex-col md:flex-row gap-8 md:gap-16 items-start md:items-center relative overflow-hidden">
+            <div class="absolute inset-0 opacity-[0.06]" style="background-image: linear-gradient(rgba(105,255,135,1) 1px, transparent 1px), linear-gradient(90deg, rgba(105,255,135,1) 1px, transparent 1px); background-size: 40px 40px;"></div>
+            <div class="relative flex-1">
+              <div class="flex items-center gap-3 mb-6">
+                <div class="w-11 h-11 bg-accent/20 flex items-center justify-center rounded-xl text-accent">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+                </div>
+                <span class="bg-accent text-primary text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">{t['solutions.diagnosis_tag']}</span>
+              </div>
+              <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">{t['solutions.diagnosis_title']}</h3>
+              <p class="text-white/60 leading-relaxed max-w-2xl text-base">{t['solutions.diagnosis_desc']}</p>
+            </div>
+            <div class="relative shrink-0">
+              <a href="/en/diagnostic" class="flex items-center gap-2 bg-accent text-primary px-8 py-4 rounded-xl font-bold text-sm hover:brightness-110 transition-all group" style="box-shadow: 0 4px 24px rgba(105,255,135,0.4);">
+                {t['solutions.diagnosis_cta']}
+                <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Card 2 — Radar: col 5 -->
+          <div class="md:col-span-5 bg-surface-container-lowest rounded-2xl p-8 md:p-10 flex flex-col gap-6 hover:shadow-lg transition-shadow group">
+            <div class="w-11 h-11 bg-primary/[0.08] flex items-center justify-center rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49m-8.48-.01a6 6 0 010-8.49m11.31-2.82a10 10 0 010 14.14m-14.14 0a10 10 0 010-14.14"/></svg>
+            </div>
+            <div>
+              <h3 class="text-xl md:text-2xl font-bold text-on-surface mb-3">{t['solutions.radar_title']}</h3>
+              <p class="text-on-surface-variant leading-relaxed text-sm">{t['solutions.radar_desc']}</p>
+            </div>
+            <div class="mt-auto pt-4 flex gap-2 flex-wrap">
+              {["SEO", "GEO", "GA4", "Benchmark"].map((tag) => (
+                <span class="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/[0.08] px-2.5 py-1 rounded-full">{tag}</span>
+              ))}
+            </div>
+          </div>
+
+          <!-- Card 3 — Signals: col 7, dark -->
+          <div class="md:col-span-7 bg-primary rounded-2xl p-8 md:p-10 flex flex-col gap-6 relative overflow-hidden">
+            <div class="absolute inset-0 opacity-[0.05]" style="background-image: linear-gradient(rgba(105,255,135,1) 1px, transparent 1px), linear-gradient(90deg, rgba(105,255,135,1) 1px, transparent 1px); background-size: 32px 32px;"></div>
+            <div class="relative w-11 h-11 bg-white/10 flex items-center justify-center rounded-xl text-accent">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="relative">
+              <h3 class="text-xl md:text-2xl font-bold text-white mb-3">{t['solutions.signals_title']}</h3>
+              <p class="text-white/60 leading-relaxed text-sm">{t['solutions.signals_desc']}</p>
+            </div>
+            <div class="relative mt-auto flex gap-2 flex-wrap">
+              {["Meta", "Google", "LinkedIn", "AI Alerts"].map((tag) => (
+                <span class="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-2.5 py-1 rounded-full">{tag}</span>
+              ))}
+            </div>
+          </div>
+
+          <!-- Card 4 — Levers: full width bottom -->
+          <div class="md:col-span-12 bg-surface-container-lowest rounded-2xl p-8 md:p-12 flex flex-col md:flex-row gap-8 md:gap-16 items-start group hover:shadow-lg transition-shadow">
+            <div class="flex-1">
+              <div class="w-11 h-11 bg-primary/[0.08] flex items-center justify-center rounded-xl text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20a8 8 0 100-16 8 8 0 000 16z"/><path d="M12 14a2 2 0 100-4 2 2 0 000 4z"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+              </div>
+              <h3 class="text-xl md:text-3xl font-bold text-on-surface mb-3">{t['solutions.levers_title']}</h3>
+              <p class="text-on-surface-variant leading-relaxed max-w-2xl text-sm md:text-base">{t['solutions.levers_desc']}</p>
+            </div>
+            <div class="shrink-0 w-full md:w-64 bg-surface-container-low rounded-xl p-6 flex flex-col gap-4">
+              {[
+                { label: "SEO Content", w: "80%" },
+                { label: "Schema Markup", w: "60%" },
+                { label: "GEO Optimisation", w: "92%" },
+                { label: "Tech Instructions", w: "67%" },
+              ].map((item) => (
+                <div>
+                  <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wide">{item.label}</span>
+                  </div>
+                  <div class="h-1.5 bg-primary/10 rounded-full w-full overflow-hidden">
+                    <div class="h-full bg-primary rounded-full" style={`width: ${item.w}`}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ CASES / METHOD ═══════════════ -->
+    <section id="cases" class="py-14 bg-primary relative overflow-hidden">
+      <div class="absolute inset-0 opacity-[0.04]" style="background-image: linear-gradient(rgba(105,255,135,1) 1px, transparent 1px), linear-gradient(90deg, rgba(105,255,135,1) 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+      <div class="relative max-w-7xl mx-auto px-8">
+        <!-- Header -->
+        <div class="text-center mb-10">
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/20 text-accent text-xs uppercase tracking-widest font-bold mb-4">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+            {t['custom.badge']}
+          </div>
+          <h2 class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-2">{t['custom.title']}</h2>
+          <p class="text-accent text-xl md:text-2xl font-bold tracking-tight mb-4">{t['custom.subtitle']}</p>
+          <p class="text-white/60 text-base md:text-lg leading-relaxed max-w-3xl mx-auto">{t['custom.description']}</p>
+        </div>
+
+        <!-- Animation + Phases -->
+        <div class="grid lg:grid-cols-2 gap-8 items-center">
+          <!-- Canvas -->
+          <div class="relative aspect-square max-w-md mx-auto w-full">
+            <canvas id="cases-canvas" class="absolute inset-0 w-full h-full"></canvas>
+          </div>
+
+          <!-- Phases -->
+          <div class="space-y-3">
+            {[
+              { num: '01', title: t['custom.phase1'], desc: t['custom.phase1_desc'] },
+              { num: '02', title: t['custom.phase2'], desc: t['custom.phase2_desc'] },
+              { num: '03', title: t['custom.phase3'], desc: t['custom.phase3_desc'] },
+              { num: '04', title: t['custom.phase4'], desc: t['custom.phase4_desc'] },
+            ].map((phase) => (
+              <div class="flex items-start gap-4 p-4 rounded-xl transition-all duration-300 hover:bg-white/5 group">
+                <div class="flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center text-accent font-black text-base" style="background: rgba(105,255,135,0.1); box-shadow: 0 0 20px rgba(105,255,135,0.1);">
+                  {phase.num}
+                </div>
+                <div>
+                  <h3 class="text-white text-base font-bold mb-0.5 group-hover:text-accent transition-colors">{phase.title}</h3>
+                  <p class="text-white/50 text-sm leading-relaxed">{phase.desc}</p>
+                </div>
+              </div>
+            ))}
+
+            <div class="pt-4">
+              <a href="/contacto" class="group inline-flex items-center gap-3 bg-accent text-primary px-7 py-3.5 rounded-full font-bold text-sm hover:brightness-110 transition-all w-full sm:w-auto justify-center" style="box-shadow: 0 4px 30px rgba(105,255,135,0.4);">
+                {t['custom.cta']}
+                <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ LEAD GENERATION / PARTNERS ═══════════════ -->
+    <section id="leads" class="py-20 bg-white relative overflow-hidden">
+      <div class="absolute top-0 inset-x-0 h-px bg-gray-100"></div>
+      <div class="absolute bottom-0 inset-x-0 h-px bg-gray-100"></div>
+
+      <div class="max-w-7xl mx-auto px-8">
+        <div class="grid lg:grid-cols-2 gap-16 items-center">
+          <!-- Left: copy -->
+          <div>
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/[0.06] border border-primary/[0.12] mb-8">
+              <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <span class="text-primary text-[11px] uppercase tracking-[0.18em] font-bold">Partner Program</span>
+            </div>
+
+            <h2 class="text-4xl sm:text-5xl font-black text-primary leading-[1.1] tracking-tight mb-5 text-balance">{t['leads.title']}</h2>
+            <p class="text-xl text-primary font-semibold mb-3">{t['leads.description']}</p>
+            <p class="text-on-surface-variant text-base leading-relaxed mb-10">{t['leads.subtitle']}</p>
+
+            <ul class="space-y-3 mb-10">
+              {[
+                { icon: 'tag', text: t['leads.benefit1'] },
+                { icon: 'chart', text: t['leads.benefit2'] },
+                { icon: 'file', text: t['leads.benefit3'] },
+                { icon: 'headphones', text: t['leads.benefit4'] },
+              ].map((b) => (
+                <li class="flex items-center gap-3">
+                  <div class="w-7 h-7 rounded-lg bg-primary/[0.08] flex items-center justify-center flex-shrink-0">
+                    <svg class="text-primary" style="width:14px;height:14px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      {b.icon === 'tag' && <Fragment><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></Fragment>}
+                      {b.icon === 'chart' && <Fragment><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></Fragment>}
+                      {b.icon === 'file' && <Fragment><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></Fragment>}
+                      {b.icon === 'headphones' && <Fragment><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></Fragment>}
+                    </svg>
+                  </div>
+                  <span class="text-on-surface text-sm font-medium">{b.text}</span>
+                </li>
+              ))}
+            </ul>
+
+            <a href="mailto:partners@aiongrowth.studio" class="group inline-flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-full font-bold text-sm hover:opacity-90 transition-all" style="box-shadow: 0 6px 32px rgba(0,14,65,0.16);">
+              {t['leads.cta']}
+              <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+
+          <!-- Right: Partner card mockup -->
+          <div class="relative flex items-center justify-center">
+            <div class="absolute inset-0 rounded-3xl" style="background: radial-gradient(ellipse at 60% 50%, rgba(105,255,135,0.08) 0%, transparent 70%);"></div>
+            <div class="relative w-full max-w-sm rounded-2xl overflow-hidden border border-gray-100" style="box-shadow: 0 20px 60px rgba(0,14,65,0.10), 0 2px 8px rgba(0,0,0,0.04);">
+              <div class="bg-primary px-6 py-5 flex items-center justify-between">
+                <span class="text-white text-lg font-semibold tracking-wide">Your brand</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full" style="background: rgba(105,255,135,0.2); color: #69ff87;">White Label</span>
+              </div>
+              <div class="bg-white px-6 py-6 space-y-4">
+                {["SEO Diagnosis", "GEO Visibility", "Benchmark", "AION Radar"].map((item, i) => (
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <svg class="w-4 h-4 text-primary/40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                      <span class="text-sm text-on-surface font-medium">{item}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <div class="w-20 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div class="h-full rounded-full bg-primary" style={`width: ${[88, 72, 95, 81][i]}%`}></div>
+                      </div>
+                      <span class="text-xs text-on-surface-variant w-8 text-right">{[88, 72, 95, 81][i]}%</span>
+                    </div>
+                  </div>
+                ))}
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <span class="text-xs text-on-surface-variant">Powered by AION</span>
+                  <span class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full" style="background: rgba(0,14,65,0.06); color: #000e41;">Partner</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ CTA ═══════════════ -->
+    <section id="contact" class="py-20 bg-primary relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-white/5 to-transparent"></div>
+      <div class="absolute bottom-0 left-0 w-1/4 h-full bg-gradient-to-r from-accent/5 to-transparent"></div>
+
+      <div class="max-w-4xl mx-auto px-8 relative z-10 text-center">
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-6 text-balance leading-tight">{t['cta.title']}</h2>
+        <p class="text-white/60 text-lg md:text-xl mb-10 max-w-3xl mx-auto leading-relaxed">{t['cta.description']}</p>
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <a href="/en/diagnostic" class="group inline-flex items-center justify-center gap-3 bg-accent text-primary px-8 py-4 rounded-full font-bold text-sm hover:brightness-110 transition-all" style="box-shadow: 0 4px 30px rgba(105,255,135,0.4);">
+            {t['cta.button_diagnosis']}
+            <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <a href="/contacto" class="group inline-flex items-center justify-center gap-3 bg-white/10 text-white px-8 py-4 rounded-full font-bold text-sm hover:bg-white/20 transition-all border border-white/20">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+            {t['cta.button_contact']}
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer class="w-full py-12 bg-surface-container-low">
+      <div class="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-6">
+        <div class="flex flex-col items-center md:items-start">
+          <a href="/en/" class="flex items-center">
+            <img src="/images/aion-logo-full.png" alt="AION Growth Studio" class="h-24 w-auto" />
+          </a>
+          <span class="text-xs text-on-surface-variant mt-2">{t['footer.tagline']}</span>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-6 md:gap-8">
+          {[
+            { label: t['footer.privacy'], href: "#" },
+            { label: t['footer.terms'], href: "#" },
+            { label: "LinkedIn", href: "#" },
+            { label: t['footer.contact'], href: "/contacto" },
+          ].map((link) => (
+            <a href={link.href} class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary hover:underline decoration-primary/30 underline-offset-4 transition-colors">
+              {link.label}
+            </a>
+          ))}
+        </div>
+
+        <div class="text-xs text-on-surface-variant">{t['footer.copyright']}</div>
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- ═══════════════ SCRIPTS ═══════════════ -->
+  <script>
+    // Mobile menu toggle
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const iconOpen = document.getElementById('menu-icon-open');
+    const iconClose = document.getElementById('menu-icon-close');
+
+    if (menuBtn && mobileMenu && iconOpen && iconClose) {
+      menuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        iconOpen.classList.toggle('hidden');
+        iconClose.classList.toggle('hidden');
+      });
+
+      mobileMenu.querySelectorAll('.mobile-nav-close').forEach(link => {
+        link.addEventListener('click', () => {
+          mobileMenu.classList.add('hidden');
+          iconOpen.classList.remove('hidden');
+          iconClose.classList.add('hidden');
+        });
+      });
+    }
+
+    // ─── Hero Canvas Animation ───
+    const heroCanvas = document.getElementById('hero-canvas') as HTMLCanvasElement;
+    if (heroCanvas) {
+      const ctx = heroCanvas.getContext('2d')!;
+      let animFrameId: number;
+      let time = 0;
+
+      const resize = () => {
+        heroCanvas.width = heroCanvas.offsetWidth;
+        heroCanvas.height = heroCanvas.offsetHeight;
+      };
+      resize();
+      window.addEventListener('resize', resize);
+
+      type Node = { x: number; y: number; vx: number; vy: number; r: number; pulse: number; pulseSpeed: number };
+      const nodes: Node[] = Array.from({ length: 55 }, () => ({
+        x: Math.random() * heroCanvas.width,
+        y: Math.random() * heroCanvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        r: Math.random() * 1.8 + 0.6,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.02 + Math.random() * 0.02,
+      }));
+
+      type Orbiter = { cx: number; cy: number; rx: number; ry: number; angle: number; speed: number; size: number; opacity: number };
+      const orbiters: Orbiter[] = Array.from({ length: 6 }, (_, i) => ({
+        cx: heroCanvas.width * (0.15 + i * 0.14),
+        cy: heroCanvas.height * (0.3 + (i % 3) * 0.2),
+        rx: 40 + i * 12,
+        ry: 18 + i * 6,
+        angle: (i / 6) * Math.PI * 2,
+        speed: 0.004 + i * 0.0015,
+        size: 2.5 + (i % 3),
+        opacity: 0.5 + (i % 2) * 0.3,
+      }));
+
+      type Ring = { x: number; y: number; radius: number; maxRadius: number; opacity: number; speed: number };
+      const rings: Ring[] = [];
+      const spawnRing = () => {
+        const w = heroCanvas.width, h = heroCanvas.height;
+        rings.push({ x: w * (0.15 + Math.random() * 0.7), y: h * (0.15 + Math.random() * 0.7), radius: 0, maxRadius: 120 + Math.random() * 140, opacity: 0.25, speed: 0.7 + Math.random() * 0.5 });
+      };
+      let lastRingSpawn = 0;
+
+      const draw = (ts: number) => {
+        const w = heroCanvas.width, h = heroCanvas.height;
+        time = ts * 0.001;
+        ctx.clearRect(0, 0, w, h);
+
+        if (ts - lastRingSpawn > 1800) { spawnRing(); lastRingSpawn = ts; }
+
+        for (let i = rings.length - 1; i >= 0; i--) {
+          const ring = rings[i];
+          ring.radius += ring.speed;
+          ring.opacity *= 0.985;
+          if (ring.radius > ring.maxRadius || ring.opacity < 0.01) { rings.splice(i, 1); continue; }
+          ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(105,255,135,${ring.opacity})`; ctx.lineWidth = 1; ctx.stroke();
+          if (ring.radius > 20) {
+            ctx.beginPath(); ctx.arc(ring.x, ring.y, ring.radius * 0.6, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(105,255,135,${ring.opacity * 0.4})`; ctx.lineWidth = 0.5; ctx.stroke();
+          }
+        }
+
+        for (const n of nodes) { n.x += n.vx; n.y += n.vy; if (n.x < 0 || n.x > w) n.vx *= -1; if (n.y < 0 || n.y > h) n.vy *= -1; n.pulse += n.pulseSpeed; }
+
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 140) {
+              ctx.beginPath(); ctx.strokeStyle = `rgba(105,255,135,${(1 - dist / 140) * 0.3})`; ctx.lineWidth = 0.5;
+              ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y); ctx.stroke();
+            }
+          }
+        }
+
+        for (const n of nodes) {
+          const glow = (Math.sin(n.pulse) + 1) * 0.5;
+          ctx.beginPath(); ctx.arc(n.x, n.y, n.r + glow * 1.2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(105,255,135,${0.5 + glow * 0.4})`; ctx.fill();
+        }
+
+        for (const orb of orbiters) {
+          orb.angle += orb.speed;
+          const px = orb.cx + Math.cos(orb.angle) * orb.rx;
+          const py = orb.cy + Math.sin(orb.angle) * orb.ry;
+          for (let t2 = 1; t2 <= 6; t2++) {
+            const ta = orb.angle - t2 * 0.15;
+            const tx = orb.cx + Math.cos(ta) * orb.rx, ty = orb.cy + Math.sin(ta) * orb.ry;
+            ctx.beginPath(); ctx.arc(tx, ty, orb.size * (1 - t2 / 8), 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(105,255,135,${(orb.opacity * (1 - t2 / 8)) * 0.35})`; ctx.fill();
+          }
+          ctx.beginPath(); ctx.arc(px, py, orb.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(105,255,135,${orb.opacity})`; ctx.fill();
+          ctx.beginPath(); ctx.ellipse(orb.cx, orb.cy, orb.rx, orb.ry, 0, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(105,255,135,0.05)'; ctx.lineWidth = 0.5; ctx.stroke();
+        }
+
+        const scanY = (time * 80) % h;
+        const grad = ctx.createLinearGradient(0, scanY - 40, 0, scanY + 40);
+        grad.addColorStop(0, 'rgba(105,255,135,0)'); grad.addColorStop(0.5, 'rgba(105,255,135,0.04)'); grad.addColorStop(1, 'rgba(105,255,135,0)');
+        ctx.fillStyle = grad; ctx.fillRect(0, scanY - 40, w, 80);
+
+        animFrameId = requestAnimationFrame(draw);
+      };
+      animFrameId = requestAnimationFrame(draw);
+    }
+
+    // ─── Cases Canvas Animation ───
+    const casesCanvas = document.getElementById('cases-canvas') as HTMLCanvasElement;
+    if (casesCanvas) {
+      const ctx2 = casesCanvas.getContext('2d')!;
+      let animId2: number;
+      const dpr = window.devicePixelRatio || 1;
+
+      const resize2 = () => {
+        const rect = casesCanvas.getBoundingClientRect();
+        casesCanvas.width = rect.width * dpr;
+        casesCanvas.height = rect.height * dpr;
+        ctx2.scale(dpr, dpr);
+      };
+      resize2();
+
+      const businessAreas = [
+        { label: 'Marketing', color: '#69ff87' },
+        { label: 'Operations', color: '#4dd8ff' },
+        { label: 'Finance', color: '#ffd54f' },
+        { label: 'HR', color: '#ff6b9d' },
+        { label: 'Sales', color: '#b388ff' },
+        { label: 'Legal', color: '#ff8a65' },
+      ];
+
+      const atoms = businessAreas.map((area, i) => ({
+        label: area.label, color: area.color, radius: 100 + (i % 2) * 50,
+        angle: (Math.PI * 2 * i) / businessAreas.length, speed: 0.003 + (i % 3) * 0.001, size: 28 + (i % 2) * 8,
+      }));
+
+      const flowParticles: { fromAtom: number; progress: number; speed: number }[] = [];
+      for (let i = 0; i < 18; i++) {
+        flowParticles.push({ fromAtom: i % businessAreas.length, progress: Math.random(), speed: 0.008 + Math.random() * 0.006 });
+      }
+
+      const ringParticles: { angle: number; radius: number; speed: number }[] = [];
+      for (let i = 0; i < 24; i++) {
+        ringParticles.push({ angle: (Math.PI * 2 * i) / 24, radius: 180 + Math.random() * 30, speed: 0.001 + Math.random() * 0.0005 });
+      }
+
+      let t2 = 0;
+
+      const draw2 = () => {
+        const w = casesCanvas.offsetWidth, h = casesCanvas.offsetHeight;
+        const cx = w / 2, cy = h / 2;
+        ctx2.clearRect(0, 0, w, h);
+        t2++;
+
+        const coreGrad = ctx2.createRadialGradient(cx, cy, 0, cx, cy, 60);
+        coreGrad.addColorStop(0, 'rgba(105,255,135,0.4)'); coreGrad.addColorStop(0.5, 'rgba(105,255,135,0.15)'); coreGrad.addColorStop(1, 'transparent');
+        ctx2.fillStyle = coreGrad; ctx2.beginPath(); ctx2.arc(cx, cy, 60, 0, Math.PI * 2); ctx2.fill();
+
+        const pulse = Math.sin(t2 * 0.04) * 0.3 + 0.7;
+        ctx2.fillStyle = `rgba(105,255,135,${0.6 * pulse})`; ctx2.beginPath(); ctx2.arc(cx, cy, 18 + pulse * 4, 0, Math.PI * 2); ctx2.fill();
+
+        ctx2.strokeStyle = 'rgba(105,255,135,0.15)'; ctx2.lineWidth = 1; ctx2.setLineDash([3, 6]);
+        ctx2.beginPath(); ctx2.arc(cx, cy, 100, 0, Math.PI * 2); ctx2.stroke();
+        ctx2.beginPath(); ctx2.arc(cx, cy, 150, 0, Math.PI * 2); ctx2.stroke();
+        ctx2.setLineDash([]);
+
+        atoms.forEach(atom => {
+          atom.angle += atom.speed;
+          const x = cx + Math.cos(atom.angle) * atom.radius, y = cy + Math.sin(atom.angle) * atom.radius;
+          ctx2.strokeStyle = `${atom.color}22`; ctx2.lineWidth = 1;
+          ctx2.beginPath(); ctx2.moveTo(cx, cy); ctx2.lineTo(x, y); ctx2.stroke();
+        });
+
+        flowParticles.forEach(particle => {
+          particle.progress += particle.speed;
+          if (particle.progress > 1) { particle.progress = 0; particle.fromAtom = Math.floor(Math.random() * businessAreas.length); }
+          const atom = atoms[particle.fromAtom];
+          const atomX = cx + Math.cos(atom.angle) * atom.radius, atomY = cy + Math.sin(atom.angle) * atom.radius;
+          const px = cx + (atomX - cx) * particle.progress, py = cy + (atomY - cy) * particle.progress;
+          ctx2.fillStyle = `${atom.color}88`; ctx2.beginPath(); ctx2.arc(px, py, 2, 0, Math.PI * 2); ctx2.fill();
+        });
+
+        ringParticles.forEach(p => {
+          p.angle += p.speed;
+          const x = cx + Math.cos(p.angle) * p.radius, y = cy + Math.sin(p.angle) * p.radius;
+          ctx2.fillStyle = 'rgba(105,255,135,0.3)'; ctx2.beginPath(); ctx2.arc(x, y, 1.5, 0, Math.PI * 2); ctx2.fill();
+        });
+
+        atoms.forEach(atom => {
+          const x = cx + Math.cos(atom.angle) * atom.radius, y = cy + Math.sin(atom.angle) * atom.radius;
+          const ag = ctx2.createRadialGradient(x, y, 0, x, y, atom.size);
+          ag.addColorStop(0, `${atom.color}66`); ag.addColorStop(0.6, `${atom.color}22`); ag.addColorStop(1, 'transparent');
+          ctx2.fillStyle = ag; ctx2.beginPath(); ctx2.arc(x, y, atom.size, 0, Math.PI * 2); ctx2.fill();
+          ctx2.fillStyle = atom.color; ctx2.beginPath(); ctx2.arc(x, y, 8, 0, Math.PI * 2); ctx2.fill();
+          ctx2.strokeStyle = `${atom.color}88`; ctx2.lineWidth = 1.5; ctx2.beginPath(); ctx2.arc(x, y, 14, 0, Math.PI * 2); ctx2.stroke();
+
+          ctx2.fillStyle = 'rgba(0,14,65,0.85)';
+          const lw = ctx2.measureText(atom.label).width + 16, lh = 20, lx = x - lw / 2, ly = y + 22;
+          ctx2.beginPath(); ctx2.roundRect(lx, ly, lw, lh, 10); ctx2.fill();
+          ctx2.fillStyle = atom.color; ctx2.font = 'bold 10px Inter, system-ui, sans-serif'; ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+          ctx2.fillText(atom.label, x, ly + lh / 2);
+        });
+
+        ctx2.fillStyle = '#69ff87'; ctx2.font = 'bold 20px Inter, system-ui, sans-serif'; ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+        ctx2.fillText('AION', cx, cy - 4);
+        ctx2.fillStyle = 'rgba(255,255,255,0.4)'; ctx2.font = '600 8px Inter, system-ui, sans-serif';
+        ctx2.fillText('METHOD', cx, cy + 12);
+
+        animId2 = requestAnimationFrame(draw2);
+      };
+      draw2();
+
+      window.addEventListener('resize', resize2);
+    }
+  </script>
+</body>
+</html>

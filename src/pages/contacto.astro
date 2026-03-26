@@ -1,0 +1,192 @@
+---
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="description" content="Contacto — AION Growth Studio" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <title>Contacto — AION Growth Studio</title>
+</head>
+<body class="font-sans antialiased bg-background text-on-surface">
+
+  <!-- NAVBAR (same as home) -->
+  <nav class="fixed top-0 w-full z-50 bg-primary">
+    <div class="relative flex justify-between items-center px-8 py-3 max-w-7xl mx-auto">
+      <a href="/es/" class="flex items-center gap-2 h-12 overflow-hidden">
+        <img src="/images/aion-logo-dark.png" alt="AION Growth Studio" class="h-24 w-auto" />
+      </a>
+      <div class="hidden lg:flex items-center gap-8">
+        <a href="/es/#solutions" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Soluciones</a>
+        <a href="/blog" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Blog</a>
+        <a href="/contacto" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Contacto</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/en/" class="hidden md:flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white px-3 py-2 rounded-full bg-white/10 transition-all hover:bg-white/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg>
+          <span class="uppercase tracking-widest">EN</span>
+        </a>
+        <a href="/login" class="hidden md:flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white px-3 py-2 rounded-full bg-white/10 transition-all hover:bg-white/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Iniciar Sesión</span>
+        </a>
+        <a href="/es/diagnostico" class="hidden md:block bg-accent text-primary px-5 py-2.5 rounded-full font-bold text-xs hover:brightness-110 transition-all" style="box-shadow: 0 4px 20px rgba(105,255,135,0.35);">
+          Diagnóstico Gratuito
+        </a>
+        <button id="mobile-menu-btn" class="lg:hidden flex items-center justify-center w-9 h-9 rounded-full text-white bg-white/10 hover:bg-white/20 transition-all" aria-label="Toggle menu">
+          <svg id="menu-icon-open" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <svg id="menu-icon-close" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="lg:hidden hidden border-t border-white/10 px-8 py-6 bg-primary">
+      <div class="flex flex-col gap-4">
+        <a href="/es/#solutions" class="font-sans tracking-tight font-medium text-sm text-white/80">Soluciones</a>
+        <a href="/blog" class="font-sans tracking-tight font-medium text-sm text-white/80">Blog</a>
+        <a href="/contacto" class="font-sans tracking-tight font-medium text-sm text-white/80">Contacto</a>
+        <div class="flex items-center gap-3 mt-2 pt-4 border-t border-white/10">
+          <a href="/en/" class="flex items-center gap-1.5 text-xs font-semibold text-white/80 px-3 py-2 rounded-full bg-white/10">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg>
+            <span class="uppercase">EN</span>
+          </a>
+          <a href="/login" class="flex items-center gap-1.5 text-xs font-semibold text-white/80 px-3 py-2 rounded-full bg-white/10">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Iniciar Sesión</span>
+          </a>
+        </div>
+        <a href="/es/diagnostico" class="bg-accent text-primary px-6 py-3 rounded-full font-bold text-sm hover:brightness-110 transition-all mt-2 w-full text-center">
+          Diagnóstico Gratuito
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="min-h-screen bg-background pt-20">
+    <!-- Header -->
+    <div class="bg-primary relative overflow-hidden py-16">
+      <div class="absolute inset-0 opacity-[0.06]" style="background-image: linear-gradient(rgba(105,255,135,1) 1px, transparent 1px), linear-gradient(90deg, rgba(105,255,135,1) 1px, transparent 1px); background-size: 40px 40px;"></div>
+      <div class="relative max-w-4xl mx-auto px-8">
+        <a href="/es/" class="inline-flex items-center gap-2 text-white/50 hover:text-white text-sm mb-6 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Volver al inicio
+        </a>
+        <h1 class="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight mb-3">Contacto</h1>
+        <p class="text-white/60 text-lg">Cuéntanos tu reto. Te respondemos en menos de 24h.</p>
+      </div>
+    </div>
+
+    <!-- Form area -->
+    <div class="max-w-4xl mx-auto px-8 py-16">
+      <!-- Success state (hidden by default) -->
+      <div id="success-state" class="hidden flex-col items-center justify-center text-center py-20 gap-6">
+        <div class="w-16 h-16 rounded-full bg-accent/15 flex items-center justify-center">
+          <svg class="w-8 h-8" style="color: #69ff87" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+        </div>
+        <h2 class="text-3xl font-black text-primary">¡Mensaje enviado!</h2>
+        <p class="text-on-surface-variant text-lg max-w-md">Hemos recibido tu consulta. Nuestro equipo te contactará en menos de 24 horas.</p>
+        <a href="/es/" class="mt-4 inline-flex items-center gap-2 bg-primary text-white px-8 py-3.5 rounded-full font-bold text-sm hover:opacity-90 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Volver al inicio
+        </a>
+      </div>
+
+      <!-- Form -->
+      <form id="contact-form" class="grid md:grid-cols-2 gap-6">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Nombre *</label>
+          <input type="text" name="name" required placeholder="Tu nombre completo" class="px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Email *</label>
+          <input type="email" name="email" required placeholder="tu@empresa.com" class="px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Empresa *</label>
+          <input type="text" name="company" required placeholder="Nombre de tu empresa" class="px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Cargo</label>
+          <input type="text" name="role" placeholder="CEO, Director de Marketing..." class="px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Teléfono</label>
+          <input type="tel" name="phone" placeholder="+34 600 000 000" class="px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">¿Qué te interesa?</label>
+          <select name="service" class="px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all">
+            <option value="">Selecciona una solución</option>
+            <option>AION Diagnóstico</option>
+            <option>AION Radar</option>
+            <option>AION Signals</option>
+            <option>AION Levers</option>
+            <option>Soluciones a Medida</option>
+            <option>Partner / Marca Blanca</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1.5 md:col-span-2">
+          <label class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Cuéntanos tu reto *</label>
+          <textarea name="message" required rows="5" placeholder="Describe brevemente tu situación actual y qué resultado esperas conseguir..." class="px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-highest text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all resize-none"></textarea>
+        </div>
+        <div class="md:col-span-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
+          <p class="text-xs text-on-surface-variant">* Campos obligatorios. Respondemos en menos de 24h.</p>
+          <button type="submit" class="inline-flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-full font-bold text-sm hover:opacity-90 transition-all" style="box-shadow: 0 4px 24px rgba(0,14,65,0.2);">
+            Enviar mensaje
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="w-full py-12 bg-surface-container-low">
+    <div class="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-6">
+      <div class="flex flex-col items-center md:items-start">
+        <a href="/es/" class="flex items-center"><img src="/images/aion-logo-full.png" alt="AION Growth Studio" class="h-24 w-auto" /></a>
+        <span class="text-xs text-on-surface-variant mt-2">Infraestructura de crecimiento con IA agentiva</span>
+      </div>
+      <div class="flex flex-wrap justify-center gap-6 md:gap-8">
+        <a href="#" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary hover:underline decoration-primary/30 underline-offset-4 transition-colors">Privacidad</a>
+        <a href="#" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary hover:underline decoration-primary/30 underline-offset-4 transition-colors">Términos de Servicio</a>
+        <a href="#" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary hover:underline decoration-primary/30 underline-offset-4 transition-colors">LinkedIn</a>
+        <a href="/contacto" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary hover:underline decoration-primary/30 underline-offset-4 transition-colors">Contacto</a>
+      </div>
+      <div class="text-xs text-on-surface-variant">© 2024 AION Growth Studio. Todos los derechos reservados.</div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const iconOpen = document.getElementById('menu-icon-open');
+    const iconClose = document.getElementById('menu-icon-close');
+    if (menuBtn && mobileMenu && iconOpen && iconClose) {
+      menuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        iconOpen.classList.toggle('hidden');
+        iconClose.classList.toggle('hidden');
+      });
+    }
+
+    // Form submit
+    const form = document.getElementById('contact-form') as HTMLFormElement;
+    const success = document.getElementById('success-state');
+    if (form && success) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        form.classList.add('hidden');
+        success.classList.remove('hidden');
+        success.classList.add('flex');
+      });
+    }
+  </script>
+</body>
+</html>

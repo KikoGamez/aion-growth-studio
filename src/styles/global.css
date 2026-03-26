@@ -10,4 +10,37 @@
   body {
     @apply text-slate-900;
   }
+
+  :root {
+    /* New design system — Material Design 3 tokens */
+    --md-primary: #000e41;
+    --md-primary-container: #001f70;
+    --md-on-primary: #ffffff;
+    --md-on-primary-container: #6888ff;
+
+    --md-secondary: #49607c;
+    --md-secondary-container: #c7dfff;
+    --md-on-secondary: #ffffff;
+    --md-on-secondary-container: #4b637e;
+
+    --md-accent: #69ff87;
+    --md-tertiary: #001905;
+    --md-tertiary-container: #00300e;
+
+    --md-surface: #f7f9ff;
+    --md-surface-container: #e3efff;
+    --md-surface-container-low: #edf4ff;
+    --md-surface-container-lowest: #ffffff;
+    --md-surface-container-high: #d8eaff;
+    --md-surface-container-highest: #cee5ff;
+
+    --md-on-surface: #001d32;
+    --md-on-surface-variant: #43474d;
+    --md-background: #f7f9ff;
+
+    --md-outline: #74777e;
+    --md-outline-variant: #c3c6ce;
+
+    --md-error: #ba1a1a;
+  }
 }

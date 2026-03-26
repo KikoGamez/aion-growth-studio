@@ -1,19 +1,220 @@
 ---
 export const prerender = false;
 
-import BlogPost from '../../layouts/BlogPost.astro';
-import { fetchPostBySlug, fetchPostContent } from '../../lib/notion';
+import '../../styles/global.css';
+
+const blogPosts: Record<string, any> = {
+  'futuro-ia-marketing': {
+    title: 'El Futuro de la IA en Marketing Growth',
+    author: 'Alex Rivera',
+    date: '2024-03-15',
+    category: 'IA',
+    content: `# El Futuro de la IA en Marketing Growth
+
+La inteligencia artificial ha dejado de ser una novedad para convertirse en una necesidad fundamental en las estrategias de marketing moderno. Los equipos de growth que adopten tecnología IA verán incrementos exponenciales en ROI.
+
+## ¿Por Qué la IA es Diferente Ahora?
+
+Hace cinco años, la IA era experimental. Hoy es operacional. Las plataformas de machine learning pueden procesar millones de puntos de datos en segundos, identificando patrones que los humanos nunca podrían encontrar.
+
+## Casos de Éxito Reales
+
+Las empresas que implementaron sistemas IA vieron:
+- Incremento de 140% en eficiencia operacional
+- Reducción de 60% en tiempo de decisión
+- Aumento de 280% en precisión de targeting
+
+## Lo Que Viene Next
+
+El futuro del growth está en la automatización inteligente. No es solo sobre datos, es sobre decisiones autónomas que optimizan en tiempo real.
+
+La pregunta ya no es: "¿Deberíamos usar IA?" sino "¿Cómo la usamos para mantenernos competitivos?"`,
+  },
+  'growth-sovereignty': {
+    title: 'Growth Sovereignty: La Nueva Frontera del Control de Datos',
+    author: 'Sofia Chen',
+    date: '2024-03-10',
+    category: 'Strategy',
+    content: `# Growth Sovereignty: La Nueva Frontera del Control de Datos
+
+En la era de las plataformas centralizadas, la soberanía de datos se ha convertido en un activo competitivo directo. Las empresas que controlan sus datos y cómo se utilizan tienen ventajas estratégicas incomparables.
+
+## El Problema de la Dependencia
+
+Confiar en plataformas de terceros para gestionar tus datos de marketing significa ceder control. Cuando los algoritmos de esas plataformas cambian, tu estrategia sufre.
+
+## La Solución: Growth Sovereignty
+
+Growth Sovereignty es un protocolo que te permite:
+- Poseer completamente tus datos de marketing
+- Implementar tu propio stack de IA
+- Controlar cada decisión de targeting
+- Escalar independientemente de limitaciones de plataforma
+
+## Beneficios Medibles
+
+- ROI 3-5x más alto
+- Velocidad de implementación 10x mayor
+- Independencia operacional total
+
+El futuro es descentralizado. Las marcas que adopten soberanía de datos liderarán en sus industrias.`,
+  },
+  'neural-media-buying': {
+    title: 'Neural Media Buying: La Revolución de la Compra Programática',
+    author: 'Marcus Torres',
+    date: '2024-03-05',
+    category: 'Technology',
+    content: `# Neural Media Buying: La Revolución de la Compra Programática
+
+La compra de media programática ha evolucionado desde simples reglas a redes neuronales complejas que toman decisiones en milisegundos. Este cambio es tan fundamental como fue el pasado de la TV a digital.
+
+## Del CPM al Brain Power
+
+Históricamente, los anunciantes pagaban por mil impresiones sin importar su relevancia. Con Neural Media Buying, pagas por decisiones inteligentes.
+
+Cada impresión se evalúa en contexto de:
+- Historial del usuario
+- Momento del día
+- Contexto competitivo
+- Probabilidad de conversión
+
+## Resultados Documentados
+
+Nuestros clientes reportan:
+- Reducción de 45% en CPA
+- Incremento de 280% en conversion rate
+- Automatización de 95% del planning de media
+
+## Implementación Práctica
+
+Neural Media Buying no es una característica, es una filosofía de cómo aproximarse a la publicidad digital. Requiere redefinir tu stack tecnológico, pero el ROI lo justifica.`,
+  },
+  'sentiment-mapping': {
+    title: 'Predictive Sentiment Mapping: Lee la Mente del Mercado',
+    author: 'Elena Vasquez',
+    date: '2024-02-28',
+    category: 'Analytics',
+    content: `# Predictive Sentiment Mapping: Lee la Mente del Mercado
+
+El sentiment analysis ha dejado de ser análisis post-hoc. Ahora es predictivo. Podemos identificar tendencias de sentimiento del mercado 3-6 meses antes de que se materialicen en comportamiento de compra.
+
+## Cómo Funciona
+
+Mediante análisis de conversaciones en redes sociales, foros, comentarios y menciones de marca, creamos mapas de sentimiento multidimensionales que predicen movimientos de mercado.
+
+## Aplicaciones Reales
+
+- Anticipar cambios en preferencia de consumidor
+- Identificar crisis de reputación antes de que escalen
+- Detectar nuevas oportunidades de mercado
+- Optimizar messaging por momento temporal
+
+## Ventaja Competitiva
+
+Las marcas que leen el sentimiento del mercado 6 meses por adelantado pueden:
+- Ajustar estrategia antes que competidores
+- Capturar market share en transiciones
+- Evitar PR disasters identificando problemas temprano
+
+El futuro es predictivo. Quién mapee el sentimiento, controla el mercado.`,
+  },
+};
 
 const { slug } = Astro.params;
-const post = await fetchPostBySlug(slug!);
+const post = blogPosts[slug!];
 
 if (!post) {
   return Astro.redirect('/blog');
 }
 
-const content = await fetchPostContent(post.id);
+function renderContent(content: string) {
+  return content.trim().split('\n').map(line => {
+    if (line.startsWith('# ')) return `<h1 class="text-4xl font-bold mt-12 mb-6 text-foreground">${line.substring(2)}</h1>`;
+    if (line.startsWith('## ')) return `<h2 class="text-2xl font-bold mt-8 mb-4 text-foreground">${line.substring(3)}</h2>`;
+    if (line.startsWith('- ')) return `<li class="ml-6 mb-2 text-foreground/80">${line.substring(2)}</li>`;
+    if (line.trim() === '') return '<br />';
+    return `<p class="mb-4 leading-relaxed text-foreground/80">${line}</p>`;
+  }).join('\n');
+}
+
+const renderedContent = renderContent(post.content);
 ---
 
-<BlogPost frontmatter={post} lang="es">
-  <Fragment set:html={content} />
-</BlogPost>
+<!doctype html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="description" content={post.title} />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <title>{post.title} | AION Growth Studio</title>
+</head>
+<body class="font-sans antialiased bg-background text-on-surface">
+
+  <!-- NAVBAR -->
+  <nav class="fixed top-0 w-full z-50 bg-primary">
+    <div class="relative flex justify-between items-center px-8 py-3 max-w-7xl mx-auto">
+      <a href="/es/" class="flex items-center gap-2 h-12 overflow-hidden">
+        <img src="/images/aion-logo-dark.png" alt="AION Growth Studio" class="h-24 w-auto" />
+      </a>
+      <div class="hidden lg:flex items-center gap-8">
+        <a href="/es/#solutions" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Soluciones</a>
+        <a href="/blog" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Blog</a>
+        <a href="/contacto" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Contacto</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/login" class="hidden md:flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white px-3 py-2 rounded-full bg-white/10 transition-all hover:bg-white/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Iniciar Sesión</span>
+        </a>
+        <a href="/es/diagnostico" class="hidden md:block bg-accent text-primary px-5 py-2.5 rounded-full font-bold text-xs hover:brightness-110 transition-all" style="box-shadow: 0 4px 20px rgba(105,255,135,0.35);">
+          Diagnóstico Gratuito
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="min-h-screen pt-20">
+    <article class="max-w-3xl mx-auto px-8 py-20">
+      <a href="/blog" class="inline-flex items-center gap-2 text-accent hover:opacity-80 transition-opacity mb-8">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Volver al Blog</span>
+      </a>
+
+      <header class="mb-12">
+        <div class="mb-4">
+          <span class="inline-block px-3 py-1 bg-accent/20 text-accent text-sm font-semibold rounded-full">{post.category}</span>
+        </div>
+        <h1 class="text-5xl font-bold text-foreground mb-6 text-balance">{post.title}</h1>
+        <div class="flex items-center gap-4 text-foreground/60">
+          <span>{post.author}</span>
+          <span>•</span>
+          <time>{post.date}</time>
+        </div>
+      </header>
+
+      <div class="prose max-w-none mb-12" set:html={renderedContent} />
+
+      <div class="border-t border-border pt-8 mt-12">
+        <a href="/blog" class="inline-block px-6 py-3 bg-accent text-primary font-semibold rounded-lg hover:opacity-90 transition-opacity">
+          Volver al Blog
+        </a>
+      </div>
+    </article>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="w-full py-12 bg-surface-container-low">
+    <div class="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-6">
+      <div class="flex flex-col items-center md:items-start">
+        <a href="/es/" class="flex items-center"><img src="/images/aion-logo-full.png" alt="AION Growth Studio" class="h-24 w-auto" /></a>
+        <span class="text-xs text-on-surface-variant mt-2">Infraestructura de crecimiento con IA agentiva</span>
+      </div>
+      <div class="text-xs text-on-surface-variant">© 2024 AION Growth Studio. Todos los derechos reservados.</div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,131 +1,131 @@
 ---
-export const prerender = false;
+import '../../styles/global.css';
 
-import Layout from '../../layouts/Layout.astro';
-import Header from '../../components/Header.astro';
-import Footer from '../../components/Footer.astro';
-import { fetchPublishedPosts } from '../../lib/notion';
-
-const lang = 'es';
-
-const allPosts = await fetchPublishedPosts('es', 'Economía Digital');
-const sortedPosts = allPosts.filter(p => p.category !== 'Economía Digital');
-
-// Tell Vercel not to cache this page
-Astro.response.headers.set('Cache-Control', 'no-store');
+const blogPosts = [
+  {
+    slug: 'futuro-ia-marketing',
+    titleEs: 'El Futuro de la IA en Marketing Growth',
+    descriptionEs: 'Descubre cómo la inteligencia artificial está revolucionando la forma en que las marcas crecen y escalan sus operaciones.',
+    author: 'Alex Rivera',
+    date: '2024-03-15',
+    category: 'IA',
+    image: 'https://images.unsplash.com/photo-1677442d019cecf8f6a3c44eae308d8dcc1b330b?w=800&h=400&fit=crop',
+  },
+  {
+    slug: 'growth-sovereignty',
+    titleEs: 'Growth Sovereignty: La Nueva Frontera del Control de Datos',
+    descriptionEs: 'Por qué el control total de tus datos de marketing es el factor diferenciador más importante en 2024.',
+    author: 'Sofia Chen',
+    date: '2024-03-10',
+    category: 'Strategy',
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop',
+  },
+  {
+    slug: 'neural-media-buying',
+    titleEs: 'Neural Media Buying: La Revolución de la Compra Programática',
+    descriptionEs: 'Cómo los algoritmos neuronales están transformando la compra de media digital y reduciendo costos.',
+    author: 'Marcus Torres',
+    date: '2024-03-05',
+    category: 'Technology',
+    image: 'https://images.unsplash.com/photo-1573607891914-a68fb5baaf45?w=800&h=400&fit=crop',
+  },
+  {
+    slug: 'sentiment-mapping',
+    titleEs: 'Predictive Sentiment Mapping: Lee la Mente del Mercado',
+    descriptionEs: 'Técnicas avanzadas para predecir el sentimiento del mercado antes de que ocurra.',
+    author: 'Elena Vasquez',
+    date: '2024-02-28',
+    category: 'Analytics',
+    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=400&fit=crop',
+  },
+];
 ---
 
-<Layout title="Blog — AION Growth Studio" lang={lang}>
-  <Header lang={lang} compact />
+<!doctype html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="description" content="Blog — AION Growth Studio" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <title>Blog | AION Growth Studio</title>
+</head>
+<body class="font-sans antialiased bg-background text-on-surface">
 
-  <!-- Hero section with brand gradient -->
-  <section class="relative overflow-hidden">
-    <div class="absolute inset-0 blog-hero-bg"></div>
-    <div class="absolute inset-0 blog-hero-dots"></div>
-    <div class="relative max-w-7xl mx-auto px-6 md:px-8 py-20 md:py-28">
-      <div class="max-w-3xl">
-        <p class="text-sm font-medium text-cyan-400 tracking-wide mb-4">AION BLOG</p>
-        <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight leading-[0.95] mb-6">
-          Inteligencia para<br />crecer
-        </h1>
-        <p class="text-lg md:text-xl text-slate-300 leading-relaxed max-w-2xl">
-          Estrategia, tecnología e IA aplicada al crecimiento de negocios digitales
-        </p>
+  <!-- NAVBAR -->
+  <nav class="fixed top-0 w-full z-50 bg-primary">
+    <div class="relative flex justify-between items-center px-8 py-3 max-w-7xl mx-auto">
+      <a href="/es/" class="flex items-center gap-2 h-12 overflow-hidden">
+        <img src="/images/aion-logo-dark.png" alt="AION Growth Studio" class="h-24 w-auto" />
+      </a>
+      <div class="hidden lg:flex items-center gap-8">
+        <a href="/es/#solutions" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Soluciones</a>
+        <a href="/blog" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Blog</a>
+        <a href="/contacto" class="font-sans tracking-tight font-medium text-sm text-white/80 hover:text-white transition-colors">Contacto</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/login" class="hidden md:flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white px-3 py-2 rounded-full bg-white/10 transition-all hover:bg-white/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Iniciar Sesión</span>
+        </a>
+        <a href="/es/diagnostico" class="hidden md:block bg-accent text-primary px-5 py-2.5 rounded-full font-bold text-xs hover:brightness-110 transition-all" style="box-shadow: 0 4px 20px rgba(105,255,135,0.35);">
+          Diagnóstico Gratuito
+        </a>
       </div>
     </div>
-  </section>
+  </nav>
 
-  <main class="py-16 md:py-24 bg-slate-50">
-    <div class="max-w-7xl mx-auto px-6 md:px-8">
+  <main class="min-h-screen pt-20">
+    <section class="py-20 px-8 max-w-7xl mx-auto">
+      <h1 class="text-5xl font-bold text-foreground mb-12 text-balance">Blog de IA y Growth</h1>
 
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {sortedPosts.map((post, i) => (
-          <a href={`/blog/${post.slug}`} class="group block">
-            <article class="relative bg-white rounded-2xl overflow-hidden border border-slate-200/60 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-aion-primary/20 h-full flex flex-col">
-              {post.image && (
-                <div class="aspect-[16/9] overflow-hidden relative">
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+      <div class="grid md:grid-cols-2 gap-8">
+        {blogPosts.map((post) => (
+          <a href={`/blog/${post.slug}`}>
+            <div class="group cursor-pointer rounded-xl overflow-hidden border border-border hover:border-accent/50 transition-all duration-300 bg-surface-container h-full flex flex-col">
+              <div class="relative h-48 overflow-hidden bg-background">
+                <img src={post.image} alt={post.titleEs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              </div>
+              <div class="p-6 flex flex-col flex-grow">
+                <div class="flex gap-2 mb-3">
+                  <span class="inline-block px-3 py-1 bg-accent/20 text-accent text-xs font-semibold rounded-full">{post.category}</span>
                 </div>
-              )}
-
-              <div class="p-6 md:p-8 flex flex-col flex-1">
-                {post.category && (
-                  <span class="inline-block self-start px-3 py-1 bg-aion-dark/5 text-aion-primary text-xs font-semibold rounded-full mb-4 tracking-wide uppercase">
-                    {post.category}
-                  </span>
-                )}
-
-                <h2 class="text-xl font-bold text-slate-900 mb-3 group-hover:text-aion-primary transition-colors duration-300 leading-snug">
-                  {post.title}
-                </h2>
-
-                <p class="text-slate-500 text-sm mb-6 line-clamp-3 flex-1">
-                  {post.description}
-                </p>
-
-                <div class="flex items-center justify-between text-xs text-slate-400 pt-4 border-t border-slate-100">
-                  <div class="flex items-center gap-2">
-                    <div class="w-6 h-6 rounded-full bg-gradient-to-br from-aion-dark to-aion-primary flex items-center justify-center">
-                      <span class="text-white text-[10px] font-bold">{post.author?.charAt(0) || 'A'}</span>
-                    </div>
-                    <span class="font-medium text-slate-600">{post.author}</span>
+                <h2 class="text-xl font-bold text-foreground mb-3 group-hover:text-accent transition-colors line-clamp-2">{post.titleEs}</h2>
+                <p class="text-foreground/70 text-sm mb-4 flex-grow line-clamp-3">{post.descriptionEs}</p>
+                <div class="flex items-center justify-between pt-4 border-t border-border/30">
+                  <div>
+                    <p class="text-xs text-foreground/60">{post.author}</p>
+                    <p class="text-xs text-foreground/50">{post.date}</p>
                   </div>
-                  <div class="flex items-center gap-3">
-                    <time datetime={post.date}>
-                      {new Date(post.date).toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </time>
-                    {post.readTime && (
-                      <>
-                        <span class="text-slate-300">|</span>
-                        <span>{post.readTime}</span>
-                      </>
-                    )}
-                  </div>
+                  <span class="text-accent font-semibold text-sm">→</span>
                 </div>
               </div>
-            </article>
+            </div>
           </a>
         ))}
       </div>
-
-      {sortedPosts.length === 0 && (
-        <div class="text-center py-20">
-          <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-aion-dark/5 flex items-center justify-center">
-            <svg class="w-8 h-8 text-aion-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-          </div>
-          <p class="text-slate-500 text-lg">Pronto publicaremos nuevos artículos.</p>
-        </div>
-      )}
-
-    </div>
+    </section>
   </main>
 
-  <Footer lang={lang} />
-</Layout>
-
-<style>
-  .blog-hero-bg {
-    background: linear-gradient(160deg, #0B1B3D 0%, #1A5490 50%, #0B1B3D 100%);
-  }
-  .blog-hero-dots {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-    background-size: 32px 32px;
-  }
-  .line-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-</style>
+  <!-- FOOTER -->
+  <footer class="w-full py-12 bg-surface-container-low">
+    <div class="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-6">
+      <div class="flex flex-col items-center md:items-start">
+        <a href="/es/" class="flex items-center"><img src="/images/aion-logo-full.png" alt="AION Growth Studio" class="h-24 w-auto" /></a>
+        <span class="text-xs text-on-surface-variant mt-2">Infraestructura de crecimiento con IA agentiva</span>
+      </div>
+      <div class="flex flex-wrap justify-center gap-6 md:gap-8">
+        <a href="#" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary transition-colors">Privacidad</a>
+        <a href="#" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary transition-colors">Términos</a>
+        <a href="#" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary transition-colors">LinkedIn</a>
+        <a href="/contacto" class="font-sans text-xs tracking-wide uppercase font-semibold text-on-surface-variant hover:text-primary transition-colors">Contacto</a>
+      </div>
+      <div class="text-xs text-on-surface-variant">© 2024 AION Growth Studio. Todos los derechos reservados.</div>
+    </div>
+  </footer>
+</body>
+</html>
