@@ -590,6 +590,79 @@ const demandNarrative = capturePct === null ? '' :
   capturePct >= 70 ? 'Buen posicionamiento en el core del sector.' :
   capturePct >= 40 ? 'Buen posicionamiento en parte del core, pero con gap relevante en categorías de alta intención.' + (uncapturedPct && uncapturedPct > 20 ? ' Hay un ' + uncapturedPct + '% de demanda que no estáis capturando.' : '') :
   'La mayoría de las búsquedas estratégicas del sector las captan los competidores.' + (uncapturedPct && uncapturedPct > 20 ? ' El ' + uncapturedPct + '% de la demanda relevante es la oportunidad de crecimiento más directa.' : '');
+
+// ── Traffic donut chart ──────────────────────────────────────────
+const channelConfig: Record<string, { label: string; color: string }> = {
+  organic: { label: 'Orgánico', color: '#1D9E75' },
+  direct: { label: 'Directo', color: '#1A4B8C' },
+  social: { label: 'Social', color: '#7F77DD' },
+  paid: { label: 'Paid', color: '#D85A30' },
+  referral: { label: 'Referral', color: '#888780' },
+  email: { label: 'Email', color: '#BA7517' },
+};
+
+const trafficChannels = Object.entries(_trafficCh)
+  .map(([key, val]: [string, any]) => ({
+    key,
+    label: channelConfig[key]?.label || key,
+    color: channelConfig[key]?.color || '#9CA3AF',
+    visits: val?.visits || 0,
+    share: val?.share || 0,
+  }))
+  .filter(c => c.share > 0)
+  .sort((a, b) => b.share - a.share);
+
+const hasTrafficData = _totalTraf > 0 && trafficChannels.length > 0;
+const topChannel = trafficChannels[0];
+
+function buildDonutSVG(): string {
+  if (!hasTrafficData) return '';
+  const size = 200;
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = 85;
+  const innerR = 55;
+  const segments: string[] = [];
+  let cumulative = 0;
+
+  for (const ch of trafficChannels) {
+    const startAngle = (cumulative / 100) * 360 - 90;
+    const endAngle = ((cumulative + ch.share) / 100) * 360 - 90;
+    const largeArc = ch.share > 50 ? 1 : 0;
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+    const x1o = cx + outerR * Math.cos(toRad(startAngle));
+    const y1o = cy + outerR * Math.sin(toRad(startAngle));
+    const x2o = cx + outerR * Math.cos(toRad(endAngle));
+    const y2o = cy + outerR * Math.sin(toRad(endAngle));
+    const x2i = cx + innerR * Math.cos(toRad(endAngle));
+    const y2i = cy + innerR * Math.sin(toRad(endAngle));
+    const x1i = cx + innerR * Math.cos(toRad(startAngle));
+    const y1i = cy + innerR * Math.sin(toRad(startAngle));
+
+    if (ch.share >= 100) {
+      // Full circle
+      segments.push(`<circle cx="${cx}" cy="${cy}" r="${outerR}" fill="${ch.color}"/>`);
+      segments.push(`<circle cx="${cx}" cy="${cy}" r="${innerR}" fill="#fff"/>`);
+    } else if (ch.share > 0.5) {
+      segments.push(
+        `<path d="M${x1o},${y1o} A${outerR},${outerR} 0 ${largeArc} 1 ${x2o},${y2o} L${x2i},${y2i} A${innerR},${innerR} 0 ${largeArc} 0 ${x1i},${y1i} Z" fill="${ch.color}"/>`
+      );
+    }
+    cumulative += ch.share;
+  }
+
+  // Center text: top channel %
+  const centerText = topChannel ? `${topChannel.share}%` : '';
+  const centerLabel = topChannel ? topChannel.label : '';
+
+  return `<svg viewBox="0 0 ${size} ${size}" style="width:200px;height:200px;">
+    ${segments.join('\n    ')}
+    <text x="${cx}" y="${cy - 6}" text-anchor="middle" style="font-size:28px;font-weight:800;fill:#1A1A2E;font-family:Inter,sans-serif;">${centerText}</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" style="font-size:11px;fill:#5A6478;font-family:Inter,sans-serif;">${centerLabel}</text>
+  </svg>`;
+}
+const donutSVG = buildDonutSVG();
 ---
 <!DOCTYPE html>
 <html lang="es">
@@ -2012,6 +2085,33 @@ const demandNarrative = capturePct === null ? '' :
               </div>
             </div>
           </div>
+
+          <!-- Traffic Distribution Donut -->
+          {hasTrafficData && (
+            <div style="margin-bottom:20px;">
+              <hr class="section-divider" />
+              <div style="font-size:0.78rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Distribución del tráfico por canal</div>
+              <div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
+                <div set:html={donutSVG} />
+                <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px;">
+                  {trafficChannels.map((ch) => (
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <span style={`width:12px;height:12px;border-radius:3px;background:${ch.color};flex-shrink:0;`}></span>
+                      <span style="font-size:0.78rem;font-weight:600;color:#1A1A2E;min-width:70px;">{ch.label}</span>
+                      <span style="font-size:0.82rem;font-weight:700;color:#1A1A2E;">{ch.share}%</span>
+                      <span style="font-size:0.7rem;color:#9CA3AF;">{fmt(ch.visits)} vis/año</span>
+                    </div>
+                  ))}
+                  <div style="font-size:0.7rem;color:#9CA3AF;margin-top:4px;">
+                    Total estimado: {fmt(_totalTraf)} visitas/año
+                  </div>
+                </div>
+              </div>
+              <p style="font-size:0.75rem;color:#5A6478;line-height:1.5;margin-top:12px;">
+                {diagnosisTrafficMix(r.traffic)}
+              </p>
+            </div>
+          )}
 
           <!-- Tech Stack -->
           <div style="margin-bottom:20px;">
