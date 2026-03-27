@@ -364,7 +364,7 @@ export async function runSEO(url: string): Promise<SEOResult> {
         const siteData = await siteSearchRes.json();
         const siteTask = siteData?.tasks?.[0];
         if (siteTask?.status_code === 20000) {
-          const totalResults = siteTask.result?.[0]?.items_count ?? siteTask.result?.[0]?.se_results_count ?? null;
+          const totalResults = siteTask.result?.[0]?.se_results_count ?? null;
           if (totalResults != null) {
             baseResult.indexedPages = totalResults;
             _logParts.push(`indexed:${totalResults}`);
