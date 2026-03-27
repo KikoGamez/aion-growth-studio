@@ -390,24 +390,33 @@ const gapCount = kwGapItems.filter((k: any) => !k.clientPosition || k.clientPosi
 const noiseCount = topKeywords.filter((k: any) => k.position > 10 && k.volume < 50).length;
 
 // Demand capture metrics (executive view)
-const totalRelevantKw = matchCount + gapCount || 1;
-const capturePct = Math.round((matchCount / totalRelevantKw) * 100);
-const gapPct = Math.round((gapCount / totalRelevantKw) * 100);
-const totalOrgKw = seo?.keywordsTop10 ?? matchCount;
-const noiseActual = noiseCount || Math.max(0, totalOrgKw - matchCount);
-const noisePct = totalOrgKw > 0 ? Math.round((noiseActual / totalOrgKw) * 100) : 0;
+// Only show this section when we have real keyword gap data (competitors analyzed)
+const hasKwGapData = kwGapItems.length > 0 || gapCount > 0;
+const totalStrategicKw = hasKwGapData ? (matchCount + gapCount || 1) : 0;
+const capturePct = hasKwGapData ? Math.round((matchCount / totalStrategicKw) * 100) : null;
+const uncapturedPct = hasKwGapData ? Math.round((gapCount / totalStrategicKw) * 100) : null;
 
-const noiseNote25 = noisePct > 25 ? ' y cierto nivel de ineficiencia en tráfico captado' : '';
-const noiseNote30 = noisePct > 30 ? ' Además, una parte significativa del tráfico actual viene de términos de bajo valor.' : '';
-const demandNarrative = capturePct >= 70 && noisePct < 20
-  ? 'Buen posicionamiento en el core del sector con alta eficiencia. El foco ahora debe ser defender estas posiciones y expandir a keywords de cola larga.'
-  : capturePct >= 50
-  ? 'Buen posicionamiento en parte del core, pero con gap relevante en categorías de alta intención' + noiseNote25 + '. Hay margen claro de crecimiento orgánico.'
-  : capturePct >= 20
-  ? 'Captáis una parte de la demanda del sector, pero la mayoría de las búsquedas de alta intención se las llevan los competidores.' + noiseNote30 + ' Priorizar keywords de intención comercial es la palanca de mayor retorno.'
-  : 'La presencia en búsquedas estratégicas del sector es muy baja. Los competidores captan la gran mayoría de la demanda relevante. Una estrategia de contenido focalizada en keywords de alta intención puede cambiar esta situación en 4-6 meses.';
-const captureColor = capturePct >= 50 ? '#1D9E75' : capturePct >= 20 ? '#BA7517' : '#E24B4A';
-const noiseBarW = Math.min(noisePct, 100 - capturePct - gapPct);
+// Low-value traffic: keywords with very low ETV relative to total
+const topKwEtv = (seo?.topKeywords || []).reduce((s: number, k: any) => s + (k.etv || 0), 0);
+const totalEtvForNoise = seo?.organicTrafficEstimate || 1;
+const lowValueKw = (seo?.topKeywords || []).filter((k: any) => (k.etv || 0) < 5);
+const lowValuePct = (seo?.topKeywords?.length ?? 0) > 3
+  ? Math.round((lowValueKw.length / seo.topKeywords.length) * 100)
+  : null;
+
+// Narrative
+function buildDemandNarrative2(): string {
+  if (capturePct === null) return '';
+  const parts: string[] = [];
+  if (capturePct >= 70) parts.push('Buen posicionamiento en el core del sector.');
+  else if (capturePct >= 40) parts.push('Buen posicionamiento en parte del core, pero con gap relevante en categorías de alta intención.');
+  else parts.push('La mayoría de las búsquedas estratégicas del sector las captan los competidores.');
+  if (uncapturedPct && uncapturedPct > 20) parts.push(`Hay un ${uncapturedPct}% de demanda relevante que no estáis capturando — es la oportunidad de crecimiento más directa.`);
+  if (lowValuePct && lowValuePct > 30) parts.push('Una parte del tráfico actual proviene de términos de bajo valor, lo que indica oportunidad de focalizar mejor la estrategia de contenido.');
+  return parts.join(' ');
+}
+const demandNarrative = buildDemandNarrative2();
+const captureColor = (capturePct ?? 0) >= 50 ? '#1D9E75' : (capturePct ?? 0) >= 20 ? '#BA7517' : '#E24B4A';
 
 // Schema businessType label
 const btLabelForSchema = businessType !== 'unknown' ? (btLabels[businessType] || businessType) : null;
@@ -1147,49 +1156,39 @@ const heroStatus = statusStyle(ss(health.total));
                   </table>
                 </div>
               )}
-              {/* Demand capture executive box */}
-              {(matchCount > 0 || gapCount > 0) && (
+              {/* Demand capture executive box — only when we have real competitive data */}
+              {capturePct !== null && (
                 <div style="margin-top:16px;background:#F8F9FB;border-radius:12px;padding:20px;">
-                  <div style="font-size:0.78rem;font-weight:700;color:#1A1A2E;margin-bottom:14px;">Captura de demanda orgánica</div>
+                  <div style="font-size:0.78rem;font-weight:700;color:#1A1A2E;margin-bottom:16px;">Captura de demanda orgánica</div>
 
-                  <!-- 3 metrics row -->
-                  <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:140px;">
-                      <div style="display:flex;align-items:baseline;gap:6px;">
-                        <span style={`font-size:1.5rem;font-weight:800;color:${captureColor};`}>{capturePct}%</span>
-                        <span style="font-size:0.7rem;color:#5A6478;">de cobertura</span>
-                      </div>
-                      <div style="font-size:0.72rem;color:#5A6478;margin-top:2px;">Keywords estratégicas donde posicionáis en top 10</div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:20px;margin-bottom:16px;">
+                    <div>
+                      <div style={`font-size:2rem;font-weight:800;color:${captureColor};line-height:1;`}>{capturePct}%</div>
+                      <div style="font-size:0.72rem;font-weight:600;color:#5A6478;margin-top:4px;">Cobertura estratégica</div>
+                      <div style="font-size:0.68rem;color:#9CA3AF;margin-top:2px;">Keywords estratégicas donde posicionáis en Top 10</div>
                     </div>
-                    {gapPct > 0 && (
-                      <div style="flex:1;min-width:140px;">
-                        <div style="display:flex;align-items:baseline;gap:6px;">
-                          <span style="font-size:1.5rem;font-weight:800;color:#E24B4A;">{gapPct}%</span>
-                          <span style="font-size:0.7rem;color:#5A6478;">oportunidad perdida</span>
-                        </div>
-                        <div style="font-size:0.72rem;color:#5A6478;margin-top:2px;">Demanda relevante donde no estáis en top 10</div>
+                    {uncapturedPct !== null && uncapturedPct > 0 && (
+                      <div>
+                        <div style="font-size:2rem;font-weight:800;color:#E24B4A;line-height:1;">{uncapturedPct}%</div>
+                        <div style="font-size:0.72rem;font-weight:600;color:#5A6478;margin-top:4px;">Demanda no capturada</div>
+                        <div style="font-size:0.68rem;color:#9CA3AF;margin-top:2px;">Búsquedas relevantes donde no aparecéis en Top 10</div>
                       </div>
                     )}
-                    {noisePct > 5 && (
-                      <div style="flex:1;min-width:140px;">
-                        <div style="display:flex;align-items:baseline;gap:6px;">
-                          <span style="font-size:1.5rem;font-weight:800;color:#BA7517;">{noisePct}%</span>
-                          <span style="font-size:0.7rem;color:#5A6478;">ineficiencia</span>
-                        </div>
-                        <div style="font-size:0.72rem;color:#5A6478;margin-top:2px;">Tráfico de búsquedas de bajo valor o baja intención</div>
+                    {lowValuePct !== null && lowValuePct > 10 && (
+                      <div>
+                        <div style="font-size:2rem;font-weight:800;color:#BA7517;line-height:1;">{lowValuePct}%</div>
+                        <div style="font-size:0.72rem;font-weight:600;color:#5A6478;margin-top:4px;">Tráfico de bajo valor</div>
+                        <div style="font-size:0.68rem;color:#9CA3AF;margin-top:2px;">Porcentaje del tráfico SEO de términos de baja intención</div>
                       </div>
                     )}
                   </div>
 
-                  <!-- Stacked bar -->
-                  <div style="height:10px;background:#E5E7EB;border-radius:6px;overflow:hidden;display:flex;margin-bottom:12px;">
-                    <div style={`width:${capturePct}%;background:#1D9E75;`}></div>
-                    {gapPct > 0 && <div style={`width:${gapPct}%;background:#E24B4A;`}></div>}
-                    {noisePct > 5 && <div style={`width:${noiseBarW}%;background:#BA7517;`}></div>}
-                  </div>
-
-                  <!-- Narrative -->
-                  <p style="font-size:0.78rem;color:#5A6478;line-height:1.55;margin:0;">{demandNarrative}</p>
+                  {demandNarrative && (
+                    <div style="border-top:1px solid #E5E7EB;padding-top:12px;">
+                      <div style="font-size:0.68rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Lectura ejecutiva</div>
+                      <p style="font-size:0.78rem;color:#5A6478;line-height:1.55;margin:0;">{demandNarrative}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
