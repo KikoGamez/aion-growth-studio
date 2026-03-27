@@ -566,6 +566,57 @@ export async function runGEO(
       return { ...cm, byCategory: byCategory as any };
     });
 
+    // Generate executive narrative with LLM
+    let executiveNarrative = '';
+    if (ANTHROPIC_KEY) {
+      try {
+        const compSummary = enrichedCompetitorMentions.length > 0
+          ? enrichedCompetitorMentions.map(c => `${c.name}: ${c.mentionRate}% global`).join(', ')
+          : 'Sin datos de competidores en IA';
+        const catSummary = categories.map(cat => {
+          const d = categoryBreakdown[cat];
+          return d ? `${cat}: ${d.mentioned}/${d.total}` : '';
+        }).filter(Boolean).join(', ');
+
+        const narrativePrompt = `Eres un consultor senior de growth marketing. Analiza estos datos de visibilidad en IA y redacta 2-3 frases ejecutivas para un CEO/CMO. No uses jerga técnica.
+
+DATOS:
+- Marca analizada: ${brandName} (${domain})
+- Sector: ${sector}
+- Tasa de mención global: ${mentionRate}% (rango confianza 95%: ${mentionRangeLow}-${mentionRangeHigh}%)
+- Consultas analizadas: ${total} en ${engines.length} motores de IA (${engines.map(e => e.name).join(', ')})
+- Desglose por categoría: ${catSummary}
+- Competidores en IA: ${compSummary}
+- Score ponderado: ${overallScore}/100 (las consultas de decisión de compra pesan más)
+
+REGLAS:
+- Máximo 3 frases. Directo al grano.
+- Primera frase: situación actual (dato clave + qué significa para el negocio)
+- Segunda frase: comparativa con competidores (quién gana y por qué importa)
+- Tercera frase: oportunidad o riesgo principal
+- Si mentionRate es 0%: no digas "invisible" sin más, explica qué implica
+- Si mentionRate > 50%: destaca la ventaja pero señala dónde mejorar
+- NUNCA uses "TOFU", "MOFU", "BOFU". Di "consultas de descubrimiento", "consultas de comparación", "consultas de compra"
+- Cita datos concretos (porcentajes, nombres de competidores)
+
+Responde SOLO con el texto narrativo, sin JSON, sin comillas.`;
+
+        const narrativeRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 300,
+            messages: [{ role: 'user', content: narrativePrompt }],
+          }),
+        });
+        if (narrativeRes.ok) {
+          const narrativeData = await narrativeRes.json() as any;
+          executiveNarrative = (narrativeData?.content?.[0]?.text || '').trim();
+        }
+      } catch { /* non-fatal — fall back to empty narrative */ }
+    }
+
     const engineLog = crossModel.map((e) => `${e.name}:${e.mentioned}/${e.total}`).join(' ');
     return {
       queries,
@@ -579,6 +630,7 @@ export async function runGEO(
       categoryBreakdown: categoryBreakdown as any,
       crossModel,
       competitorMentions: enrichedCompetitorMentions.length > 0 ? enrichedCompetitorMentions : undefined,
+      executiveNarrative: executiveNarrative || undefined,
       _log: `ok | q:${total} | mentions:${mentionCount}/${total} (${mentionRangeLow}-${mentionRangeHigh}%) | ${engineLog}`,
     };
   } catch (err: any) {

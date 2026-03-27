@@ -1220,7 +1220,7 @@ const heroStatus = statusStyle(ss(health.total));
             })()}
           </div>
           {geo && (
-            <div style="font-size:0.75rem;color:#5A6478;font-style:italic;border-left:3px solid #7c3aed;padding-left:10px;line-height:1.5;margin-bottom:16px;">{diagnosisGEO(geo)}</div>
+            <div style="font-size:0.75rem;color:#5A6478;font-style:italic;border-left:3px solid #7c3aed;padding-left:10px;line-height:1.5;margin-bottom:16px;">{(geo as any)?.executiveNarrative || diagnosisGEO(geo)}</div>
           )}
 
           <!-- TOFU/MOFU/BOFU explanation -->

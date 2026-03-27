@@ -224,6 +224,7 @@ export interface GeoResult extends ModuleResult {
   categoryBreakdown?: { [key: string]: { mentioned: number; total: number } };
   crossModel?: Array<{ name: string; mentioned: number; total: number }>;
   competitorMentions?: GeoCompetitorMention[];
+  executiveNarrative?: string;
 }
 
 export interface InstagramPost {
