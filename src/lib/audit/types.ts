@@ -423,6 +423,15 @@ export interface SEOResult extends ModuleResult {
   organicHistory?: Array<{ month: string; etv: number; keywords: number }>;
   organicTrend?: 'up' | 'down' | 'stable';
   organicTrendPct?: number; // % change last 6 months vs previous 6
+  // Brand vs non-brand split
+  brandTrafficEtv?: number;
+  nonBrandTrafficEtv?: number;
+  brandTrafficPct?: number;  // 0-100
+  brandKeywords?: number;
+  // Indexation
+  indexedPages?: number;     // from site: search
+  sitemapPages?: number;     // from sitemap.xml count
+  indexationRatio?: number;  // 0-100
 }
 
 // ── New: SEO top pages ─────────────────────────────────────────────

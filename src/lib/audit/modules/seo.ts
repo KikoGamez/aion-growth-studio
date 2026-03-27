@@ -295,6 +295,98 @@ export async function runSEO(url: string): Promise<SEOResult> {
       }
     } catch { _logParts.push('hist:except'); }
 
+    // ── Brand vs Non-Brand traffic + Indexed pages (parallel) ─────
+    const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '').replace(/[-_.]/g, '').toLowerCase();
+    const brandTerms = [domainBase];
+    // Also add common variations (e.g. "comillas inmobiliaria" for "comillasinmobiliaria")
+    if (domainBase.length > 6) brandTerms.push(domainBase.slice(0, Math.ceil(domainBase.length * 0.6)));
+
+    try {
+      const [brandRes, siteSearchRes, sitemapRes] = await Promise.all([
+        // Brand keywords: filter ranked_keywords by brand name
+        fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+          body: JSON.stringify([{
+            target: domain,
+            location_code: 2724,
+            language_code: 'es',
+            limit: 100,
+            filters: ['keyword_data.keyword', 'like', `%${domainBase}%`],
+          }]),
+        }),
+        // Indexed pages: site: search via SERP
+        fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+          body: JSON.stringify([{
+            keyword: `site:${domain}`,
+            location_code: 2724,
+            language_code: 'es',
+            depth: 1,
+          }]),
+        }),
+        // Sitemap URL count
+        fetch(new URL('/sitemap.xml', `https://${domain}`).href, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
+        }).catch(() => null),
+      ]);
+
+      // Brand traffic
+      if (brandRes.ok) {
+        const brandData = await brandRes.json();
+        const brandTask = brandData?.tasks?.[0];
+        if (brandTask?.status_code === 20000) {
+          const brandItems: any[] = brandTask.result?.[0]?.items || [];
+          let brandEtv = 0;
+          let brandKwCount = 0;
+          brandItems.forEach((it: any) => {
+            const kw = (it.keyword_data?.keyword || '').toLowerCase();
+            if (brandTerms.some(t => kw.includes(t))) {
+              brandEtv += it.ranked_serp_element?.serp_item?.etv ?? 0;
+              brandKwCount++;
+            }
+          });
+          const totalEtv = baseResult.organicTrafficEstimate || 0;
+          baseResult.brandTrafficEtv = Math.round(brandEtv);
+          baseResult.nonBrandTrafficEtv = Math.max(0, totalEtv - Math.round(brandEtv));
+          baseResult.brandTrafficPct = totalEtv > 0 ? Math.round((brandEtv / totalEtv) * 100) : 0;
+          baseResult.brandKeywords = brandKwCount;
+          _logParts.push(`brand:${baseResult.brandTrafficPct}%(${brandKwCount}kw)`);
+        }
+      }
+
+      // Indexed pages from site: search
+      if (siteSearchRes.ok) {
+        const siteData = await siteSearchRes.json();
+        const siteTask = siteData?.tasks?.[0];
+        if (siteTask?.status_code === 20000) {
+          const totalResults = siteTask.result?.[0]?.items_count ?? siteTask.result?.[0]?.se_results_count ?? null;
+          if (totalResults != null) {
+            baseResult.indexedPages = totalResults;
+            _logParts.push(`indexed:${totalResults}`);
+          }
+        }
+      }
+
+      // Sitemap URL count
+      if (sitemapRes && sitemapRes.ok) {
+        const sitemapText = await sitemapRes.text();
+        // Count <url> or <loc> tags
+        const locCount = (sitemapText.match(/<loc>/gi) || []).length;
+        if (locCount > 0) {
+          baseResult.sitemapPages = locCount;
+          if (baseResult.indexedPages != null) {
+            baseResult.indexationRatio = Math.min(100, Math.round((baseResult.indexedPages / locCount) * 100));
+          }
+          _logParts.push(`sitemap:${locCount} ratio:${baseResult.indexationRatio ?? '?'}%`);
+        }
+      }
+    } catch { _logParts.push('brand/index:except'); }
+
     baseResult._log = _logParts.join(' ');
 
     return baseResult;

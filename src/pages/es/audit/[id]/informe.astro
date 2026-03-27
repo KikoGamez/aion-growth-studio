@@ -427,6 +427,45 @@ function buildTrendNarrative(trend: string, pct: number, history: typeof organic
 }
 const trendNarrative = buildTrendNarrative(organicTrend, organicTrendPct, organicHistory);
 
+// ── Brand vs Non-Brand + Indexation ─────────────────────────────
+const brandPct = seo?.brandTrafficPct ?? null;
+const nonBrandPct = brandPct != null ? 100 - brandPct : null;
+const brandEtv = seo?.brandTrafficEtv ?? 0;
+const nonBrandEtv = seo?.nonBrandTrafficEtv ?? 0;
+const indexedPages = seo?.indexedPages ?? null;
+const sitemapPages = seo?.sitemapPages ?? null;
+const indexationRatio = seo?.indexationRatio ?? null;
+
+function buildBrandNarrative(): string {
+  if (brandPct === null) return '';
+  if (brandPct > 70) {
+    return `El ${brandPct}% de vuestro tráfico orgánico viene de personas que ya os conocen (buscan vuestro nombre). Solo el ${nonBrandPct}% viene de clientes potenciales nuevos buscando soluciones. Esto significa que no estáis captando demanda nueva — vuestra web funciona como tarjeta de visita, no como motor de captación.`;
+  }
+  if (brandPct > 40) {
+    return `El ${brandPct}% de vuestro tráfico es de marca (gente que ya os conoce) y el ${nonBrandPct}% es captación nueva. Un mix equilibrado, aunque hay margen para captar más demanda genérica con contenido optimizado para búsquedas de sector.`;
+  }
+  if (brandPct > 0) {
+    return `Solo el ${brandPct}% de vuestro tráfico es de marca — el ${nonBrandPct}% viene de búsquedas genéricas. Esto es positivo: vuestra web está captando clientes que no os conocían. El reto es que el reconocimiento de marca es bajo.`;
+  }
+  return 'Todo vuestro tráfico orgánico proviene de búsquedas genéricas, sin componente de marca. Hay oportunidad de construir reconocimiento de marca digital.';
+}
+const brandNarrative = buildBrandNarrative();
+
+function buildIndexNarrative(): string {
+  if (indexedPages === null) return '';
+  if (sitemapPages && indexationRatio !== null) {
+    if (indexationRatio >= 90) {
+      return `Google tiene indexadas ${fmt(indexedPages)} de las ${fmt(sitemapPages)} páginas de vuestro sitemap (${indexationRatio}%). Excelente cobertura — prácticamente todo vuestro contenido está visible en Google.`;
+    }
+    if (indexationRatio >= 60) {
+      return `Google indexa ${fmt(indexedPages)} de ${fmt(sitemapPages)} páginas (${indexationRatio}%). Hay un ${100 - indexationRatio}% de contenido que habéis creado pero que Google no muestra. Resolver problemas de rastreo o calidad de estas páginas podría aumentar vuestra visibilidad sin crear contenido nuevo.`;
+    }
+    return `Solo ${fmt(indexedPages)} de ${fmt(sitemapPages)} páginas están indexadas (${indexationRatio}%). Más de la mitad de vuestro contenido es invisible para Google. Esto suele indicar problemas técnicos de rastreo, contenido duplicado o páginas de baja calidad que Google decide no indexar.`;
+  }
+  return `Google tiene indexadas ${fmt(indexedPages)} páginas de vuestro dominio.`;
+}
+const indexNarrative = buildIndexNarrative();
+
 // Health summary text — prefer AI-generated summary from insights, fallback to rule-based
 const healthSummaryText = (insights as any)?.summary || diagnosisHealthSummary(health);
 
@@ -819,6 +858,54 @@ const heroStatus = statusStyle(ss(health.total));
               <div set:html={trendSVG} />
               {trendNarrative && (
                 <p style="font-size:0.8rem;color:#5A6478;line-height:1.55;margin-top:12px;">{trendNarrative}</p>
+              )}
+            </div>
+          )}
+
+          <!-- Brand vs Non-Brand + Indexation -->
+          {(brandPct !== null || indexedPages !== null) && (
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+              {brandPct !== null && (
+                <div style="background:#F8F9FB;border-radius:12px;padding:16px 20px;">
+                  <div style="font-size:0.72rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Tráfico de marca vs captación nueva</div>
+                  <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+                    <div style="flex:1;">
+                      <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#5A6478;margin-bottom:4px;">
+                        <span>Marca ({brandPct}%)</span>
+                        <span>No marca ({nonBrandPct}%)</span>
+                      </div>
+                      <div style="height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;display:flex;">
+                        <div style={`width:${brandPct}%;background:#4A7FD4;`}></div>
+                        <div style={`width:${nonBrandPct}%;background:#1D9E75;`}></div>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#9CA3AF;margin-top:3px;">
+                        <span>~{fmt(brandEtv)} vis/mes</span>
+                        <span>~{fmt(nonBrandEtv)} vis/mes</span>
+                      </div>
+                    </div>
+                  </div>
+                  {brandNarrative && <p style="font-size:0.75rem;color:#5A6478;line-height:1.5;">{brandNarrative}</p>}
+                </div>
+              )}
+              {indexedPages !== null && (
+                <div style="background:#F8F9FB;border-radius:12px;padding:16px 20px;">
+                  <div style="font-size:0.72rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Páginas indexadas en Google</div>
+                  <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
+                    <span style="font-size:1.5rem;font-weight:800;color:#1A1A2E;">{fmt(indexedPages)}</span>
+                    {sitemapPages && (
+                      <span style="font-size:0.82rem;color:#5A6478;">de {fmt(sitemapPages)} en sitemap</span>
+                    )}
+                  </div>
+                  {indexationRatio !== null && (
+                    <div style="margin-bottom:8px;">
+                      <div style="height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;">
+                        <div style={`width:${Math.min(indexationRatio, 100)}%;background:${indexationRatio >= 80 ? '#1D9E75' : indexationRatio >= 50 ? '#BA7517' : '#E24B4A'};border-radius:4px;`}></div>
+                      </div>
+                      <div style="font-size:0.68rem;color:#9CA3AF;margin-top:3px;">Ratio de indexación: {indexationRatio}%</div>
+                    </div>
+                  )}
+                  {indexNarrative && <p style="font-size:0.75rem;color:#5A6478;line-height:1.5;">{indexNarrative}</p>}
+                </div>
               )}
             </div>
           )}
