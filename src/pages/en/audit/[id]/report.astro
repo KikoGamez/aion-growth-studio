@@ -457,6 +457,16 @@ const indexNarrative = buildIndexNarrative();
 const indexBarColor = indexationRatio !== null ? (indexationRatio >= 80 ? '#1D9E75' : indexationRatio >= 50 ? '#BA7517' : '#E24B4A') : '#9CA3AF';
 const indexBarWidth = indexationRatio !== null ? Math.min(indexationRatio, 100) : 0;
 
+function ctrByPos(pos: number) {
+  if (pos === 1) return { pct: 28, label: 'Excellent', color: '#1D9E75' };
+  if (pos === 2) return { pct: 15, label: 'Good', color: '#1D9E75' };
+  if (pos === 3) return { pct: 11, label: 'Good', color: '#1D9E75' };
+  if (pos <= 5) return { pct: 5, label: 'Acceptable', color: '#BA7517' };
+  if (pos <= 7) return { pct: 3, label: 'Low', color: '#BA7517' };
+  if (pos <= 10) return { pct: 2, label: 'Low', color: '#E24B4A' };
+  return { pct: 0.5, label: 'Very low', color: '#E24B4A' };
+}
+
 const healthSummaryText = (insights as any)?.summary || diagnosisHealthSummary(health);
 
 // Executive bullets — prefer AI-generated, fallback to business-impact messages
@@ -895,17 +905,7 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               )}
 
-              {(seo.topKeywords?.length ?? 0) > 0 && (() => {
-                const ctrByPos = (pos: number): { pct: number; label: string; color: string } => {
-                  if (pos === 1) return { pct: 28, label: 'Excellent', color: '#1D9E75' };
-                  if (pos === 2) return { pct: 15, label: 'Good', color: '#1D9E75' };
-                  if (pos === 3) return { pct: 11, label: 'Good', color: '#1D9E75' };
-                  if (pos <= 5) return { pct: 5, label: 'Acceptable', color: '#BA7517' };
-                  if (pos <= 7) return { pct: 3, label: 'Low', color: '#BA7517' };
-                  if (pos <= 10) return { pct: 2, label: 'Low', color: '#E24B4A' };
-                  return { pct: 0.5, label: 'Very low', color: '#E24B4A' };
-                };
-                return (
+              {(seo.topKeywords?.length ?? 0) > 0 && (
                 <div style="margin-top:14px;margin-bottom:4px;">
                   <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Top organic keywords</div>
                   <table>
@@ -944,8 +944,7 @@ const heroStatus = statusStyle(ss(health.total));
                     CTR (click-through rate) depends on Google position: #1 gets ~28% of clicks, #3 drops to 11%, and from #7 onwards barely 2-3%. Moving a keyword from position 5 to 1 can multiply its traffic by 5x.
                   </p>
                 </div>
-                );
-              })()}
+              )}
 
               {kwGapItems.length > 0 && (
                 <div style="margin-top:16px;">

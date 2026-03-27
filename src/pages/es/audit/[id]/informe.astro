@@ -541,6 +541,17 @@ const nonBrandLabelColor = (nonBrandPct ?? 0) > 50 ? '#BA7517' : '#1D9E75';
 const indexKwRef = seo?.keywordsTop10 ?? 0;
 const indexSuspiciouslyLow = (indexedPages ?? 999) <= 5 && indexKwRef > 20;
 
+// CTR estimated by position (industry standard) — moved to frontmatter to avoid esbuild issues
+function ctrByPos(pos: number) {
+  if (pos === 1) return { pct: 28, label: 'Excelente', color: '#1D9E75' };
+  if (pos === 2) return { pct: 15, label: 'Bueno', color: '#1D9E75' };
+  if (pos === 3) return { pct: 11, label: 'Bueno', color: '#1D9E75' };
+  if (pos <= 5) return { pct: 5, label: 'Aceptable', color: '#BA7517' };
+  if (pos <= 7) return { pct: 3, label: 'Bajo', color: '#BA7517' };
+  if (pos <= 10) return { pct: 2, label: 'Bajo', color: '#E24B4A' };
+  return { pct: 0.5, label: 'Muy bajo', color: '#E24B4A' };
+}
+
 // Health summary text — prefer AI-generated summary from insights, fallback to rule-based
 const healthSummaryText = (insights as any)?.summary || diagnosisHealthSummary(health);
 
@@ -1067,18 +1078,7 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               )}
 
-              {(seo.topKeywords?.length ?? 0) > 0 && (() => {
-                // CTR estimated by position (industry standard)
-                const ctrByPos = (pos: number): { pct: number; label: string; color: string } => {
-                  if (pos === 1) return { pct: 28, label: 'Excelente', color: '#1D9E75' };
-                  if (pos === 2) return { pct: 15, label: 'Bueno', color: '#1D9E75' };
-                  if (pos === 3) return { pct: 11, label: 'Bueno', color: '#1D9E75' };
-                  if (pos <= 5) return { pct: 5, label: 'Aceptable', color: '#BA7517' };
-                  if (pos <= 7) return { pct: 3, label: 'Bajo', color: '#BA7517' };
-                  if (pos <= 10) return { pct: 2, label: 'Bajo', color: '#E24B4A' };
-                  return { pct: 0.5, label: 'Muy bajo', color: '#E24B4A' };
-                };
-                return (
+              {(seo.topKeywords?.length ?? 0) > 0 && (
                 <div style="margin-top:14px;margin-bottom:4px;">
                   <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
                     <span style="font-size:0.75rem;font-weight:600;color:#5A6478;">Top keywords orgánicas</span>
@@ -1120,8 +1120,7 @@ const heroStatus = statusStyle(ss(health.total));
                     El CTR (tasa de clic) depende de la posición en Google: la posición #1 recibe ~28% de los clics, la #3 baja al 11%, y a partir de la #7 apenas un 2-3%. Subir una keyword de la posición 5 a la 1 puede multiplicar su tráfico por 5.
                   </p>
                 </div>
-                );
-              })()}
+              )}
 
               {kwGapItems.length > 0 && (
                 <div style="margin-top:16px;">
