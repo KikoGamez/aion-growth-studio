@@ -555,6 +555,8 @@ const drColor = seo?.domainRank != null ? (seo.domainRank >= 50 ? '#1D9E75' : se
 // Blog last post color
 const blogLastDays = cc?.daysSinceLastPost ?? 999;
 const blogLastColor = blogLastDays <= 30 ? '#1D9E75' : blogLastDays <= 90 ? '#BA7517' : '#E24B4A';
+const funnelScoreColor = (cv?.funnelScore ?? 0) >= 60 ? '#1D9E75' : (cv?.funnelScore ?? 0) >= 35 ? '#BA7517' : '#E24B4A';
+const mobileOkColor = (ps?.mobile?.performance ?? 0) >= 50 ? '#1D9E75' : '#E24B4A';
 
 // CTR estimated by position (industry standard) — moved to frontmatter to avoid esbuild issues
 function ctrByPos(pos: number) {
@@ -2140,8 +2142,8 @@ const heroStatus = statusStyle(ss(health.total));
                 <div style={`font-size:12px;font-weight:600;color:${crawl.hasCanonical?'#1D9E75':'#BA7517'};`}>{crawl.hasCanonical ? '✓ Canonical tags detectadas' : '? Canonical tags no verificadas'}</div>
                 <div class="metric-sub">{crawl.hasCanonical ? 'URLs canónicas configuradas' : 'Verifica que las URLs tienen rel=canonical'}</div>
               </div>
-              <div class="metric-card" style={`border-left:3px solid ${(ps?.mobile?.performance??0)>=50?'#1D9E75':'#E24B4A'};`}>
-                <div style={`font-size:12px;font-weight:600;color:${(ps?.mobile?.performance??0)>=50?'#1D9E75':'#E24B4A'};`}>{(ps?.mobile?.performance??0)>=50 ? '✓ Friendly para móvil' : '✗ Problemas en móvil'}</div>
+              <div class="metric-card" style={`border-left:3px solid ${mobileOkColor};`}>
+                <div style={`font-size:12px;font-weight:600;color:${mobileOkColor};`}>{(ps?.mobile?.performance??0)>=50 ? '✓ Friendly para móvil' : '✗ Problemas en móvil'}</div>
                 <div class="metric-sub">{ps ? `Score móvil: ${ps.mobile?.performance ?? '—'}/100` : 'Sin datos de rendimiento móvil'}</div>
               </div>
               <div class="metric-card" style={`border-left:3px solid ${gbp?'#1D9E75':'#5A6478'};`}>
@@ -2276,7 +2278,7 @@ const heroStatus = statusStyle(ss(health.total));
                 )}
                 {cv.funnelScore != null && (
                   <div class="metric-card">
-                    <div class="metric-value" style={`color:${(cv.funnelScore??0)>=60?'#1D9E75':(cv.funnelScore??0)>=35?'#BA7517':'#E24B4A'};`}>{cv.funnelScore}/100</div>
+                    <div class="metric-value" style={`color:${funnelScoreColor};`}>{cv.funnelScore}/100</div>
                     <div class="metric-label">Funnel Score</div>
                     <div class="metric-sub">Índice de optimización del embudo</div>
                   </div>
