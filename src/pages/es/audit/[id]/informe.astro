@@ -1426,29 +1426,49 @@ const heroStatus = statusStyle(ss(health.total));
           <!-- Blog + Prensa cards -->
           <div class="grid-2" style="margin-bottom:14px;">
             <!-- Blog -->
-            <div class="metric-card" style={hasBlogEs ? 'border-left:3px solid #1D9E75;' : ''}>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                <span style={`font-size:1.1rem;font-weight:800;color:${hasBlogEs?'#1D9E75':'#9CA3AF'};`}>{hasBlogEs ? '✓' : '—'}</span>
-                <span class="metric-label" style="margin:0;">Blog / Contenido propio</span>
-              </div>
-              {hasBlogEs ? (
-                <div>
-                  {cc?.totalPosts && <div style="font-size:0.85rem;color:#374151;">{cc.totalPosts} artículos publicados
-                    {cc.daysSinceLastPost != null && <span style="color:#6B7280;"> · Último hace {cc.daysSinceLastPost}d</span>}
-                  </div>}
-                  {blogUrlEs && (
-                    <div style="margin-top:6px;">
-                      <a href={blogUrlEs} target="_blank" rel="noopener noreferrer" style="font-size:0.78rem;color:#4A7FD4;text-decoration:none;">
-                        → {blogUrlEs.replace(/^https?:\/\//, '')}
-                      </a>
-                    </div>
-                  )}
-                  {!cc && <div style="font-size:0.82rem;color:#6B7280;margin-top:4px;">Detectado en la web — sin datos de publicación</div>}
+            {(() => {
+              const hasBlog = hasBlogEs;
+              const cadence = cc?.cadenceLevel;
+              const borderColor = hasBlog ? (cadence === 'active' ? '#1D9E75' : cadence === 'irregular' ? '#BA7517' : '#E24B4A') : '';
+              const lastDays = cc?.daysSinceLastPost;
+              const avgDays = cc?.avgDaysBetweenPosts;
+              const freq = avgDays != null ? (avgDays <= 7 ? 'Semanal' : avgDays <= 14 ? 'Quincenal' : avgDays <= 30 ? 'Mensual' : avgDays <= 90 ? 'Trimestral' : 'Muy irregular') : null;
+              const lastLabel = lastDays != null ? (lastDays <= 7 ? 'esta semana' : lastDays <= 30 ? `hace ${lastDays} días` : lastDays <= 90 ? `hace ${Math.round(lastDays / 30)} meses` : lastDays <= 365 ? `hace ${Math.round(lastDays / 30)} meses` : `hace más de 1 año`) : null;
+              return (
+              <div class="metric-card" style={hasBlog ? `border-left:3px solid ${borderColor};` : ''}>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                  <span style={`font-size:1.1rem;font-weight:800;color:${hasBlog ? borderColor : '#9CA3AF'};`}>{hasBlog ? '✓' : '—'}</span>
+                  <span class="metric-label" style="margin:0;">Blog / Contenido propio</span>
                 </div>
-              ) : (
-                <div style="font-size:0.82rem;color:#6B7280;">No se ha detectado sección de blog ni artículos publicados.</div>
-              )}
-            </div>
+                {hasBlog ? (
+                  <div>
+                    <div style="font-size:0.85rem;color:#374151;">
+                      {cc?.totalPosts && <span>{cc.totalPosts} artículos detectados</span>}
+                      {freq && <span style="color:#6B7280;"> · Frecuencia: {freq}</span>}
+                    </div>
+                    {lastLabel && (
+                      <div style={`font-size:0.78rem;margin-top:4px;color:${(lastDays ?? 999) <= 30 ? '#1D9E75' : (lastDays ?? 999) <= 90 ? '#BA7517' : '#E24B4A'};font-weight:600;`}>
+                        Último post: {lastLabel}
+                        {(lastDays ?? 0) > 90 && ' — el blog parece inactivo'}
+                      </div>
+                    )}
+                    {cc?.postsLast90Days != null && (
+                      <div style="font-size:0.75rem;color:#6B7280;margin-top:2px;">{cc.postsLast90Days} publicaciones en los últimos 90 días</div>
+                    )}
+                    {blogUrlEs && (
+                      <div style="margin-top:6px;">
+                        <a href={blogUrlEs} target="_blank" rel="noopener noreferrer" style="font-size:0.78rem;color:#4A7FD4;text-decoration:none;">
+                          → {blogUrlEs.replace(/^https?:\/\//, '')}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style="font-size:0.82rem;color:#6B7280;">No se ha detectado sección de blog ni artículos publicados. Un blog activo es una de las palancas más efectivas para captar tráfico orgánico.</div>
+                )}
+              </div>
+              );
+            })()}
 
             <!-- Prensa / Google News -->
             <div class="metric-card" style={newsCountEs > 0 ? 'border-left:3px solid #4A7FD4;' : ''}>
