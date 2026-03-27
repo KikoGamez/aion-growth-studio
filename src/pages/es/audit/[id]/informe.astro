@@ -973,11 +973,22 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               )}
 
-              {(seo.topKeywords?.length ?? 0) > 0 && (
+              {(seo.topKeywords?.length ?? 0) > 0 && (() => {
+                // CTR estimated by position (industry standard)
+                const ctrByPos = (pos: number): { pct: number; label: string; color: string } => {
+                  if (pos === 1) return { pct: 28, label: 'Excelente', color: '#1D9E75' };
+                  if (pos === 2) return { pct: 15, label: 'Bueno', color: '#1D9E75' };
+                  if (pos === 3) return { pct: 11, label: 'Bueno', color: '#1D9E75' };
+                  if (pos <= 5) return { pct: 5, label: 'Aceptable', color: '#BA7517' };
+                  if (pos <= 7) return { pct: 3, label: 'Bajo', color: '#BA7517' };
+                  if (pos <= 10) return { pct: 2, label: 'Bajo', color: '#E24B4A' };
+                  return { pct: 0.5, label: 'Muy bajo', color: '#E24B4A' };
+                };
+                return (
                 <div style="margin-top:14px;margin-bottom:4px;">
                   <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
                     <span style="font-size:0.75rem;font-weight:600;color:#5A6478;">Top keywords orgánicas</span>
-                    <span style="font-size:0.65rem;color:#9CA3AF;">ordenadas por tráfico real estimado (ETV = volumen × CTR según posición)</span>
+                    <span style="font-size:0.65rem;color:#9CA3AF;">ordenadas por tráfico real estimado</span>
                   </div>
                   <table>
                     <thead>
@@ -985,11 +996,14 @@ const heroStatus = statusStyle(ss(health.total));
                         <th>Keyword</th>
                         <th>Posición</th>
                         <th>Volumen / mes</th>
-                        <th title="Estimated Traffic Value: visitas reales estimadas según la posición">Tráfico est. (ETV)</th>
+                        <th title="Click-Through Rate estimado según la posición en Google">CTR est.</th>
+                        <th title="Estimated Traffic Value: visitas reales estimadas según la posición">Tráfico est.</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {seo.topKeywords.slice(0,5).map((kw: any) => (
+                      {seo.topKeywords.slice(0,5).map((kw: any) => {
+                        const ctr = ctrByPos(kw.position);
+                        return (
                         <tr>
                           <td style="font-weight:500;">{kw.keyword}</td>
                           <td>
@@ -998,13 +1012,22 @@ const heroStatus = statusStyle(ss(health.total));
                             </span>
                           </td>
                           <td>{fmt(kw.volume)}</td>
+                          <td>
+                            <span style={`font-weight:600;color:${ctr.color};`}>{ctr.pct}%</span>
+                            <span style={`font-size:0.65rem;color:${ctr.color};margin-left:4px;`}>{ctr.label}</span>
+                          </td>
                           <td style="font-weight:600;color:#1A4B8C;">{kw.etv ? fmt(kw.etv) : '—'}</td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
+                  <p style="font-size:0.7rem;color:#9CA3AF;margin-top:6px;line-height:1.4;">
+                    El CTR (tasa de clic) depende de la posición en Google: la posición #1 recibe ~28% de los clics, la #3 baja al 11%, y a partir de la #7 apenas un 2-3%. Subir una keyword de la posición 5 a la 1 puede multiplicar su tráfico por 5.
+                  </p>
                 </div>
-              )}
+                );
+              })()}
 
               {kwGapItems.length > 0 && (
                 <div style="margin-top:16px;">

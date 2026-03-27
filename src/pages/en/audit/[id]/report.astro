@@ -869,7 +869,17 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               )}
 
-              {(seo.topKeywords?.length ?? 0) > 0 && (
+              {(seo.topKeywords?.length ?? 0) > 0 && (() => {
+                const ctrByPos = (pos: number): { pct: number; label: string; color: string } => {
+                  if (pos === 1) return { pct: 28, label: 'Excellent', color: '#1D9E75' };
+                  if (pos === 2) return { pct: 15, label: 'Good', color: '#1D9E75' };
+                  if (pos === 3) return { pct: 11, label: 'Good', color: '#1D9E75' };
+                  if (pos <= 5) return { pct: 5, label: 'Acceptable', color: '#BA7517' };
+                  if (pos <= 7) return { pct: 3, label: 'Low', color: '#BA7517' };
+                  if (pos <= 10) return { pct: 2, label: 'Low', color: '#E24B4A' };
+                  return { pct: 0.5, label: 'Very low', color: '#E24B4A' };
+                };
+                return (
                 <div style="margin-top:14px;margin-bottom:4px;">
                   <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Top organic keywords</div>
                   <table>
@@ -878,10 +888,14 @@ const heroStatus = statusStyle(ss(health.total));
                         <th>Keyword</th>
                         <th>Position</th>
                         <th>Volume / month</th>
+                        <th title="Estimated Click-Through Rate based on Google position">Est. CTR</th>
+                        <th title="Estimated Traffic Value">Est. traffic</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {seo.topKeywords.slice(0,5).map((kw: any) => (
+                      {seo.topKeywords.slice(0,5).map((kw: any) => {
+                        const ctr = ctrByPos(kw.position);
+                        return (
                         <tr>
                           <td style="font-weight:500;">{kw.keyword}</td>
                           <td>
@@ -890,12 +904,22 @@ const heroStatus = statusStyle(ss(health.total));
                             </span>
                           </td>
                           <td>{fmt(kw.volume)}</td>
+                          <td>
+                            <span style={`font-weight:600;color:${ctr.color};`}>{ctr.pct}%</span>
+                            <span style={`font-size:0.65rem;color:${ctr.color};margin-left:4px;`}>{ctr.label}</span>
+                          </td>
+                          <td style="font-weight:600;color:#1A4B8C;">{kw.etv ? fmt(kw.etv) : '—'}</td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
+                  <p style="font-size:0.7rem;color:#9CA3AF;margin-top:6px;line-height:1.4;">
+                    CTR (click-through rate) depends on Google position: #1 gets ~28% of clicks, #3 drops to 11%, and from #7 onwards barely 2-3%. Moving a keyword from position 5 to 1 can multiply its traffic by 5x.
+                  </p>
                 </div>
-              )}
+                );
+              })()}
 
               {kwGapItems.length > 0 && (
                 <div style="margin-top:16px;">
