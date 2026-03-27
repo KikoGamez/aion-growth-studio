@@ -359,6 +359,22 @@ const matchCount = kwGapItems.filter((k: any) => k.clientPosition && k.clientPos
 const gapCount = kwGapItems.filter((k: any) => !k.clientPosition || k.clientPosition > 20).length;
 const noiseCount = topKeywords.filter((k: any) => k.position > 10 && k.volume < 50).length;
 
+// Demand capture metrics (executive view)
+const totalRelevantKw = matchCount + gapCount || 1;
+const capturePct = Math.round((matchCount / totalRelevantKw) * 100);
+const gapPct = Math.round((gapCount / totalRelevantKw) * 100);
+const totalOrgKw = seo?.keywordsTop10 ?? matchCount;
+const noiseActual = noiseCount || Math.max(0, totalOrgKw - matchCount);
+const noisePct = totalOrgKw > 0 ? Math.round((noiseActual / totalOrgKw) * 100) : 0;
+
+function buildDemandNarrative(): string {
+  if (capturePct >= 70 && noisePct < 20) return `Buen posicionamiento en el core del sector con alta eficiencia. El foco ahora debe ser defender estas posiciones y expandir a keywords de cola larga.`;
+  if (capturePct >= 50) return `Buen posicionamiento en parte del core, pero con gap relevante en categorías de alta intención${noisePct > 25 ? ' y cierto nivel de ineficiencia en tráfico captado' : ''}. Hay margen claro de crecimiento orgánico.`;
+  if (capturePct >= 20) return `Captáis una parte de la demanda del sector, pero la mayoría de las búsquedas de alta intención se las llevan los competidores.${noisePct > 30 ? ' Además, una parte significativa del tráfico actual viene de términos de bajo valor.' : ''} Priorizar keywords de intención comercial es la palanca de mayor retorno.`;
+  return `La presencia en búsquedas estratégicas del sector es muy baja. Los competidores captan la gran mayoría de la demanda relevante. Una estrategia de contenido focalizada en keywords de alta intención puede cambiar esta situación en 4-6 meses.`;
+}
+const demandNarrative = buildDemandNarrative();
+
 // Schema businessType label
 const btLabelForSchema = businessType !== 'unknown' ? (btLabels[businessType] || businessType) : null;
 
@@ -1054,38 +1070,49 @@ const heroStatus = statusStyle(ss(health.total));
                   </table>
                 </div>
               )}
-              {/* Match/Gap/Noise cards */}
+              {/* Demand capture executive box */}
               {(matchCount > 0 || gapCount > 0) && (
-                <div style="margin-top:16px;">
-                  <div style="margin-bottom:10px;">
-                    <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:4px;">Cruce de keywords relevantes</div>
-                    <div style="font-size:0.72rem;color:#9CA3AF;line-height:1.5;">Cruzamos las búsquedas más relevantes de tu sector con tus posiciones reales en Google para saber dónde estás captando negocio, dónde lo estás perdiendo y dónde estás invirtiendo esfuerzo sin retorno.</div>
-                  </div>
-                  <div class="grid-3" style="gap:10px;">
-                    <div style="background:#EAF3DE;border-radius:8px;padding:14px;">
-                      <div style="font-size:22px;font-weight:700;color:#27500A;">{matchCount}</div>
-                      <div style="font-size:12px;font-weight:700;color:#27500A;margin-top:2px;">Coincidencia</div>
-                      <div style="font-size:11px;color:#3D7027;margin-top:4px;">Posicionas donde importa</div>
-                    </div>
-                    {gapCount > 0 ? (
-                      <div style="background:#FCEBEB;border-radius:8px;padding:14px;">
-                        <div style="font-size:22px;font-weight:700;color:#791F1F;">{gapCount}</div>
-                        <div style="font-size:12px;font-weight:700;color:#791F1F;margin-top:2px;">Oportunidades sin captar</div>
-                        <div style="font-size:11px;color:#A32D2D;margin-top:4px;">Keywords relevantes donde no posicionas</div>
+                <div style="margin-top:16px;background:#F8F9FB;border-radius:12px;padding:20px;">
+                  <div style="font-size:0.78rem;font-weight:700;color:#1A1A2E;margin-bottom:14px;">Captura de demanda orgánica</div>
+
+                  <!-- 3 metrics row -->
+                  <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:140px;">
+                      <div style="display:flex;align-items:baseline;gap:6px;">
+                        <span style={`font-size:1.5rem;font-weight:800;color:${capturePct >= 50 ? '#1D9E75' : capturePct >= 20 ? '#BA7517' : '#E24B4A'};`}>{capturePct}%</span>
+                        <span style="font-size:0.7rem;color:#5A6478;">de cobertura</span>
                       </div>
-                    ) : (
-                      <div style="background:#EAF3DE;border-radius:8px;padding:14px;">
-                        <div style="font-size:22px;font-weight:700;color:#27500A;">✓</div>
-                        <div style="font-size:12px;font-weight:700;color:#27500A;margin-top:2px;">Sin gaps detectados</div>
-                        <div style="font-size:11px;color:#3D7027;margin-top:4px;">Cobertura completa analizada</div>
+                      <div style="font-size:0.72rem;color:#5A6478;margin-top:2px;">Keywords estratégicas donde posicionáis en top 10</div>
+                    </div>
+                    {gapPct > 0 && (
+                      <div style="flex:1;min-width:140px;">
+                        <div style="display:flex;align-items:baseline;gap:6px;">
+                          <span style="font-size:1.5rem;font-weight:800;color:#E24B4A;">{gapPct}%</span>
+                          <span style="font-size:0.7rem;color:#5A6478;">oportunidad perdida</span>
+                        </div>
+                        <div style="font-size:0.72rem;color:#5A6478;margin-top:2px;">Demanda relevante donde no estáis en top 10</div>
                       </div>
                     )}
-                    <div style="background:#FAEEDA;border-radius:8px;padding:14px;">
-                      <div style="font-size:22px;font-weight:700;color:#633806;">{noiseCount || Math.max(0, (seo?.keywordsTop10 || 0) - matchCount - gapCount)}</div>
-                      <div style="font-size:12px;font-weight:700;color:#633806;margin-top:2px;">Ruido</div>
-                      <div style="font-size:11px;color:#8A5015;margin-top:4px;">Posicionas donde no importa</div>
-                    </div>
+                    {noisePct > 5 && (
+                      <div style="flex:1;min-width:140px;">
+                        <div style="display:flex;align-items:baseline;gap:6px;">
+                          <span style="font-size:1.5rem;font-weight:800;color:#BA7517;">{noisePct}%</span>
+                          <span style="font-size:0.7rem;color:#5A6478;">ineficiencia</span>
+                        </div>
+                        <div style="font-size:0.72rem;color:#5A6478;margin-top:2px;">Tráfico de búsquedas de bajo valor o baja intención</div>
+                      </div>
+                    )}
                   </div>
+
+                  <!-- Stacked bar -->
+                  <div style="height:10px;background:#E5E7EB;border-radius:6px;overflow:hidden;display:flex;margin-bottom:12px;">
+                    <div style={`width:${capturePct}%;background:#1D9E75;`}></div>
+                    {gapPct > 0 && <div style={`width:${gapPct}%;background:#E24B4A;`}></div>}
+                    {noisePct > 5 && <div style={`width:${Math.min(noisePct, 100 - capturePct - gapPct)}%;background:#BA7517;`}></div>}
+                  </div>
+
+                  <!-- Narrative -->
+                  <p style="font-size:0.78rem;color:#5A6478;line-height:1.55;margin:0;">{demandNarrative}</p>
                 </div>
               )}
             </div>
