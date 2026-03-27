@@ -549,6 +549,13 @@ const nonBrandLabelColor = (nonBrandPct ?? 0) > 50 ? '#BA7517' : '#1D9E75';
 const indexKwRef = seo?.keywordsTop10 ?? 0;
 const indexSuspiciouslyLow = (indexedPages ?? 999) <= 5 && indexKwRef > 20;
 
+// Precompute colors for domain rank to avoid nested ternary in template
+const drColor = seo?.domainRank != null ? (seo.domainRank >= 50 ? '#1D9E75' : seo.domainRank >= 20 ? '#BA7517' : '#E24B4A') : '#9CA3AF';
+
+// Blog last post color
+const blogLastDays = cc?.daysSinceLastPost ?? 999;
+const blogLastColor = blogLastDays <= 30 ? '#1D9E75' : blogLastDays <= 90 ? '#BA7517' : '#E24B4A';
+
 // CTR estimated by position (industry standard) — moved to frontmatter to avoid esbuild issues
 function ctrByPos(pos: number) {
   if (pos === 1) return { pct: 28, label: 'Excelente', color: '#1D9E75' };
@@ -1109,7 +1116,7 @@ const heroStatus = statusStyle(ss(health.total));
                         <tr>
                           <td style="font-weight:500;">{kw.keyword}</td>
                           <td>
-                            <span style={`font-weight:600;color:${kw.position<=3?'#1D9E75':kw.position<=10?'#BA7517':'#5A6478'};`}>
+                            <span style={`font-weight:600;color:${ctrByPos(kw.position).color};`}>
                               #{kw.position}
                             </span>
                           </td>
@@ -1447,7 +1454,7 @@ const heroStatus = statusStyle(ss(health.total));
                       {freq && <span style="color:#6B7280;"> · Frecuencia: {freq}</span>}
                     </div>
                     {lastLabel && (
-                      <div style={`font-size:0.78rem;margin-top:4px;color:${(lastDays ?? 999) <= 30 ? '#1D9E75' : (lastDays ?? 999) <= 90 ? '#BA7517' : '#E24B4A'};font-weight:600;`}>
+                      <div style={`font-size:0.78rem;margin-top:4px;color:${blogLastColor};font-weight:600;`}>
                         Último post: {lastLabel}
                         {(lastDays ?? 0) > 90 && ' — el blog parece inactivo'}
                       </div>
@@ -1545,7 +1552,7 @@ const heroStatus = statusStyle(ss(health.total));
           {seo && seo.domainRank != null && (
             <div style="background:#F8F9FB;border-radius:12px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
               <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
-                <div style={`font-size:2rem;font-weight:800;color:${seo.domainRank>=50?'#1D9E75':seo.domainRank>=20?'#BA7517':'#E24B4A'};line-height:1;`}>{seo.domainRank}</div>
+                <div style={`font-size:2rem;font-weight:800;color:${drColor};line-height:1;`}>{seo.domainRank}</div>
                 <div style="font-size:0.65rem;color:#9CA3AF;">/100</div>
               </div>
               <div style="flex:1;min-width:200px;">
