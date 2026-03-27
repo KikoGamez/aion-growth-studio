@@ -43,10 +43,12 @@ const DATA_POINTS: DataPoint[] = [
 
   // ── Competitor data (per competitor — dynamically counted) ──
   { id: 'competitors.identified', label: 'Competitors identified', critical: true, check: r => (r.competitors?.competitors?.length ?? 0) >= 2 },
-  { id: 'competitor_traffic.data', label: 'Competitor SEO data', critical: true, check: r => {
+  { id: 'competitor_traffic.data', label: 'Competitor SEO data (all)', critical: true, check: r => {
+    const comps = r.competitors?.competitors || [];
+    if (comps.length === 0) return false;
     const items = r.competitor_traffic?.items || [];
     const valid = items.filter((c: any) => !c.apiError && c.keywordsTop10 != null);
-    return valid.length >= 2;
+    return valid.length >= comps.length;
   }},
   { id: 'keyword_gap.items', label: 'Keyword gap analysis', critical: false, check: r => r.keyword_gap && !r.keyword_gap.skipped },
   { id: 'geo.compMentions', label: 'Competitor AI mentions', critical: false, check: r => (r.geo?.competitorMentions?.length ?? 0) >= 1 },
