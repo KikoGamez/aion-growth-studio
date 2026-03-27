@@ -174,6 +174,15 @@ export async function runSEO(url: string): Promise<SEOResult> {
       'hipercor.es', 'eroski.es', 'consum.es',
       // Generic aggregators / classifieds
       'idealista.com', 'fotocasa.es', 'infojobs.net', 'indeed.com',
+      // OTAs / travel aggregators (distribute, not compete)
+      'booking.com', 'hotels.com', 'expedia.com', 'expedia.es', 'kayak.es', 'kayak.com',
+      'trivago.es', 'trivago.com', 'agoda.com', 'hostelworld.com',
+      'edreams.es', 'edreams.com', 'skyscanner.es', 'skyscanner.com',
+      'lastminute.com', 'rumbo.es', 'logitravel.com', 'centraldereservas.com',
+      'atrapalo.com', 'destinia.com', 'muchoviaje.com',
+      // Review/directory platforms (not competitors)
+      'tripadvisor.es', 'minube.com', 'escapadarural.com',
+      'thefork.es', 'eltenedor.es', 'guiarepsol.com',
     ]);
 
     try {

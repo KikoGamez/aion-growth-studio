@@ -159,7 +159,9 @@ function buildSummary(url: string, r: Record<string, ModuleResult>): string {
   lines.push(`PageSpeed móvil: ${ps?.mobile?.performance ?? '?'}/100${ps?.mobile?.lcp ? ` · LCP ${ps.mobile.lcp}ms` : ''}`);
   lines.push(`PageSpeed escritorio: ${ps?.desktop?.performance ?? '?'}/100`);
   lines.push(`Accesibilidad: ${ps?.mobile?.accessibility ?? '?'}/100 · SEO Lighthouse: ${ps?.mobile?.seo ?? '?'}/100`);
-  lines.push(`SSL: ${ssl?.valid ? 'válido' : 'inválido'}${ssl?.daysUntilExpiry ? ` (expira en ${ssl.daysUntilExpiry} días)` : ''}`);
+  const sslDays = ssl?.daysUntilExpiry;
+  const sslUrgency = sslDays == null ? '' : sslDays > 90 ? ' — a monitorizar, sin acción inmediata' : sslDays > 30 ? ' — planificar renovación próxima' : sslDays > 7 ? ' — renovación urgente recomendada' : ' — CRÍTICO, renovar inmediatamente';
+  lines.push(`SSL: ${ssl?.valid ? 'válido' : 'inválido'}${sslDays != null ? ` (expira en ${sslDays} días${sslUrgency})` : ''}`);
   lines.push(`Schema.org: ${crawl?.hasSchemaMarkup ? 'sí' : 'no'} · Canonical: ${crawl?.hasCanonical ? 'sí' : 'no'} · Sitemap: ${crawl?.hasSitemap ? 'sí' : 'no'}`);
 
   // ── SEO orgánico ─────────────────────────────────────────────────

@@ -180,20 +180,29 @@ async function fetchNewsPresence(
       (it: any) => it.title && (it.type === 'news_search' || it.source || it.domain),
     );
 
-    // Filter out negative news about the company (closures, bankruptcy, lawsuits)
+    // Filter out negative news (closures, bankruptcy, lawsuits)
     const NEGATIVE_RE = /cierra|cerrar|quiebra|concurso de acreedores|liquidaci[oó]n|demanda contra|fraude|estafa|despidos masivos|ERE |ERTE |bancarrota|bankruptcy|closes|shutdown|fraud|scam|lawsuit/i;
 
+    // Relevance filter: title must contain at least one meaningful brand word
+    const brandWords = brandName.toLowerCase().split(/[\s\-_.]+/).filter(w => w.length >= 3);
+    function isRelevant(title: string): boolean {
+      if (brandWords.length === 0) return true;
+      const lower = title.toLowerCase();
+      return brandWords.some(w => lower.includes(w));
+    }
+
     const headlines: NewsHeadline[] = newsItems
-      .slice(0, 8)
+      .slice(0, 15) // more candidates to filter from
       .map((it: any) => ({
         title: String(it.title || '').slice(0, 120),
         source: String(it.source || it.domain || ''),
         ...(it.date && { date: String(it.date).slice(0, 20) }),
         _negative: NEGATIVE_RE.test(String(it.title || '')),
+        _relevant: isRelevant(String(it.title || '')),
       }))
-      .filter((h) => !h._negative)
+      .filter((h) => !h._negative && h._relevant)
       .slice(0, 5)
-      .map(({ _negative, ...rest }) => rest);
+      .map(({ _negative, _relevant, ...rest }) => rest);
 
     return {
       newsCount: Math.max(result?.items_count ?? 0, newsItems.length),

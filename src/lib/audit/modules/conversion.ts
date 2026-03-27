@@ -71,12 +71,27 @@ export async function runConversion(url: string, crawlData: CrawlResult): Promis
     // ── LLM qualitative analysis (Haiku) ────────────────────────
     if (ANTHROPIC_API_KEY) {
       const llm = await analyzeWithLLM(url, structural, crawlData);
+
+      // Post-validate LLM output: remove contradictions with structural data
+      const FORM_RE = /formulario|form|lead magnet|captación|capture/i;
+      let strengths = llm.strengths || [];
+      let weaknesses = llm.weaknesses || [];
+
+      if (!structural.hasContactForm && structural.formFieldCount === 0) {
+        // No real form detected → remove form-related strengths, keep as weakness
+        strengths = strengths.filter((s: string) => !FORM_RE.test(s));
+      }
+      if (structural.hasContactForm) {
+        // Has form → remove "no form" from weaknesses
+        weaknesses = weaknesses.filter((w: string) => !/sin formulario|no form|no tiene formulario/i.test(w));
+      }
+
       return {
         ...structural,
         funnelScore: llm.funnelScore ?? funnelScore,
         summary: llm.summary,
-        strengths: llm.strengths,
-        weaknesses: llm.weaknesses,
+        strengths,
+        weaknesses,
       };
     }
 
