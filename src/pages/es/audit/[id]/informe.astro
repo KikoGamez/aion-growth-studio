@@ -368,51 +368,60 @@ const allCompGeoZero = (geo?.competitorMentions?.length ?? 0) > 0 && geo.competi
 // Health summary text — prefer AI-generated summary from insights, fallback to rule-based
 const healthSummaryText = (insights as any)?.summary || diagnosisHealthSummary(health);
 
-// Executive bullets — prefer AI-generated, fallback to data-driven
+// Executive bullets — prefer AI-generated, fallback to business-impact messages
 const insightBullets: string[] = (insights?.bullets && insights.bullets.length >= 3) ? insights.bullets.slice(0, 3) : [];
 const executiveBullets: string[] = insightBullets.length >= 3 ? insightBullets : (() => {
   const eb: string[] = [];
-  // Bullet 1: Visibility (SEO + GEO)
-  if (seo && !seo.skipped) {
-    const kwt = seo.keywordsTop10 ?? 0;
-    const etv = seo.organicTrafficEstimate ?? 0;
-    const geoMR = geo?.mentionRate ?? 0;
-    if (kwt > 0) {
-      eb.push(`Posicionas ${fmt(kwt)} keywords en el top 10 de Google con ~${fmt(etv)} visitas orgánicas/mes${geoMR > 0 ? `, y apareces en el ${geoMR}% de consultas de IA sobre tu sector` : ', pero tu marca no aparece en ninguna respuesta de IA (ChatGPT, Perplexity)'}.`);
-    } else {
-      eb.push(`Tu dominio no tiene keywords posicionadas en el top 10 de Google${geoMR === 0 ? ' y es invisible para los motores de IA (ChatGPT, Perplexity)' : ''} — la visibilidad orgánica es prácticamente nula.`);
-    }
+
+  // ── Bullet 1: Visibilidad → ¿Os encuentran vuestros clientes?
+  const kwt = seo?.keywordsTop10 ?? 0;
+  const etv = seo?.organicTrafficEstimate ?? 0;
+  const geoMR = geo?.mentionRate ?? 0;
+
+  if (kwt === 0 && geoMR === 0) {
+    eb.push('Vuestros potenciales clientes no os encuentran ni en Google ni en motores de IA como ChatGPT. Esto significa que toda la demanda que existe en vuestro sector está siendo captada por competidores con presencia digital activa.');
+  } else if (kwt > 0 && geoMR === 0) {
+    eb.push(`Tenéis cierta presencia en Google con ~${fmt(etv)} visitas orgánicas al mes, pero sois completamente invisibles en los nuevos motores de IA (ChatGPT, Perplexity, Gemini). Cada vez más decisores usan IA para investigar proveedores — no estar ahí es ceder ese canal a la competencia.`);
+  } else if (kwt === 0 && geoMR > 0) {
+    eb.push(`Aparecéis en el ${geoMR}% de las consultas de IA de vuestro sector, pero no tenéis presencia orgánica en Google. Sin visibilidad en el buscador principal, estáis dejando escapar la mayor fuente de tráfico cualificado.`);
   } else {
-    eb.push('No se detecta presencia orgánica en los índices de Google — el dominio parte de cero en visibilidad digital.');
+    const geoLevel = geoMR < 30 ? 'baja' : geoMR < 60 ? 'moderada' : 'buena';
+    eb.push(`Tenéis presencia orgánica activa con ${fmt(etv)} visitas/mes desde Google y una visibilidad ${geoLevel} en motores de IA (${geoMR}% de consultas). ${geoMR < 50 ? 'Hay oportunidad de captar más demanda fortaleciendo el posicionamiento en IA generativa.' : 'Buen punto de partida para consolidar el liderazgo digital.'}`);
   }
-  // Bullet 2: Web experience (PageSpeed + Conversion)
+
+  // ── Bullet 2: Experiencia → ¿Vuestra web convierte visitas en negocio?
   const perfScore = ps?.mobile?.performance ?? null;
   const funnelScore = cv?.funnelScore ?? null;
-  const lcpMs = ps?.mobile?.lcp;
-  if (perfScore !== null || funnelScore !== null) {
-    const perfPart = perfScore !== null ? `Rendimiento móvil de ${perfScore}/100${lcpMs ? ` (${(lcpMs/1000).toFixed(1)}s de carga)` : ''}` : null;
-    const funnelPart = funnelScore !== null ? `funnel de conversión en ${funnelScore}/100` : null;
-    const parts = [perfPart, funnelPart].filter(Boolean).join(' y ');
-    const verdict = (perfScore !== null && perfScore < 50) || (funnelScore !== null && funnelScore < 40) ? ' — hay margen de mejora con impacto directo en captación de leads.' : '.';
-    eb.push(`${parts}${verdict}`);
+  const lcpSec = ps?.mobile?.lcp ? (ps.mobile.lcp / 1000).toFixed(1) : null;
+
+  if (perfScore !== null && perfScore < 50) {
+    eb.push(`Vuestra web tarda ${lcpSec ? lcpSec + ' segundos en cargar' : 'demasiado en cargar'} en móvil. Los estudios muestran que por encima de 3 segundos se pierde más del 50% de los visitantes. ${funnelScore !== null && funnelScore < 40 ? 'Además, la web carece de elementos clave de conversión (CTAs claros, prueba social, formularios visibles) — los visitantes que llegan no tienen un camino claro para contactaros.' : 'Mejorar la velocidad tendría impacto directo en la captación de leads.'}`);
+  } else if (funnelScore !== null && funnelScore < 40) {
+    eb.push(`La web${perfScore !== null ? ` carga razonablemente (${perfScore}/100 en móvil), pero` : ''} no está diseñada para convertir visitantes en clientes. Faltan elementos clave como CTAs visibles, prueba social o formularios accesibles. Cada visita que no convierte es una oportunidad de negocio perdida.`);
+  } else if (perfScore !== null && funnelScore !== null) {
+    eb.push(`La experiencia web es ${perfScore >= 75 && funnelScore >= 60 ? 'sólida' : 'aceptable'}: la página carga ${lcpSec ? 'en ' + lcpSec + 's' : 'correctamente'} y tiene los elementos básicos de conversión. ${funnelScore < 70 ? 'Aún hay margen para optimizar el funnel y aumentar la tasa de conversión.' : 'Buena base para escalar el tráfico con confianza.'}`);
   } else {
-    eb.push('No se pudieron evaluar la velocidad web ni los elementos de conversión del sitio.');
+    eb.push('No se pudo evaluar completamente la experiencia web. Recomendamos revisar que la web cargue en menos de 3 segundos en móvil y tenga un camino claro desde la llegada hasta el contacto.');
   }
-  // Bullet 3: Competitive position or biggest opportunity
+
+  // ── Bullet 3: Posición competitiva → ¿Dónde estáis vs vuestro mercado?
   if (hasCompetitorData && ctItems.length > 0) {
-    const avgKW = Math.round(ctItems.reduce((s: number, c: any) => s + (c.keywordsTop10 || 0), 0) / ctItems.length);
-    const ownKW = seo?.keywordsTop10 ?? 0;
-    const leader = ctItems.sort((a: any, b: any) => (b.keywordsTop10||0) - (a.keywordsTop10||0))[0];
-    if (avgKW > ownKW * 1.5) {
-      eb.push(`Tus competidores posicionan una media de ${fmt(avgKW)} keywords vs tus ${fmt(ownKW)} — ${leader?.name || 'el líder'} lidera con ${fmt(leader?.keywordsTop10 ?? 0)}. Hay brecha de visibilidad que cerrar.`);
+    const avgTraffic = Math.round(ctItems.reduce((s: number, c: any) => s + (c.organicTrafficEstimate || 0), 0) / ctItems.length);
+    const leader = ctItems.sort((a: any, b: any) => (b.organicTrafficEstimate||0) - (a.organicTrafficEstimate||0))[0];
+    const leaderName = leader?.name || 'el líder del sector';
+    const leaderTraffic = leader?.organicTrafficEstimate ?? 0;
+
+    if (etv < avgTraffic * 0.3) {
+      eb.push(`Vuestros competidores directos reciben de media ${fmt(avgTraffic)} visitas orgánicas al mes — ${leaderName} lidera con ${fmt(leaderTraffic)}. Con ${fmt(etv)} visitas, estáis captando una fracción muy pequeña de la demanda del sector. La buena noticia: hay un mercado digital activo al que acceder con la estrategia correcta.`);
+    } else if (etv < avgTraffic) {
+      eb.push(`Estáis por debajo de la media del sector en visibilidad digital. ${leaderName} recibe ${fmt(leaderTraffic)} visitas orgánicas/mes frente a vuestras ${fmt(etv)}. Cerrar esta brecha es alcanzable con una estrategia SEO focalizada en las keywords donde ya tenéis tracción.`);
     } else {
-      eb.push(`Tu posición competitiva es ${ownKW >= avgKW ? 'fuerte' : 'equilibrada'}: ${fmt(ownKW)} keywords propias vs media de ${fmt(avgKW)} en competidores.`);
+      eb.push(`Vuestra posición competitiva es fuerte: con ${fmt(etv)} visitas orgánicas/mes estáis por encima de la media del sector (${fmt(avgTraffic)}). El reto ahora es consolidar el liderazgo y defender la posición frente a competidores que están invirtiendo en digital.`);
     }
-  } else if (seo && (seo.keywordsPos4to10 ?? 0) > 0) {
-    eb.push(`Tienes ${fmt(seo.keywordsPos4to10)} keywords en posición 4-10 que son la oportunidad más directa: optimizarlas puede llevarlas al top 3 sin crear contenido nuevo.`);
   } else {
-    eb.push(`La prioridad inmediata es construir visibilidad orgánica desde cero: cada día sin presencia en Google es demanda que captan otros.`);
+    eb.push('No se han podido identificar competidores con datos de tráfico comparables. Recomendamos definir un benchmark competitivo para poder medir el progreso de vuestra estrategia digital de forma objetiva.');
   }
+
   return eb;
 })();
 

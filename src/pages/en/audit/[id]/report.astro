@@ -359,48 +359,57 @@ const seoToAiGap: any[] = (seo?.topKeywords || []).slice(0, 5);
 // Health summary — prefer AI-generated summary from insights, fallback to rule-based
 const healthSummaryText = (insights as any)?.summary || diagnosisHealthSummary(health);
 
-// Executive bullets — prefer AI-generated, fallback to data-driven
+// Executive bullets — prefer AI-generated, fallback to business-impact messages
 const insightBullets: string[] = (insights?.bullets && insights.bullets.length >= 3) ? insights.bullets.slice(0, 3) : [];
 const executiveBullets: string[] = insightBullets.length >= 3 ? insightBullets : (() => {
   const eb: string[] = [];
-  if (seo && !seo.skipped) {
-    const kwt = seo.keywordsTop10 ?? 0;
-    const etv = seo.organicTrafficEstimate ?? 0;
-    const geoMR = geo?.mentionRate ?? 0;
-    if (kwt > 0) {
-      eb.push(`Ranking for ${fmt(kwt)} keywords in Google's top 10 with ~${fmt(etv)} organic visits/mo${geoMR > 0 ? `, appearing in ${geoMR}% of AI queries about your sector` : ', but invisible to AI engines (ChatGPT, Perplexity)'}.`);
-    } else {
-      eb.push(`No keywords ranking in Google's top 10${geoMR === 0 ? ' and invisible to AI engines (ChatGPT, Perplexity)' : ''} — organic visibility is virtually zero.`);
-    }
+
+  const kwt = seo?.keywordsTop10 ?? 0;
+  const etv = seo?.organicTrafficEstimate ?? 0;
+  const geoMR = geo?.mentionRate ?? 0;
+
+  if (kwt === 0 && geoMR === 0) {
+    eb.push('Your potential customers cannot find you on Google or AI engines like ChatGPT. This means all existing demand in your sector is being captured by competitors with active digital presence.');
+  } else if (kwt > 0 && geoMR === 0) {
+    eb.push(`You have some Google presence with ~${fmt(etv)} organic visits per month, but you are completely invisible to AI engines (ChatGPT, Perplexity, Gemini). More and more decision-makers use AI to research providers — not being there means ceding that channel to competitors.`);
+  } else if (kwt === 0 && geoMR > 0) {
+    eb.push(`You appear in ${geoMR}% of AI queries in your sector, but have no organic presence on Google. Without visibility on the main search engine, you are missing the largest source of qualified traffic.`);
   } else {
-    eb.push('No organic presence detected in Google indexes — digital visibility starts from zero.');
+    const geoLevel = geoMR < 30 ? 'limited' : geoMR < 60 ? 'moderate' : 'good';
+    eb.push(`You have active organic presence with ${fmt(etv)} visits/month from Google and ${geoLevel} AI visibility (${geoMR}% of queries). ${geoMR < 50 ? 'There is opportunity to capture more demand by strengthening your AI positioning.' : 'A solid foundation to consolidate digital leadership.'}`);
   }
+
   const perfScore = ps?.mobile?.performance ?? null;
   const funnelScore = cv?.funnelScore ?? null;
-  const lcpMs = ps?.mobile?.lcp;
-  if (perfScore !== null || funnelScore !== null) {
-    const perfPart = perfScore !== null ? `Mobile performance at ${perfScore}/100${lcpMs ? ` (${(lcpMs/1000).toFixed(1)}s load time)` : ''}` : null;
-    const funnelPart = funnelScore !== null ? `conversion funnel at ${funnelScore}/100` : null;
-    const parts = [perfPart, funnelPart].filter(Boolean).join(' and ');
-    const verdict = (perfScore !== null && perfScore < 50) || (funnelScore !== null && funnelScore < 40) ? ' — significant room for improvement with direct impact on lead capture.' : '.';
-    eb.push(`${parts}${verdict}`);
+  const lcpSec = ps?.mobile?.lcp ? (ps.mobile.lcp / 1000).toFixed(1) : null;
+
+  if (perfScore !== null && perfScore < 50) {
+    eb.push(`Your website takes ${lcpSec ? lcpSec + ' seconds to load' : 'too long to load'} on mobile. Studies show that above 3 seconds, more than 50% of visitors leave. ${funnelScore !== null && funnelScore < 40 ? 'Additionally, the site lacks key conversion elements (clear CTAs, social proof, visible forms) — visitors who arrive have no clear path to contact you.' : 'Improving speed would have a direct impact on lead generation.'}`);
+  } else if (funnelScore !== null && funnelScore < 40) {
+    eb.push(`The website${perfScore !== null ? ` loads reasonably (${perfScore}/100 on mobile), but` : ''} is not designed to convert visitors into clients. Key elements like visible CTAs, social proof, or accessible forms are missing. Every visit that does not convert is a lost business opportunity.`);
+  } else if (perfScore !== null && funnelScore !== null) {
+    eb.push(`Web experience is ${perfScore >= 75 && funnelScore >= 60 ? 'solid' : 'acceptable'}: the page loads ${lcpSec ? 'in ' + lcpSec + 's' : 'correctly'} and has basic conversion elements. ${funnelScore < 70 ? 'There is still room to optimize the funnel and increase conversion rates.' : 'A good foundation to scale traffic with confidence.'}`);
   } else {
-    eb.push('Web speed and conversion elements could not be evaluated.');
+    eb.push('Web experience could not be fully evaluated. We recommend ensuring the site loads in under 3 seconds on mobile with a clear path from arrival to contact.');
   }
+
   if (hasCompetitorData && ctItems.length > 0) {
-    const avgKW = Math.round(ctItems.reduce((s: number, c: any) => s + (c.keywordsTop10 || 0), 0) / ctItems.length);
-    const ownKW = seo?.keywordsTop10 ?? 0;
-    const leader = ctItems.sort((a: any, b: any) => (b.keywordsTop10||0) - (a.keywordsTop10||0))[0];
-    if (avgKW > ownKW * 1.5) {
-      eb.push(`Competitors average ${fmt(avgKW)} keywords vs your ${fmt(ownKW)} — ${leader?.name || 'the leader'} leads with ${fmt(leader?.keywordsTop10 ?? 0)}. There's a visibility gap to close.`);
+    const avgTraffic = Math.round(ctItems.reduce((s: number, c: any) => s + (c.organicTrafficEstimate || 0), 0) / ctItems.length);
+    const leader = ctItems.sort((a: any, b: any) => (b.organicTrafficEstimate||0) - (a.organicTrafficEstimate||0))[0];
+    const leaderName = leader?.name || 'the sector leader';
+    const leaderTraffic = leader?.organicTrafficEstimate ?? 0;
+
+    if (etv < avgTraffic * 0.3) {
+      eb.push(`Your direct competitors receive an average of ${fmt(avgTraffic)} organic visits per month — ${leaderName} leads with ${fmt(leaderTraffic)}. With ${fmt(etv)} visits, you are capturing a very small fraction of sector demand. The good news: there is an active digital market you can access with the right strategy.`);
+    } else if (etv < avgTraffic) {
+      eb.push(`You are below the sector average in digital visibility. ${leaderName} receives ${fmt(leaderTraffic)} organic visits/month compared to your ${fmt(etv)}. Closing this gap is achievable with a focused SEO strategy targeting keywords where you already have traction.`);
     } else {
-      eb.push(`Competitive position is ${ownKW >= avgKW ? 'strong' : 'balanced'}: ${fmt(ownKW)} own keywords vs average of ${fmt(avgKW)} across competitors.`);
+      eb.push(`Your competitive position is strong: with ${fmt(etv)} organic visits/month you are above the sector average (${fmt(avgTraffic)}). The challenge now is to consolidate leadership and defend your position against competitors investing in digital.`);
     }
-  } else if (seo && (seo.keywordsPos4to10 ?? 0) > 0) {
-    eb.push(`You have ${fmt(seo.keywordsPos4to10)} keywords in positions 4-10 — the most direct opportunity: optimizing these can push them to top 3 without creating new content.`);
   } else {
-    eb.push(`The immediate priority is building organic visibility from scratch: every day without Google presence means demand captured by others.`);
+    eb.push('Comparable competitor traffic data could not be identified. We recommend defining a competitive benchmark to objectively measure the progress of your digital strategy.');
   }
+
   return eb;
 })();
 
