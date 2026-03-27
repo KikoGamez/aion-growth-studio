@@ -1,4 +1,4 @@
-import type { GeoResult, GeoQuery, GeoCompetitorMention, CrawlResult } from '../types';
+import type { GeoResult, GeoQuery, GeoCompetitorMention, GeoCategory, CrawlResult } from '../types';
 
 const OPENAI_KEY     = import.meta.env?.OPENAI_API_KEY     || process.env.OPENAI_API_KEY;
 const PERPLEXITY_KEY = import.meta.env?.PERPLEXITY_API_KEY || process.env.PERPLEXITY_API_KEY;
@@ -7,6 +7,20 @@ const GEMINI_KEY     = import.meta.env?.GEMINI_API_KEY     || process.env.GEMINI
 const DEEPSEEK_KEY   = import.meta.env?.DEEPSEEK_API_KEY   || process.env.DEEPSEEK_API_KEY;
 
 type Stage = 'tofu' | 'mofu' | 'bofu';
+
+const CATEGORY_TO_STAGE: Record<GeoCategory, Stage> = {
+  sector: 'tofu', problema: 'mofu', comparativa: 'mofu',
+  decision: 'bofu', recomendacion: 'bofu', marca: 'bofu',
+};
+
+const CATEGORY_WEIGHTS: Record<GeoCategory, number> = {
+  sector: 1.0,        // "mejores empresas de X"
+  problema: 1.2,      // "cómo resolver Y"
+  comparativa: 1.5,   // "alternativas a Z"
+  decision: 2.0,      // "contratar X esta semana"
+  recomendacion: 1.8, // "recomiéndame un proveedor de X"
+  marca: 0.5,         // direct brand query (biased)
+};
 type EngineType = 'openai_compat' | 'anthropic' | 'gemini';
 
 interface Engine {
@@ -19,6 +33,7 @@ interface Engine {
 
 interface QuerySpec {
   stage: Stage;
+  category: GeoCategory;
   query: string;
   isBrandQuery?: boolean;
 }
@@ -192,9 +207,9 @@ function deduplicateQuerySpecs(specs: QuerySpec[]): QuerySpec[] {
 // ── Query generation ──────────────────────────────────────────────
 
 /**
- * Static fallback queries — 3 TOFU + 4 MOFU + 4 BOFU + 1 brand = 12.
- * More MOFU/BOFU vs before (was 4/4/3/1) because smaller/local brands
- * are much more likely to appear in comparison and purchase-intent queries.
+ * Static fallback queries — 5 per category × 6 categories = 30.
+ * 6 intent categories: sector, problema, comparativa, decision, recomendacion, marca.
+ * More queries = more stable statistical base for mention rate.
  */
 function buildFallbackQueries(
   sector: string,
@@ -205,32 +220,51 @@ function buildFallbackQueries(
   locationHint: string | undefined,
 ): QuerySpec[] {
   const loc = locationHint ? ` en ${locationHint}` : '';
-  const locShort = locationHint ? ` ${locationHint}` : '';
+  const locS = locationHint ? ` ${locationHint}` : '';
   const vp  = valueProposition.slice(0, 60) || sector;
   const kw  = keywords.slice(0, 50) || sector;
   return [
-    // TOFU — 3 awareness queries (awareness, discovery, trends)
-    { stage: 'tofu', query: `Mejores empresas de ${sector}${loc} — dame nombres concretos` },
-    { stage: 'tofu', query: `¿Quién lidera el mercado de ${sector}${locShort}? Lista las opciones más recomendadas` },
-    { stage: 'tofu', query: `Alternativas en ${sector} para una empresa mediana. ¿Qué opciones existen?` },
-    // MOFU — 4 comparison / problem queries
-    { stage: 'mofu', query: `Necesito "${vp}"${loc}. ¿Qué empresa contrataría y por qué? Menciona opciones reales` },
-    { stage: 'mofu', query: `Comparativa de proveedores de ${sector}: calidad, precio y servicio. ¿Cuáles destacan${locShort}?` },
-    { stage: 'mofu', query: `Problemas con mi proveedor actual de ${kw}. ¿Qué alternativas locales me recomiendas?` },
-    { stage: 'mofu', query: `Diferencias entre las opciones de ${sector}${loc}. ¿Cuál tiene mejor relación calidad-precio?` },
-    // BOFU — 4 high-intent purchase queries
-    { stage: 'bofu', query: `Quiero contratar ${kw}${loc} esta semana. ¿Qué empresa llamas primero?` },
-    { stage: 'bofu', query: `Recomiéndame un proveedor de confianza de ${sector}${loc}. Necesito nombres concretos` },
-    { stage: 'bofu', query: `¿Cuál es la mejor opción de ${sector}${loc} para una empresa en crecimiento? Precio y calidad` },
-    { stage: 'bofu', query: `Top 5 empresas de ${sector}${loc} según expertos del sector. ¿Cuál contrataría hoy?` },
-    // BOFU_brand — direct brand query (always last)
-    { stage: 'bofu', query: `¿Conoces "${brandName}" (${domain})? ¿Es una opción recomendable en ${sector}?`, isBrandQuery: true },
+    // SECTOR (5) — generic discovery, who's who
+    { stage: 'tofu', category: 'sector', query: `Mejores empresas de ${sector}${loc} — dame nombres concretos` },
+    { stage: 'tofu', category: 'sector', query: `¿Quién lidera el mercado de ${sector}${locS}? Lista las opciones más recomendadas` },
+    { stage: 'tofu', category: 'sector', query: `Principales actores de ${sector}${loc}. ¿Cuáles son los más conocidos?` },
+    { stage: 'tofu', category: 'sector', query: `Ranking de empresas de ${sector}${locS} por reputación y calidad` },
+    { stage: 'tofu', category: 'sector', query: `Empresas emergentes e innovadoras en ${sector}${loc}` },
+    // PROBLEMA (5) — pain-point queries
+    { stage: 'mofu', category: 'problema', query: `Necesito "${vp}"${loc}. ¿Qué empresa me puede ayudar?` },
+    { stage: 'mofu', category: 'problema', query: `Problemas con mi proveedor actual de ${kw}. ¿Qué alternativas existen?` },
+    { stage: 'mofu', category: 'problema', query: `¿Cómo elegir un buen proveedor de ${sector}? Criterios clave` },
+    { stage: 'mofu', category: 'problema', query: `No estoy satisfecho con mi ${kw}. ¿Qué opciones hay${locS}?` },
+    { stage: 'mofu', category: 'problema', query: `Mi empresa necesita mejorar en ${kw}. ¿Quién lo hace bien${locS}?` },
+    // COMPARATIVA (5) — comparison queries
+    { stage: 'mofu', category: 'comparativa', query: `Comparativa de proveedores de ${sector}${loc}: calidad, precio y servicio` },
+    { stage: 'mofu', category: 'comparativa', query: `Diferencias entre las opciones de ${sector}${loc}. ¿Cuál tiene mejor relación calidad-precio?` },
+    { stage: 'mofu', category: 'comparativa', query: `Alternativas en ${sector} para una empresa mediana. Pros y contras de cada una` },
+    { stage: 'mofu', category: 'comparativa', query: `Top 5 empresas de ${sector}${locS} comparadas. Ventajas e inconvenientes` },
+    { stage: 'mofu', category: 'comparativa', query: `¿Cuál es la diferencia entre los principales proveedores de ${kw}${locS}?` },
+    // DECISION (5) — high purchase intent
+    { stage: 'bofu', category: 'decision', query: `Quiero contratar ${kw}${loc} esta semana. ¿A quién llamo primero?` },
+    { stage: 'bofu', category: 'decision', query: `Necesito presupuesto para ${kw}${loc}. ¿Qué empresas contacto?` },
+    { stage: 'bofu', category: 'decision', query: `Voy a invertir en ${sector}. ¿Cuál es la opción más segura${locS}?` },
+    { stage: 'bofu', category: 'decision', query: `¿Cuál es la mejor opción de ${sector}${loc} para una empresa en crecimiento?` },
+    { stage: 'bofu', category: 'decision', query: `Estoy decidiendo entre proveedores de ${kw}${loc}. ¿Cuál me recomiendas y por qué?` },
+    // RECOMENDACION (5) — trust/referral queries
+    { stage: 'bofu', category: 'recomendacion', query: `Recomiéndame un proveedor de confianza de ${sector}${loc}` },
+    { stage: 'bofu', category: 'recomendacion', query: `¿Qué empresa de ${sector}${locS} recomendarías a un amigo?` },
+    { stage: 'bofu', category: 'recomendacion', query: `Opiniones de empresas de ${sector}${loc}. ¿Cuál tiene mejor reputación?` },
+    { stage: 'bofu', category: 'recomendacion', query: `Necesito ${kw} de calidad${loc}. ¿Cuáles son las más fiables?` },
+    { stage: 'bofu', category: 'recomendacion', query: `Según expertos del sector, ¿cuál es la mejor empresa de ${sector}${locS}?` },
+    // MARCA (5) — direct brand queries (biased, lower weight)
+    { stage: 'bofu', category: 'marca', query: `¿Conoces "${brandName}" (${domain})? ¿Es recomendable en ${sector}?`, isBrandQuery: true },
+    { stage: 'bofu', category: 'marca', query: `Opiniones sobre ${brandName}. ¿Merece la pena para ${kw}?`, isBrandQuery: true },
+    { stage: 'bofu', category: 'marca', query: `${brandName} vs competidores de ${sector}${locS}. ¿Cómo se compara?`, isBrandQuery: true },
+    { stage: 'bofu', category: 'marca', query: `¿Recomendarías ${brandName} para ${kw}? ¿Qué alternativas hay?`, isBrandQuery: true },
+    { stage: 'bofu', category: 'marca', query: `¿Qué tal es ${brandName}? Busco opiniones reales de ${sector}`, isBrandQuery: true },
   ];
 }
 
 /**
- * Generate 12 buyer-intent queries via GPT with TOFU/MOFU/BOFU structure.
- * Uses conversational, natural language — not formal sector descriptions.
+ * Generate 30 buyer-intent queries via GPT across 6 intent categories.
  * Falls back to static templates on any failure.
  */
 async function generateQueries(
@@ -246,26 +280,27 @@ async function generateQueries(
     sector, valueProposition, keywords, brandName, domain, locationHint,
   );
   const loc = locationHint
-    ? `\n- Ubicación: ${locationHint} (úsala en las consultas geográficas cuando tenga sentido, NUNCA entre corchetes)`
+    ? `\n- Ubicación: ${locationHint} (úsala cuando tenga sentido, NUNCA entre corchetes)`
     : '';
 
   const prompt =
-    `Genera exactamente 12 consultas que un potencial cliente real escribiría en ChatGPT o Perplexity buscando ${sector}.\n\n` +
-    `Contexto del negocio:\n- Sector: ${sector}\n- Propuesta de valor: ${valueProposition.slice(0, 100)}\n` +
+    `Genera exactamente 30 consultas que potenciales clientes escribirían en ChatGPT o Perplexity buscando ${sector}.\n\n` +
+    `Contexto:\n- Sector: ${sector}\n- Propuesta de valor: ${valueProposition.slice(0, 100)}\n` +
     `- Servicios clave: ${keywords.slice(0, 60)}${loc}\n\n` +
-    `REGLAS CRÍTICAS:\n` +
-    `1. Las consultas deben sonar NATURALES y conversacionales — como alguien que escribe en un chat, no como un formulario.\n` +
-    `2. Cortas y directas: máximo 12 palabras por consulta.\n` +
-    `3. Estructura EXACTA (en este orden):\n` +
-    `   - 3 consultas TOFU (posiciones 1-3): descubrimiento del sector, sin marca. Ej: "mejores coworkings Madrid recomendaciones"\n` +
-    `   - 4 consultas MOFU (posiciones 4-7): comparativas y problemas concretos, sin marca. Ej: "coworking vs oficina compartida diferencias precio"\n` +
-    `   - 4 consultas BOFU (posiciones 8-11): alta intención de compra, sin marca. Ej: "contratar espacio coworking flexible Barcelona"\n` +
-    `   - 1 consulta BOFU_brand (posición 12): pregunta directa sobre "${brandName}" mencionándolo explícitamente.\n` +
-    `4. NUNCA uses "${brandName}" ni "${domain}" en consultas TOFU/MOFU/BOFU (solo en la posición 12).\n` +
-    `5. NUNCA uses placeholders como [ciudad] o [empresa]. Usa nombres reales.\n` +
-    `6. Idioma: español.\n\n` +
-    `Devuelve SOLO un JSON array de 12 objetos. Sin markdown, sin texto adicional:\n` +
-    `[{"stage":"tofu","query":"..."},...,{"stage":"bofu","query":"...","isBrandQuery":true}]`;
+    `ESTRUCTURA EXACTA — 5 consultas por categoría, en este orden:\n` +
+    `1. "sector" (5): descubrimiento genérico del sector. Ej: "mejores empresas de X"\n` +
+    `2. "problema" (5): dolor o necesidad concreta. Ej: "cómo resolver Y"\n` +
+    `3. "comparativa" (5): comparar opciones. Ej: "diferencias entre X e Y"\n` +
+    `4. "decision" (5): alta intención de compra. Ej: "contratar X esta semana"\n` +
+    `5. "recomendacion" (5): pedir consejo/confianza. Ej: "recomiéndame un X de confianza"\n` +
+    `6. "marca" (5): preguntas directas sobre "${brandName}". Ej: "¿qué tal es ${brandName}?"\n\n` +
+    `REGLAS:\n` +
+    `- Naturales y conversacionales, máximo 15 palabras por consulta\n` +
+    `- Solo en categoría "marca" se usa "${brandName}"\n` +
+    `- NUNCA placeholders como [ciudad]. Usa nombres reales\n` +
+    `- Idioma: español\n\n` +
+    `JSON array de 30 objetos, sin markdown:\n` +
+    `[{"category":"sector","query":"..."},{"category":"problema","query":"..."},...,{"category":"marca","query":"...","isBrandQuery":true}]`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 25000);
@@ -276,9 +311,9 @@ async function generateQueries(
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        max_tokens: 1200,
+        max_tokens: 3000,
         messages: [
-          { role: 'system', content: 'Responde SOLO con JSON válido. Sin markdown. Sin texto adicional.' },
+          { role: 'system', content: 'Responde SOLO con JSON válido. Sin markdown.' },
           { role: 'user', content: prompt },
         ],
       }),
@@ -289,16 +324,21 @@ async function generateQueries(
     const match = raw.match(/\[[\s\S]*\]/);
     if (!match) return fallback;
     const arr = JSON.parse(match[0]) as any[];
-    if (!Array.isArray(arr) || arr.length < 10) return fallback;
+    if (!Array.isArray(arr) || arr.length < 20) return fallback;
+    const validCategories = new Set(['sector','problema','comparativa','decision','recomendacion','marca']);
     const specs: QuerySpec[] = arr
-      .filter((q: any) => q.stage && q.query && typeof q.query === 'string' && q.query.length > 8)
-      .map((q: any) => ({
-        stage: (q.stage as Stage) in { tofu: 1, mofu: 1, bofu: 1 } ? (q.stage as Stage) : 'mofu',
-        query: q.query as string,
-        isBrandQuery: !!q.isBrandQuery,
-      }))
-      .slice(0, 12);
-    return specs.length >= 10 ? specs : fallback;
+      .filter((q: any) => q.category && q.query && typeof q.query === 'string' && q.query.length > 8)
+      .map((q: any) => {
+        const cat = validCategories.has(q.category) ? q.category as GeoCategory : 'sector';
+        return {
+          stage: CATEGORY_TO_STAGE[cat],
+          category: cat,
+          query: q.query as string,
+          isBrandQuery: cat === 'marca' || !!q.isBrandQuery,
+        };
+      })
+      .slice(0, 30);
+    return specs.length >= 20 ? specs : fallback;
   } catch {
     return fallback;
   } finally {
@@ -448,12 +488,20 @@ export async function runGEO(
       query: r.spec.query.slice(0, 80),
       mentioned: r.mentioned,
       stage: r.spec.stage,
+      category: r.spec.category,
       isBrandQuery: r.spec.isBrandQuery,
     }));
 
     const total        = queries.length;
     const mentionCount = queries.filter((q) => q.mentioned).length;
     const mentionRate  = total > 0 ? Math.round((mentionCount / total) * 100) : 0;
+
+    // Confidence range (Wilson score interval approximation)
+    const p = total > 0 ? mentionCount / total : 0;
+    const z = 1.96; // 95% CI
+    const margin = total > 0 ? z * Math.sqrt((p * (1 - p)) / total) : 0;
+    const mentionRangeLow  = Math.max(0, Math.round((p - margin) * 100));
+    const mentionRangeHigh = Math.min(100, Math.round((p + margin) * 100));
 
     // Funnel breakdown
     const tofuQ = queries.filter((q) => q.stage === 'tofu');
@@ -465,6 +513,17 @@ export async function runGEO(
       bofu: { mentioned: bofuQ.filter((q) => q.mentioned).length, total: bofuQ.length },
     };
 
+    // Category breakdown (6 categories)
+    const categories: GeoCategory[] = ['sector', 'problema', 'comparativa', 'decision', 'recomendacion', 'marca'];
+    const categoryBreakdown: Record<string, { mentioned: number; total: number }> = {};
+    for (const cat of categories) {
+      const catQ = queries.filter((q) => q.category === cat);
+      categoryBreakdown[cat] = {
+        mentioned: catQ.filter((q) => q.mentioned).length,
+        total: catQ.length,
+      };
+    }
+
     // Cross-model breakdown
     const crossModel = engines.map((engine) => ({
       name: engine.name,
@@ -474,23 +533,38 @@ export async function runGEO(
       total,
     }));
 
-    // Weighted score: TOFU unprompted mentions most valuable
-    const STAGE_WEIGHTS: Record<Stage, number> = { tofu: 1.5, mofu: 1.0, bofu: 0.8 };
-    const BRAND_QUERY_WEIGHT = 0.3;
+    // Weighted score by category importance
     let weightedMentioned = 0;
     let weightedTotal = 0;
     for (const r of runResults) {
-      const w = r.spec.isBrandQuery ? BRAND_QUERY_WEIGHT : STAGE_WEIGHTS[r.spec.stage];
+      const w = CATEGORY_WEIGHTS[r.spec.category] ?? 1.0;
       weightedTotal += w;
       if (r.mentioned) weightedMentioned += w;
     }
     const overallScore = weightedTotal > 0 ? Math.round((weightedMentioned / weightedTotal) * 100) : 0;
 
-    // Legacy sub-scores (backward compat)
+    // Sub-scores (backward compat)
     const sectorScore = tofuQ.length > 0
       ? Math.round((tofuQ.filter((q) => q.mentioned).length / tofuQ.length) * 100) : 0;
     const brandScore  = bofuQ.length > 0
       ? Math.round((bofuQ.filter((q) => q.mentioned).length / bofuQ.length) * 100) : 0;
+
+    // Competitor per-category breakdown
+    const enrichedCompetitorMentions: GeoCompetitorMention[] = competitorMentions.map((cm) => {
+      const byCategory: Record<string, { mentioned: number; total: number }> = {};
+      for (const cat of categories) {
+        const catResults = runResults.filter((r) => r.spec.category === cat);
+        let compMentioned = 0;
+        let compDomain = cm.domain;
+        for (const r of catResults) {
+          if (r.engineOutputs.some((e) => detectMention(e.answer, compDomain, cm.name))) {
+            compMentioned++;
+          }
+        }
+        byCategory[cat] = { mentioned: compMentioned, total: catResults.length };
+      }
+      return { ...cm, byCategory: byCategory as any };
+    });
 
     const engineLog = crossModel.map((e) => `${e.name}:${e.mentioned}/${e.total}`).join(' ');
     return {
@@ -499,10 +573,13 @@ export async function runGEO(
       brandScore,
       sectorScore,
       mentionRate,
+      mentionRangeLow,
+      mentionRangeHigh,
       funnelBreakdown,
+      categoryBreakdown: categoryBreakdown as any,
       crossModel,
-      competitorMentions: competitorMentions.length > 0 ? competitorMentions : undefined,
-      _log: `ok | q:${total} | mentions:${mentionCount}/${total} | ${engineLog}`,
+      competitorMentions: enrichedCompetitorMentions.length > 0 ? enrichedCompetitorMentions : undefined,
+      _log: `ok | q:${total} | mentions:${mentionCount}/${total} (${mentionRangeLow}-${mentionRangeHigh}%) | ${engineLog}`,
     };
   } catch (err: any) {
     return {

@@ -355,13 +355,17 @@ const totalOrgKw = seo?.keywordsTop10 ?? matchCount;
 const noiseActual = noiseCount || Math.max(0, totalOrgKw - matchCount);
 const noisePct = totalOrgKw > 0 ? Math.round((noiseActual / totalOrgKw) * 100) : 0;
 
-function buildDemandNarrative(): string {
-  if (capturePct >= 70 && noisePct < 20) return `Strong positioning in the sector core with high efficiency. Focus now should be defending these positions and expanding into long-tail keywords.`;
-  if (capturePct >= 50) return `Good positioning in part of the core, but with a relevant gap in high-intent categories${noisePct > 25 ? ' and some inefficiency in captured traffic' : ''}. There is clear room for organic growth.`;
-  if (capturePct >= 20) return `You are capturing a portion of sector demand, but most high-intent searches go to competitors.${noisePct > 30 ? ' Additionally, a significant portion of current traffic comes from low-value terms.' : ''} Prioritizing commercial-intent keywords offers the highest return.`;
-  return `Presence in strategic sector searches is very low. Competitors capture most of the relevant demand. A focused content strategy targeting high-intent keywords can change this within 4-6 months.`;
-}
-const demandNarrative = buildDemandNarrative();
+const noiseNote25 = noisePct > 25 ? ' and some inefficiency in captured traffic' : '';
+const noiseNote30 = noisePct > 30 ? ' Additionally, a significant portion of current traffic comes from low-value terms.' : '';
+const demandNarrative = capturePct >= 70 && noisePct < 20
+  ? 'Strong positioning in the sector core with high efficiency. Focus now should be defending these positions and expanding into long-tail keywords.'
+  : capturePct >= 50
+  ? 'Good positioning in part of the core, but with a relevant gap in high-intent categories' + noiseNote25 + '. There is clear room for organic growth.'
+  : capturePct >= 20
+  ? 'You are capturing a portion of sector demand, but most high-intent searches go to competitors.' + noiseNote30 + ' Prioritizing commercial-intent keywords offers the highest return.'
+  : 'Presence in strategic sector searches is very low. Competitors capture most of the relevant demand. A focused content strategy targeting high-intent keywords can change this within 4-6 months.';
+const captureColor = capturePct >= 50 ? '#1D9E75' : capturePct >= 20 ? '#BA7517' : '#E24B4A';
+const noiseBarW = Math.min(noisePct, 100 - capturePct - gapPct);
 
 // Schema businessType label
 const btLabelForSchema = businessType !== 'unknown' ? (btLabels[businessType] || businessType) : null;
@@ -691,12 +695,16 @@ const heroStatus = statusStyle(ss(health.total));
               </h1>
               <div style="font-size:0.68rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Executive Summary</div>
               <div style="display:flex;flex-direction:column;gap:8px;">
-                {executiveBullets.map((bullet: string, i: number) => (
+                {executiveBullets.map((bullet: string, i: number) => {
+                  const bgColors = ['#1A4B8C', '#4A7FD4', '#7BA3E0'];
+                  const bg = bgColors[i] || '#7BA3E0';
+                  return (
                   <div style="display:flex;align-items:baseline;gap:10px;font-size:0.82rem;line-height:1.55;">
-                    <span style={`flex-shrink:0;width:20px;height:20px;border-radius:50%;background:${i === 0 ? '#1A4B8C' : i === 1 ? '#4A7FD4' : '#7BA3E0'};color:white;font-size:0.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;`}>{i + 1}</span>
+                    <span style={`flex-shrink:0;width:20px;height:20px;border-radius:50%;background:${bg};color:white;font-size:0.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;`}>{i + 1}</span>
                     <span style="color:#3A4458;">{bullet}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -969,7 +977,7 @@ const heroStatus = statusStyle(ss(health.total));
                   <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;">
                     <div style="flex:1;min-width:140px;">
                       <div style="display:flex;align-items:baseline;gap:6px;">
-                        <span style={`font-size:1.5rem;font-weight:800;color:${capturePct >= 50 ? '#1D9E75' : capturePct >= 20 ? '#BA7517' : '#E24B4A'};`}>{capturePct}%</span>
+                        <span style={`font-size:1.5rem;font-weight:800;color:${captureColor};`}>{capturePct}%</span>
                         <span style="font-size:0.7rem;color:#5A6478;">coverage</span>
                       </div>
                       <div style="font-size:0.72rem;color:#5A6478;margin-top:2px;">Strategic keywords where you rank in top 10</div>
@@ -996,7 +1004,7 @@ const heroStatus = statusStyle(ss(health.total));
                   <div style="height:10px;background:#E5E7EB;border-radius:6px;overflow:hidden;display:flex;margin-bottom:12px;">
                     <div style={`width:${capturePct}%;background:#1D9E75;`}></div>
                     {gapPct > 0 && <div style={`width:${gapPct}%;background:#E24B4A;`}></div>}
-                    {noisePct > 5 && <div style={`width:${Math.min(noisePct, 100 - capturePct - gapPct)}%;background:#BA7517;`}></div>}
+                    {noisePct > 5 && <div style={`width:${noiseBarW}%;background:#BA7517;`}></div>}
                   </div>
                   <p style="font-size:0.78rem;color:#5A6478;line-height:1.55;margin:0;">{demandNarrative}</p>
                 </div>

@@ -182,17 +182,20 @@ export interface ContentResult extends ModuleResult {
   strengths?: string[];
 }
 
+export type GeoCategory = 'sector' | 'problema' | 'comparativa' | 'decision' | 'recomendacion' | 'marca';
+
 export interface GeoQuery {
   query: string;
   mentioned: boolean;
   stage?: 'tofu' | 'mofu' | 'bofu';  // Funnel stage
+  category?: GeoCategory;              // Intent category (new)
   isBrandQuery?: boolean;
-  context?: string;     // First 200 chars of answer when mentioned
-  answer?: string;      // First 150 chars of answer when NOT mentioned (for debugging)
-  level?: number;        // Legacy: 1=sector, 2=value prop, 3=keywords, 4=direct brand
-  levelLabel?: string;  // Legacy: Human-readable label for this funnel level
-  pts?: number;         // Legacy: Points awarded at this level
-  engines?: Array<{ name: string; mentioned: boolean; context?: string }>; // Per-engine results
+  context?: string;
+  answer?: string;
+  level?: number;
+  levelLabel?: string;
+  pts?: number;
+  engines?: Array<{ name: string; mentioned: boolean; context?: string }>;
 }
 
 export interface GeoCompetitorMention {
@@ -201,6 +204,8 @@ export interface GeoCompetitorMention {
   mentions: number;   // out of total queries
   total: number;
   mentionRate: number; // 0-100
+  // Per-category breakdown for competitor
+  byCategory?: { [key: string]: { mentioned: number; total: number } };
 }
 
 export interface GeoResult extends ModuleResult {
@@ -208,12 +213,15 @@ export interface GeoResult extends ModuleResult {
   overallScore?: number;
   brandScore?: number;
   sectorScore?: number;
-  mentionRate?: number;   // 0-100: % of all queries where brand was mentioned
+  mentionRate?: number;       // 0-100
+  mentionRangeLow?: number;   // confidence interval low
+  mentionRangeHigh?: number;  // confidence interval high
   funnelBreakdown?: {
     tofu: { mentioned: number; total: number };
     mofu: { mentioned: number; total: number };
     bofu: { mentioned: number; total: number };
   };
+  categoryBreakdown?: { [key: string]: { mentioned: number; total: number } };
   crossModel?: Array<{ name: string; mentioned: number; total: number }>;
   competitorMentions?: GeoCompetitorMention[];
 }
