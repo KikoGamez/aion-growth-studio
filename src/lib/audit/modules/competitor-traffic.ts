@@ -117,24 +117,37 @@ export async function runCompetitorTraffic(
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
 
-  // One request per domain in parallel — /live endpoints reject batches with >1 task (error 40000)
-  const results = await Promise.all(
-    items.map(async (item) => {
+  // Fetch sequentially with up to 3 retries per competitor.
+  // Competitors with no data after 3 attempts are excluded.
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 2000;
+  const results: ReturnType<typeof parseDFSItem>[] = [];
+
+  for (const item of items) {
+    let result: ReturnType<typeof parseDFSItem> | null = null;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       // Try Spain first
       const spainResult = await fetchSingle(auth, item, 2724);
-      if (!(spainResult as any).apiError) return spainResult;
+      if (!(spainResult as any).apiError) { result = spainResult; break; }
 
-      // No Spain data → try global (no location filter)
+      // No Spain data → try global
       const err = (spainResult as any).apiError as string;
       if (err === 'no_data' || err === 'empty_items' || err.startsWith('4')) {
-        console.log(`[competitor-traffic] ${item.domain}: Spain no data (${err}), trying global...`);
         const globalResult = await fetchSingle(auth, item);
-        if (!(globalResult as any).apiError) return globalResult;
+        if (!(globalResult as any).apiError) { result = globalResult; break; }
       }
 
-      return spainResult;
-    }),
-  );
+      if (attempt < MAX_RETRIES) {
+        console.log(`[competitor-traffic] ${item.domain}: attempt ${attempt}/${MAX_RETRIES} failed (${err}), retrying in ${RETRY_DELAY}ms...`);
+        await new Promise(r => setTimeout(r, RETRY_DELAY));
+      } else {
+        console.log(`[competitor-traffic] ${item.domain}: all ${MAX_RETRIES} attempts failed, excluding from report`);
+      }
+    }
+
+    if (result) results.push(result);
+  }
 
   const labeled = clientKw != null && clientKw > 0
     ? labelCompetitorsBySize(results, clientKw)
