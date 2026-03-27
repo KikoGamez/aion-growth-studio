@@ -910,13 +910,17 @@ const heroStatus = statusStyle(ss(health.total));
                         <span>Marca ({brandPct}%)</span>
                         <span>No marca ({nonBrandPct}%)</span>
                       </div>
-                      <div style="height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;display:flex;">
-                        <div style={`width:${brandPct}%;background:#4A7FD4;`}></div>
-                        <div style={`width:${nonBrandPct}%;background:#1D9E75;`}></div>
+                      <div style="height:10px;background:#E5E7EB;border-radius:5px;overflow:hidden;display:flex;">
+                        {brandPct > 0 && <div style={`width:${Math.max(brandPct, 3)}%;background:#4A7FD4;border-radius:5px 0 0 5px;`}></div>}
+                        <div style={`width:${brandPct > 0 ? nonBrandPct : 100}%;background:#BA7517;${brandPct === 0 ? 'border-radius:5px;' : 'border-radius:0 5px 5px 0;'}`}></div>
                       </div>
-                      <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#9CA3AF;margin-top:3px;">
-                        <span>~{fmt(brandEtv)} vis/mes</span>
-                        <span>~{fmt(nonBrandEtv)} vis/mes</span>
+                      <div style="display:flex;justify-content:space-between;font-size:0.68rem;margin-top:3px;">
+                        <span style={`color:${brandPct > 0 ? '#4A7FD4' : '#9CA3AF'};font-weight:${brandPct > 0 ? '600' : '400'};`}>
+                          {brandPct > 0 ? `~${fmt(brandEtv)} vis/mes` : 'Sin tráfico de marca'}
+                        </span>
+                        <span style={`color:${nonBrandPct > 50 ? '#BA7517' : '#1D9E75'};font-weight:600;`}>
+                          ~{fmt(nonBrandEtv)} vis/mes
+                        </span>
                       </div>
                     </div>
                   </div>

@@ -334,10 +334,24 @@ export async function runSEO(url: string): Promise<SEOResult> {
     } catch { _logParts.push('hist:except'); }
 
     // ── Brand vs Non-Brand traffic + Indexed pages (parallel) ─────
-    const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '').replace(/[-_.]/g, '').toLowerCase();
+    const domainRaw = domain.replace(/\.[a-z]{2,6}$/i, '');
+    const domainBase = domainRaw.replace(/[-_.]/g, '').toLowerCase();
+    // Generate brand terms: "davidlloyd" → also try "david" for compound names
     const brandTerms = [domainBase];
-    // Also add common variations (e.g. "comillas inmobiliaria" for "comillasinmobiliaria")
-    if (domainBase.length > 6) brandTerms.push(domainBase.slice(0, Math.ceil(domainBase.length * 0.6)));
+    // Split compound domain: "davidlloyd" → "david lloyd", "davidlloyd"
+    // Also handle hyphenated: "hotel-urban" → "hotel urban", "hotelurban"
+    const domainSpaced = domainRaw.replace(/[-_.]/g, ' ').toLowerCase().trim();
+    if (domainSpaced.includes(' ')) {
+      // Already has natural word breaks (from hyphens/dots)
+      domainSpaced.split(' ').filter(w => w.length >= 3).forEach(w => brandTerms.push(w));
+    } else if (domainBase.length > 6) {
+      // Try to find a natural split point for compound names
+      brandTerms.push(domainBase.slice(0, Math.ceil(domainBase.length * 0.5)));
+    }
+    // Use the most distinctive brand term (longest that's not the full compound)
+    const brandFilter = domainSpaced.includes(' ')
+      ? domainSpaced.split(' ').sort((a, b) => b.length - a.length)[0]
+      : domainBase;
 
     try {
       const [brandRes, siteSearchRes, sitemapRes] = await Promise.all([
@@ -351,7 +365,7 @@ export async function runSEO(url: string): Promise<SEOResult> {
             location_code: 2724,
             language_code: 'es',
             limit: 100,
-            filters: ['keyword_data.keyword', 'like', `%${domainBase}%`],
+            filters: ['keyword_data.keyword', 'like', `%${brandFilter}%`],
           }]),
         }),
         // Indexed pages: site: search via SERP
