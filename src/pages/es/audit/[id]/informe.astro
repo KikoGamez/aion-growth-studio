@@ -349,9 +349,21 @@ const fallbackStrategic = [
 ];
 const displayStrategic = strategicActions.length>0 ? strategicActions : fallbackStrategic.slice(0,4);
 
-// GEO cross-model
+// GEO cross-model + categories
 const crossModel: any[] = geo?.crossModel||[];
 const geoEngines = [...new Set(crossModel.map((e:any)=>e.name))];
+const geoRangeLow = geo?.mentionRangeLow ?? 0;
+const geoRangeHigh = geo?.mentionRangeHigh ?? 0;
+const hasGeoRange = geoRangeHigh > geoRangeLow;
+const categoryBreakdown = geo?.categoryBreakdown || {};
+const categoryLabels: Record<string, { label: string; color: string; bg: string }> = {
+  sector: { label: 'Sector', color: '#1A4B8C', bg: '#EBF2FF' },
+  problema: { label: 'Problema', color: '#7c3aed', bg: '#F3E8FF' },
+  comparativa: { label: 'Comparativa', color: '#BA7517', bg: '#FAEEDA' },
+  decision: { label: 'Decisión', color: '#E24B4A', bg: '#FCEBEB' },
+  recomendacion: { label: 'Recomendación', color: '#1D9E75', bg: '#E1F5EE' },
+  marca: { label: 'Marca', color: '#5A6478', bg: '#F3F4F6' },
+};
 
 // Match/Gap/Noise counts from keyword data
 const topKeywords: any[] = seo?.topKeywords || [];
@@ -1157,7 +1169,7 @@ const heroStatus = statusStyle(ss(health.total));
 
           <!-- TOFU/MOFU/BOFU explanation -->
           <div style="background:#F8F9FB;border-radius:8px;border:0.5px solid #E5E7EB;padding:16px;margin-bottom:16px;">
-            <div style="font-size:0.78rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">¿Qué es TOFU, MOFU y BOFU?</div>
+            <div style="font-size:0.78rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Metodología: {geo?.queries?.length ?? 30} consultas en 6 categorías de intención</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
               <div style="background:#EBF2FF;border-radius:6px;padding:12px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
@@ -1201,21 +1213,55 @@ const heroStatus = statusStyle(ss(health.total));
 
           {!qaSuppressed.includes('geo_analysis') && geo ? (
             <div>
-              {/* Metric cards */}
-              <div class="grid-2" style="margin-bottom:14px;">
-                <div class="metric-card">
-                  <div class="metric-value" style={`color:${(geo.mentionRate??0)>=60?'#1D9E75':(geo.mentionRate??0)>=30?'#BA7517':'#E24B4A'};`}>{geo.mentionRate ?? 0}%</div>
-                  <div class="metric-label">Tasa de mención en IA</div>
-                  <div class="metric-sub" style="margin-top:4px;">
-                    {(geo.mentionRate??0)>=60 ? 'Buena visibilidad en IA' : (geo.mentionRate??0)>=30 ? 'Visibilidad parcial — mejorable' : 'Baja presencia en IA generativa'}
+              {/* Mention rate with confidence range */}
+              <div style="background:#F8F9FB;border-radius:12px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;">
+                  {(() => {
+                    const mr = geo.mentionRate ?? 0;
+                    const c = mr >= 60 ? '#1D9E75' : mr >= 30 ? '#BA7517' : '#E24B4A';
+                    return (
+                      <>
+                        <div style={`font-size:2rem;font-weight:800;color:${c};line-height:1;`}>{mr}%</div>
+                        {hasGeoRange && (
+                          <div style="font-size:0.65rem;color:#9CA3AF;">rango {geoRangeLow}–{geoRangeHigh}%</div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div style="flex:1;min-width:200px;">
+                  <div style="font-size:0.78rem;font-weight:700;color:#1A1A2E;margin-bottom:4px;">Tasa de mención en IA</div>
+                  <div style="font-size:0.75rem;color:#5A6478;line-height:1.5;">
+                    Tu marca aparece en el {geo.mentionRate ?? 0}% de {geo.queries?.length ?? 0} consultas realizadas a {geoEngines.length > 0 ? geoEngines.join(', ') : 'motores de IA'}.
+                    {hasGeoRange && ` Con un intervalo de confianza del 95%, la visibilidad real se sitúa entre ${geoRangeLow}% y ${geoRangeHigh}%.`}
                   </div>
                 </div>
-                <div class="metric-card">
-                  <div class="metric-value">{geoEngines.length > 0 ? geoEngines.length : (geo.queries?.length ?? 0) > 0 ? '1' : '—'}</div>
-                  <div class="metric-label">Motores de IA analizados</div>
-                  <div class="metric-sub" style="margin-top:4px;">{geoEngines.length > 0 ? geoEngines.join(', ') : 'ChatGPT + otros'}</div>
-                </div>
               </div>
+
+              {/* Category breakdown — 6 intent categories */}
+              {Object.keys(categoryBreakdown).length > 0 && (
+                <div style="margin-bottom:14px;">
+                  <div style="font-size:0.72rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Visibilidad por tipo de consulta</div>
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                    {Object.entries(categoryBreakdown).map(([cat, data]: [string, any]) => {
+                      const meta = categoryLabels[cat] || { label: cat, color: '#5A6478', bg: '#F3F4F6' };
+                      const pct = data.total > 0 ? Math.round((data.mentioned / data.total) * 100) : 0;
+                      return (
+                        <div style={`background:${meta.bg};border-radius:8px;padding:10px 12px;`}>
+                          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <span style={`font-size:0.68rem;font-weight:700;color:${meta.color};text-transform:uppercase;letter-spacing:0.04em;`}>{meta.label}</span>
+                            <span style={`font-size:0.78rem;font-weight:800;color:${pct > 0 ? meta.color : '#9CA3AF'};`}>{pct}%</span>
+                          </div>
+                          <div style="height:4px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;">
+                            <div style={`height:100%;width:${pct}%;background:${meta.color};border-radius:3px;`}></div>
+                          </div>
+                          <div style="font-size:0.6rem;color:#9CA3AF;margin-top:3px;">{data.mentioned}/{data.total} consultas</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Engine breakdown from crossModel */}
               {crossModel.length > 0 && (
@@ -1579,29 +1625,56 @@ const heroStatus = statusStyle(ss(health.total));
                 </div>
               ) : (geo.competitorMentions?.length ?? 0) > 0 && (
                 <div style="margin-top:14px;">
-                  <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Menciones de la competencia en IA</div>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Competidor</th>
-                        <th>Tasa de mención IA</th>
-                        <th>vs. {domain} ({geo.mentionRate ?? 0}%)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {geo.competitorMentions.slice(0,5).map((cm: any) => (
+                  <div style="font-size:0.75rem;font-weight:600;color:#5A6478;margin-bottom:8px;">Tu marca vs competidores en IA</div>
+                  <div style="overflow-x:auto;">
+                    <table>
+                      <thead>
                         <tr>
-                          <td style="font-weight:500;">{cm.name || cm.domain}</td>
-                          <td>
-                            <span style={`font-weight:600;color:${(cm.mentionRate??0)>=60?'#1D9E75':(cm.mentionRate??0)>=30?'#BA7517':'#E24B4A'};`}>{cm.mentionRate ?? 0}%</span>
-                          </td>
-                          <td style={`font-size:11px;color:${(cm.mentionRate??0)>(geo.mentionRate??0)?'#E24B4A':'#1D9E75'};`}>
-                            {(cm.mentionRate??0) > (geo.mentionRate??0) ? `▲ +${(cm.mentionRate??0)-(geo.mentionRate??0)}pp` : (cm.mentionRate??0) < (geo.mentionRate??0) ? `▼ −${(geo.mentionRate??0)-(cm.mentionRate??0)}pp` : '= igual'}
-                          </td>
+                          <th>Empresa</th>
+                          <th style="text-align:center;">Total</th>
+                          {Object.keys(categoryBreakdown).length > 0 && Object.entries(categoryLabels).slice(0, 5).map(([cat, meta]) => (
+                            <th style={`text-align:center;font-size:9px;color:${meta.color};`}>{meta.label}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {/* Client row */}
+                        <tr style="background:#F0F5FF;">
+                          <td style="font-weight:700;">{domain} <span style="font-size:10px;color:#1A4B8C;">(tú)</span></td>
+                          <td style="text-align:center;">
+                            {(() => {
+                              const mr = geo.mentionRate ?? 0;
+                              const c = mr >= 50 ? '#1D9E75' : mr >= 25 ? '#BA7517' : '#E24B4A';
+                              return <span style={`font-weight:800;color:${c};`}>{mr}%</span>;
+                            })()}
+                          </td>
+                          {Object.keys(categoryBreakdown).length > 0 && Object.keys(categoryLabels).slice(0, 5).map((cat) => {
+                            const d = categoryBreakdown[cat];
+                            const pct = d && d.total > 0 ? Math.round((d.mentioned / d.total) * 100) : 0;
+                            return <td style={`text-align:center;font-size:11px;font-weight:600;color:${pct > 0 ? '#1D9E75' : '#E24B4A'};`}>{pct}%</td>;
+                          })}
+                        </tr>
+                        {/* Competitor rows */}
+                        {geo.competitorMentions.slice(0, 5).map((cm: any) => {
+                          const cmr = cm.mentionRate ?? 0;
+                          const cc = cmr >= 50 ? '#1D9E75' : cmr >= 25 ? '#BA7517' : '#E24B4A';
+                          return (
+                            <tr>
+                              <td style="font-weight:500;">{cm.name || cm.domain}</td>
+                              <td style="text-align:center;">
+                                <span style={`font-weight:700;color:${cc};`}>{cmr}%</span>
+                              </td>
+                              {Object.keys(categoryBreakdown).length > 0 && Object.keys(categoryLabels).slice(0, 5).map((cat) => {
+                                const d = cm.byCategory?.[cat];
+                                const pct = d && d.total > 0 ? Math.round((d.mentioned / d.total) * 100) : 0;
+                                return <td style={`text-align:center;font-size:11px;color:${pct > 0 ? '#1D9E75' : '#9CA3AF'};`}>{pct}%</td>;
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ))}
             </div>
