@@ -71,27 +71,39 @@ const _totalTraf    = Object.values(_trafficCh).reduce((s: number, c: any) => s 
 const _organicTraf  = _trafficCh.organic?.visits || 0;
 const visTrafficSub = _totalTraf > 0 ? Math.min(100, Math.round((_organicTraf / _totalTraf) * 150)) : 0;
 
-// Brand Authority score (0-100): domain authority + blog + press + social (NO GEO)
+// Brand Authority score (0-100): domain + reviews + blog + press + social
 const isB2B = businessType === 'b2b' || businessType === 'saas';
+const ratingSources: any[] = repRaw.ratingSources || [];
 const brandAuthorityScoreEs = (() => {
   let ba = 0;
+  // Domain authority (0-20)
   const rd = seo?.referringDomains ?? 0;
-  if (rd >= 500) ba += 20; else if (rd >= 100) ba += 14; else if (rd >= 20) ba += 8; else if (rd >= 1) ba += 3;
+  if (rd >= 500) ba += 12; else if (rd >= 100) ba += 8; else if (rd >= 20) ba += 5; else if (rd >= 1) ba += 2;
   const dr = seo?.domainRank ?? 0;
-  if (dr > 0) ba += Math.round(Math.min(dr / 100, 1) * 10);
-  if (hasBlogEs) { ba += 10; if ((cc?.totalPosts ?? 0) >= 20) ba += 10; else if ((cc?.totalPosts ?? 0) >= 5) ba += 5; }
+  if (dr > 0) ba += Math.round(Math.min(dr / 100, 1) * 8);
+  // Reviews/reputation (0-25) — Google, Trustpilot, Tripadvisor, Amazon
+  const cr = repRaw.combinedRating ?? 0;
+  const tr = repRaw.totalReviews ?? 0;
+  if (cr >= 4.5 && tr >= 100) ba += 25;
+  else if (cr >= 4.0 && tr >= 50) ba += 20;
+  else if (cr >= 3.5 && tr >= 10) ba += 12;
+  else if (cr > 0) ba += 5;
+  // Blog (0-15)
+  if (hasBlogEs) { ba += 8; if ((cc?.totalPosts ?? 0) >= 20) ba += 7; else if ((cc?.totalPosts ?? 0) >= 5) ba += 4; }
+  // Press (0-15)
   const nc = newsCountEs;
-  if (nc >= 10) ba += 20; else if (nc >= 5) ba += 14; else if (nc >= 2) ba += 8; else if (nc >= 1) ba += 4;
+  if (nc >= 5) ba += 15; else if (nc >= 2) ba += 10; else if (nc >= 1) ba += 5;
+  // Social (0-25) — B2B: LinkedIn, B2C: Instagram + LinkedIn
   if (isB2B) {
     const liF = linkedin?.followers ?? 0;
-    if (liF >= 50000) ba += 20; else if (liF >= 10000) ba += 15; else if (liF >= 1000) ba += 10; else if (liF >= 100) ba += 5;
+    if (liF >= 50000) ba += 18; else if (liF >= 10000) ba += 13; else if (liF >= 1000) ba += 8; else if (liF >= 100) ba += 4;
     const liE = linkedin?.employees ?? 0;
-    if (liE >= 500) ba += 10; else if (liE >= 50) ba += 6; else if (liE >= 10) ba += 3;
+    if (liE >= 500) ba += 7; else if (liE >= 50) ba += 4; else if (liE >= 10) ba += 2;
   } else {
     const igF = instagram?.followers ?? 0;
-    if (igF >= 100000) ba += 20; else if (igF >= 10000) ba += 14; else if (igF >= 1000) ba += 8; else if (igF >= 100) ba += 4;
+    if (igF >= 100000) ba += 18; else if (igF >= 10000) ba += 12; else if (igF >= 1000) ba += 7; else if (igF >= 100) ba += 3;
     const liF = linkedin?.followers ?? 0;
-    if (liF >= 5000) ba += 10; else if (liF >= 500) ba += 5; else if (liF >= 100) ba += 2;
+    if (liF >= 5000) ba += 7; else if (liF >= 500) ba += 4; else if (liF >= 100) ba += 2;
   }
   return Math.min(100, ba);
 })();
@@ -1492,6 +1504,33 @@ const donutSVG = buildDonutSVG();
               )}
             </div>
           </div>
+
+          <!-- Reviews from all sources -->
+          {ratingSources.length > 0 && (
+            <div style="background:#F8F9FB;border-radius:12px;padding:16px 20px;margin-bottom:14px;">
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+                <div>
+                  <div style={`font-size:2rem;font-weight:800;color:${(repRaw.combinedRating ?? 0) >= 4.0 ? '#1D9E75' : (repRaw.combinedRating ?? 0) >= 3.0 ? '#BA7517' : '#E24B4A'};line-height:1;`}>{repRaw.combinedRating ?? '—'}</div>
+                  <div style="font-size:0.65rem;color:#9CA3AF;">/5 ponderado</div>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:0.78rem;font-weight:700;color:#1A1A2E;margin-bottom:4px;">Reputación online ({fmt(repRaw.totalReviews ?? 0)} reseñas)</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    {ratingSources.map((src: any) => (
+                      <div style="display:flex;align-items:center;gap:4px;background:white;border-radius:6px;padding:4px 10px;border:0.5px solid #E5E7EB;">
+                        <span style="font-size:0.75rem;font-weight:700;color:#1A1A2E;">{src.name}</span>
+                        <span style={`font-size:0.75rem;font-weight:800;color:${src.rating >= 4.0 ? '#1D9E75' : src.rating >= 3.0 ? '#BA7517' : '#E24B4A'};`}>{src.rating}★</span>
+                        <span style="font-size:0.65rem;color:#9CA3AF;">({fmt(src.reviews)})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div style="font-size:0.75rem;color:#5A6478;line-height:1.5;">
+                {(repRaw.combinedRating ?? 0) >= 4.2 ? 'Excelente reputación online. Las valoraciones refuerzan la confianza de nuevos clientes.' : (repRaw.combinedRating ?? 0) >= 3.5 ? 'Buena reputación con margen de mejora. Responder reseñas y pedir feedback activamente puede subir la media.' : 'Reputación que necesita atención. Las valoraciones bajas afectan directamente a la conversión de nuevos clientes.'}
+              </div>
+            </div>
+          )}
 
           <!-- Social presence -->
           <div class="grid-2" style="margin-bottom:14px;">

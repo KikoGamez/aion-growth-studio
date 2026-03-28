@@ -166,7 +166,7 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
       return runGBP(url, results.crawl || {});
 
     case 'reputation':
-      return runReputation(url, results.crawl || {}, results.gbp);
+      return runReputation(url, results.crawl || {}, results.gbp, (results.sector as any)?.sector);
 
     case 'traffic':
       return runTraffic(url);

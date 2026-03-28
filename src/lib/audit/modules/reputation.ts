@@ -139,6 +139,102 @@ async function fetchTrustpilot(
   }
 }
 
+// ── DataForSEO — Tripadvisor ──────────────────────────────────────
+
+async function fetchTripadvisor(
+  companyName: string,
+): Promise<{ rating: number | null; reviews: number | null; found: boolean }> {
+  if (!DFS_LOGIN || !DFS_PASSWORD)
+    return { rating: null, reviews: null, found: false };
+
+  const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    const res = await fetch(
+      'https://api.dataforseo.com/v3/business_data/tripadvisor/search/live',
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{ keyword: companyName, depth: 1 }]),
+      },
+    );
+    if (!res.ok) return { rating: null, reviews: null, found: false };
+    const data = await res.json();
+    const item = data?.tasks?.[0]?.result?.[0]?.items?.[0];
+    if (!item?.rating?.value) return { rating: null, reviews: null, found: false };
+    return {
+      rating: Math.round(item.rating.value * 10) / 10,
+      reviews: item.rating.votes_count ?? null,
+      found: true,
+    };
+  } catch {
+    return { rating: null, reviews: null, found: false };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── Google Reviews (via Google Places rating) — already in GBP ────
+// GBP fetchGBPReputation already returns Google Reviews data.
+// No separate function needed.
+
+// ── Amazon Reviews (via Google search for "[brand] site:amazon") ──
+
+async function fetchAmazonPresence(
+  companyName: string,
+  domain: string,
+): Promise<{ rating: number | null; reviews: number | null; found: boolean; url?: string }> {
+  if (!DFS_LOGIN || !DFS_PASSWORD)
+    return { rating: null, reviews: null, found: false };
+
+  const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    // Search Google for the brand on Amazon
+    const res = await fetch(
+      'https://api.dataforseo.com/v3/serp/google/organic/live/regular',
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{
+          keyword: `${companyName} site:amazon.es OR site:amazon.com`,
+          location_code: 2724,
+          language_code: 'es',
+          depth: 3,
+        }]),
+      },
+    );
+    if (!res.ok) return { rating: null, reviews: null, found: false };
+    const data = await res.json();
+    const items: any[] = data?.tasks?.[0]?.result?.[0]?.items || [];
+    const amazonItem = items.find((it: any) =>
+      it.type === 'organic' && (it.url || '').includes('amazon')
+    );
+    if (!amazonItem) return { rating: null, reviews: null, found: false };
+
+    // Extract rating from snippet if available
+    const ratingMatch = (amazonItem.description || '').match(/(\d[.,]\d)\s*(?:de|out of|\/)\s*5/);
+    const reviewMatch = (amazonItem.description || '').match(/(\d[\d.,]*)\s*(?:valoracion|opinion|review|calificacion)/i);
+
+    return {
+      rating: ratingMatch ? parseFloat(ratingMatch[1].replace(',', '.')) : null,
+      reviews: reviewMatch ? parseInt(reviewMatch[1].replace(/[.,]/g, ''), 10) : null,
+      found: true,
+      url: amazonItem.url,
+    };
+  } catch {
+    return { rating: null, reviews: null, found: false };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── DataForSEO — Google News (brand mentions) ─────────────────────
 
 async function fetchNewsPresence(
@@ -242,6 +338,7 @@ export async function runReputation(
   url: string,
   crawl: CrawlResult,
   existingGbp?: any,
+  sector?: string,
 ): Promise<ReputationResult> {
   const domain = new URL(
     url.startsWith('http') ? url : `https://${url}`,
@@ -264,24 +361,37 @@ export async function runReputation(
 
   const cityHint = extractCity(existingGbp?.address);
 
-  // Run Places + Trustpilot + Google News in parallel
-  const [gbp, tpByName, news] = await Promise.all([
+  const businessType = crawl.businessType || 'unknown';
+  const isHospitality = /hotel|restaur|hostal|bar |café|cafetería|hostelería|turismo|alojamiento/i.test(sector || '');
+  const isEcommerce = businessType === 'ecommerce' || /tienda|shop|store|ecommerce|venta online/i.test(sector || '');
+
+  // Run all reputation sources in parallel
+  const [gbp, tpByName, news, tripadvisor, amazon] = await Promise.all([
     fetchGBPReputation(companyName, domain, cityHint),
     fetchTrustpilot(companyName),
     fetchNewsPresence(companyName),
+    isHospitality ? fetchTripadvisor(companyName) : Promise.resolve({ rating: null, reviews: null, found: false }),
+    isEcommerce ? fetchAmazonPresence(companyName, domain) : Promise.resolve({ rating: null, reviews: null, found: false }),
   ]);
 
-  // If Trustpilot didn't find by company name, try by domain
+  // Trustpilot: retry with domain if name search failed
   let tp = tpByName;
   if (!tp.found && domain !== companyName.toLowerCase()) {
     tp = await fetchTrustpilot(domain);
-    if (tp.found) console.log(`[reputation] Trustpilot: found by domain "${domain}" (not by name "${companyName}")`)
+    if (tp.found) console.log(`[reputation] Trustpilot: found by domain "${domain}"`);
   }
 
-  const _log = `query="${companyName}" domain="${domain}" news:${news.newsCount} gbp:${gbp.found ? `ok(${gbp.rating})` : 'miss'} tp:${tp.found ? `ok(${tp.rating})` : 'miss'}`;
+  const _log = `query="${companyName}" domain="${domain}" news:${news.newsCount} gbp:${gbp.found ? `ok(${gbp.rating})` : 'miss'} tp:${tp.found ? `ok(${tp.rating})` : 'miss'} ta:${tripadvisor.found ? `ok(${tripadvisor.rating})` : 'skip'} amz:${amazon.found ? 'found' : 'skip'}`;
   console.log(`[reputation] ${_log}`);
 
-  if (!gbp.found && !tp.found) {
+  // Collect all rating sources
+  const sources: Array<{ name: string; rating: number; reviews: number; weight: number }> = [];
+  if (gbp.found && gbp.rating != null) sources.push({ name: 'Google', rating: gbp.rating, reviews: gbp.reviews ?? 0, weight: 0.35 });
+  if (tp.found && tp.rating != null) sources.push({ name: 'Trustpilot', rating: tp.rating, reviews: tp.reviews ?? 0, weight: 0.30 });
+  if (tripadvisor.found && tripadvisor.rating != null) sources.push({ name: 'Tripadvisor', rating: tripadvisor.rating, reviews: tripadvisor.reviews ?? 0, weight: 0.25 });
+  if (amazon.found && amazon.rating != null) sources.push({ name: 'Amazon', rating: amazon.rating, reviews: amazon.reviews ?? 0, weight: 0.20 });
+
+  if (sources.length === 0) {
     return {
       gbpFound: false,
       trustpilotFound: false,
@@ -293,26 +403,17 @@ export async function runReputation(
     };
   }
 
-  // Combined rating: weighted average (GBP 60%, Trustpilot 40%)
-  let combinedRating: number | null = null;
-  if (gbp.found && gbp.rating != null && tp.found && tp.rating != null) {
-    combinedRating =
-      Math.round((gbp.rating * 0.6 + tp.rating * 0.4) * 10) / 10;
-  } else if (gbp.found && gbp.rating != null) {
-    combinedRating = gbp.rating;
-  } else if (tp.found && tp.rating != null) {
-    combinedRating = tp.rating;
-  }
-
-  const totalReviews = (gbp.reviews ?? 0) + (tp.reviews ?? 0);
+  // Weighted average rating (normalize weights to sum to 1)
+  const totalWeight = sources.reduce((s, src) => s + src.weight, 0);
+  const combinedRating = Math.round(
+    sources.reduce((s, src) => s + src.rating * (src.weight / totalWeight), 0) * 10
+  ) / 10;
+  const totalReviews = sources.reduce((s, src) => s + src.reviews, 0);
 
   let reputationLevel: 'strong' | 'moderate' | 'weak';
-  if (combinedRating != null && combinedRating >= 4.2 && totalReviews >= 50) {
+  if (combinedRating >= 4.2 && totalReviews >= 50) {
     reputationLevel = 'strong';
-  } else if (
-    (combinedRating != null && combinedRating >= 3.5) ||
-    (totalReviews >= 10 && totalReviews <= 49)
-  ) {
+  } else if (combinedRating >= 3.5 || totalReviews >= 10) {
     reputationLevel = 'moderate';
   } else {
     reputationLevel = 'weak';
@@ -325,9 +426,12 @@ export async function runReputation(
     trustpilotRating: tp.rating,
     trustpilotReviews: tp.reviews,
     trustpilotFound: tp.found,
+    ...(tripadvisor.found && { tripadvisorRating: tripadvisor.rating, tripadvisorReviews: tripadvisor.reviews }),
+    ...(amazon.found && { amazonFound: true, amazonUrl: (amazon as any).url }),
     combinedRating,
     totalReviews,
     reputationLevel,
+    ratingSources: sources.map(s => ({ name: s.name, rating: s.rating, reviews: s.reviews })),
     newsCount: news.newsCount,
     ...(news.newsHeadlines.length > 0 && { newsHeadlines: news.newsHeadlines }),
     _log,
