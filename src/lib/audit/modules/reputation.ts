@@ -96,10 +96,10 @@ async function fetchGBPReputation(
   }
 }
 
-// ── DataForSEO — Trustpilot ───────────────────────────────────────
+// ── Trustpilot (DataForSEO + direct scrape fallback) ─────────────
 
-async function fetchTrustpilot(
-  companyName: string,
+async function fetchTrustpilotDFS(
+  keyword: string,
 ): Promise<{ rating: number | null; reviews: number | null; found: boolean }> {
   if (!DFS_LOGIN || !DFS_PASSWORD)
     return { rating: null, reviews: null, found: false };
@@ -114,19 +114,14 @@ async function fetchTrustpilot(
       {
         method: 'POST',
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${auth}`,
-        },
-        body: JSON.stringify([{ keyword: companyName, depth: 1 }]),
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{ keyword, depth: 1 }]),
       },
     );
-
     if (!res.ok) return { rating: null, reviews: null, found: false };
     const data = await res.json();
     const item = data?.tasks?.[0]?.result?.[0]?.items?.[0];
     if (!item?.rating?.value) return { rating: null, reviews: null, found: false };
-
     return {
       rating: Math.round(item.rating.value * 10) / 10,
       reviews: item.rating.votes_count ?? null,
@@ -137,6 +132,67 @@ async function fetchTrustpilot(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Direct scrape of Trustpilot page — fallback when DataForSEO search fails */
+async function fetchTrustpilotDirect(
+  domain: string,
+): Promise<{ rating: number | null; reviews: number | null; found: boolean }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(`https://es.trustpilot.com/review/${domain}`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
+      redirect: 'follow',
+    });
+    if (!res.ok) return { rating: null, reviews: null, found: false };
+    const html = await res.text();
+
+    // Extract rating from JSON-LD or meta tags
+    const ratingMatch = html.match(/"ratingValue"\s*:\s*"?(\d[.,]\d)"?/) ||
+                        html.match(/data-rating="(\d[.,]\d)"/) ||
+                        html.match(/TrustScore\s*(\d[.,]\d)/);
+    const reviewsMatch = html.match(/"reviewCount"\s*:\s*"?(\d+)"?/) ||
+                         html.match(/(\d[\d,.]*)\s*(?:reviews|opiniones|reseñas)/i);
+
+    if (!ratingMatch) return { rating: null, reviews: null, found: false };
+
+    const rating = parseFloat(ratingMatch[1].replace(',', '.'));
+    const reviews = reviewsMatch ? parseInt(reviewsMatch[1].replace(/[.,]/g, ''), 10) : null;
+
+    console.log(`[reputation] Trustpilot direct scrape: ${domain} → ${rating}★ (${reviews} reviews)`);
+    return { rating: Math.round(rating * 10) / 10, reviews, found: true };
+  } catch {
+    return { rating: null, reviews: null, found: false };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Try all Trustpilot methods: DFS by name → DFS by domain → direct scrape */
+async function fetchTrustpilot(
+  companyName: string,
+  domain: string,
+): Promise<{ rating: number | null; reviews: number | null; found: boolean }> {
+  // Try 1: DataForSEO by company name
+  const byName = await fetchTrustpilotDFS(companyName);
+  if (byName.found) return byName;
+
+  // Try 2: DataForSEO by domain
+  if (domain !== companyName.toLowerCase()) {
+    const byDomain = await fetchTrustpilotDFS(domain);
+    if (byDomain.found) {
+      console.log(`[reputation] Trustpilot: found by domain "${domain}"`);
+      return byDomain;
+    }
+  }
+
+  // Try 3: Direct scrape of Trustpilot page
+  const direct = await fetchTrustpilotDirect(domain);
+  if (direct.found) return direct;
+
+  return { rating: null, reviews: null, found: false };
 }
 
 // ── DataForSEO — Tripadvisor ──────────────────────────────────────
@@ -362,24 +418,22 @@ export async function runReputation(
   const cityHint = extractCity(existingGbp?.address);
 
   const businessType = crawl.businessType || 'unknown';
-  const isHospitality = /hotel|restaur|hostal|bar |café|cafetería|hostelería|turismo|alojamiento/i.test(sector || '');
-  const isEcommerce = businessType === 'ecommerce' || /tienda|shop|store|ecommerce|venta online/i.test(sector || '');
+  // Detect from both sector (if available) AND crawl signals (always available)
+  const crawlText = `${crawl.title || ''} ${crawl.description || ''} ${(crawl.h1s || []).join(' ')}`.toLowerCase();
+  const isHospitality = /hotel|restaur|hostal|bar |café|cafetería|hostelería|turismo|alojamiento/i.test(sector || '') ||
+    /hotel|restaurante|hostal|alojamiento|reserva/i.test(crawlText);
+  const isEcommerce = businessType === 'ecommerce' ||
+    /tienda|shop|store|ecommerce|venta online/i.test(sector || '') ||
+    /comprar|añadir al carrito|add to cart|tienda|shop|cesta|checkout|envío gratis/i.test(crawlText);
 
   // Run all reputation sources in parallel
-  const [gbp, tpByName, news, tripadvisor, amazon] = await Promise.all([
+  const [gbp, tp, news, tripadvisor, amazon] = await Promise.all([
     fetchGBPReputation(companyName, domain, cityHint),
-    fetchTrustpilot(companyName),
+    fetchTrustpilot(companyName, domain),
     fetchNewsPresence(companyName),
     isHospitality ? fetchTripadvisor(companyName) : Promise.resolve({ rating: null, reviews: null, found: false }),
     isEcommerce ? fetchAmazonPresence(companyName, domain) : Promise.resolve({ rating: null, reviews: null, found: false }),
   ]);
-
-  // Trustpilot: retry with domain if name search failed
-  let tp = tpByName;
-  if (!tp.found && domain !== companyName.toLowerCase()) {
-    tp = await fetchTrustpilot(domain);
-    if (tp.found) console.log(`[reputation] Trustpilot: found by domain "${domain}"`);
-  }
 
   const _log = `query="${companyName}" domain="${domain}" news:${news.newsCount} gbp:${gbp.found ? `ok(${gbp.rating})` : 'miss'} tp:${tp.found ? `ok(${tp.rating})` : 'miss'} ta:${tripadvisor.found ? `ok(${tripadvisor.rating})` : 'skip'} amz:${amazon.found ? 'found' : 'skip'}`;
   console.log(`[reputation] ${_log}`);
