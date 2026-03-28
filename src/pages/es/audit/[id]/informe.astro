@@ -1733,10 +1733,12 @@ const donutSVG = buildDonutSVG();
                 <thead>
                   <tr>
                     <th>Dominio</th>
-                    <th>Keywords Top 10</th>
-                    <th>Tráfico orgánico est.</th>
-                    <th>Keywords paid</th>
-                    <th>Score web móvil</th>
+                    <th>KW Top 10</th>
+                    <th>Tráfico orgánico</th>
+                    <th>KW Paid</th>
+                    <th>Tráfico paid</th>
+                    <th>Coste ads est.</th>
+                    <th>Web móvil</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1745,6 +1747,8 @@ const donutSVG = buildDonutSVG();
                     <td>{fmt(seo?.keywordsTop10)}</td>
                     <td>{fmt(seo?.organicTrafficEstimate)}</td>
                     <td>{fmt(clientPaidKw)}</td>
+                    <td>{fmt(seo?.paidTrafficEstimate ?? 0)}</td>
+                    <td>{(seo?.paidTrafficValue ?? 0) > 0 ? `${fmt(seo.paidTrafficValue)}€` : '—'}</td>
                     <td>{ps?.mobile?.performance ?? '—'}/100</td>
                   </tr>
                   {displayCompetitors.slice(0,4).map((ct: any) => (
@@ -1753,6 +1757,8 @@ const donutSVG = buildDonutSVG();
                       <td>{ct.keywordsTop10 != null ? fmt(ct.keywordsTop10) : <span style="color:#9CA3AF;font-size:11px;">sin datos</span>}</td>
                       <td>{ct.organicTrafficEstimate != null ? fmt(ct.organicTrafficEstimate) : <span style="color:#9CA3AF;font-size:11px;">sin datos</span>}</td>
                       <td>{fmt(ct.paidKeywordsTotal ?? 0)}</td>
+                      <td>{fmt(ct.paidTrafficEstimate ?? 0)}</td>
+                      <td>{(ct.paidTrafficValue ?? 0) > 0 ? `${fmt(ct.paidTrafficValue)}€` : '—'}</td>
                       <td>{compPS?.items?.find((p: any) => p.domain === ct.domain)?.mobileScore ?? compPS?.items?.find((p: any) => p.name === ct.name)?.mobileScore ?? '—'}/100</td>
                     </tr>
                   ))}
