@@ -89,17 +89,23 @@ export async function getAuditPage(pageId: string): Promise<AuditPageData> {
     results['insights'] = { ...results['insights'], ...results['_insights_ext'] };
     delete results['_insights_ext'];
   }
-  // Merge geo_queries back into geo
-  if (results['geo_queries'] && results['geo']) {
-    results['geo'] = { ...results['geo'], ...results['geo_queries'] };
-    delete results['geo_queries'];
-  } else if (results['geo_queries']) {
-    results['_geo_queries'] = results['geo_queries'];
-    delete results['geo_queries'];
+  // Merge geo_queries and geo_comp back into geo
+  for (const ext of ['geo_queries', 'geo_comp']) {
+    if (results[ext] && results['geo']) {
+      results['geo'] = { ...results['geo'], ...results[ext] };
+      delete results[ext];
+    } else if (results[ext]) {
+      // Store temporarily in case geo arrives in a later block
+      results[`_${ext}`] = results[ext];
+      delete results[ext];
+    }
   }
-  if (results['_geo_queries'] && results['geo']) {
-    results['geo'] = { ...results['geo'], ...results['_geo_queries'] };
-    delete results['_geo_queries'];
+  // Merge deferred
+  for (const ext of ['_geo_queries', '_geo_comp']) {
+    if (results[ext] && results['geo']) {
+      results['geo'] = { ...results['geo'], ...results[ext] };
+      delete results[ext];
+    }
   }
 
   return { notionPageId: pageId, url, email, status, currentStep, score, sector, userInstagram, userLinkedin, userCompetitors, results };
@@ -184,8 +190,11 @@ function prepareBlocks(module: string, data: ModuleResult): Array<{ object: stri
     code: { rich_text: [{ type: 'text', text: { content } }], language: 'json' },
   });
 
-  // GEO: split into scores (metrics) and queries (raw data)
+  // GEO: split into up to 3 blocks — scores, competitors, queries
   if (module === 'geo' && data && !data.skipped && !data._truncated && data.queries?.length) {
+    const blocks: Array<ReturnType<typeof makeBlock>> = [];
+
+    // Block 1: core scores (always fits)
     const scores: any = {
       overallScore: data.overallScore,
       brandScore: data.brandScore,
@@ -196,28 +205,39 @@ function prepareBlocks(module: string, data: ModuleResult): Array<{ object: stri
       funnelBreakdown: data.funnelBreakdown,
       categoryBreakdown: data.categoryBreakdown,
       crossModel: data.crossModel,
-      competitorMentions: data.competitorMentions,
       executiveNarrative: data.executiveNarrative,
     };
-    // Keep queries minimal: only query text + mentioned + stage + category
-    const queries: any = {
-      queries: data.queries.map((q: any) => ({
-        query: q.query?.slice(0, 60),
-        mentioned: q.mentioned,
-        stage: q.stage,
-        category: q.category,
-      })),
-    };
     const scoresStr = JSON.stringify({ m: 'geo', d: scores });
-    const queriesStr = JSON.stringify({ m: 'geo_queries', d: queries });
-
-    if (scoresStr.length <= 1990 && queriesStr.length <= 1990) {
-      return [makeBlock(scoresStr), makeBlock(queriesStr)];
-    }
     if (scoresStr.length <= 1990) {
-      return [makeBlock(scoresStr)];
+      blocks.push(makeBlock(scoresStr));
+    } else {
+      // Even scores too big — drop narrative
+      delete scores.executiveNarrative;
+      const trimmed = JSON.stringify({ m: 'geo', d: scores });
+      if (trimmed.length <= 1990) blocks.push(makeBlock(trimmed));
     }
-    // Fall through to standard truncation
+
+    // Block 2: competitor mentions (separate to avoid bloating scores)
+    if (data.competitorMentions?.length) {
+      const compMentions = data.competitorMentions.slice(0, 5).map((c: any) => ({
+        name: c.name, domain: c.domain, mentionRate: c.mentionRate, mentions: c.mentions, total: c.total,
+      }));
+      const compStr = JSON.stringify({ m: 'geo_comp', d: { competitorMentions: compMentions } });
+      if (compStr.length <= 1990) blocks.push(makeBlock(compStr));
+    }
+
+    // Block 3: queries (minimal)
+    const queries = data.queries.map((q: any) => ({
+      query: q.query?.slice(0, 50),
+      mentioned: q.mentioned,
+      stage: q.stage,
+      category: q.category,
+    }));
+    const queriesStr = JSON.stringify({ m: 'geo_queries', d: { queries } });
+    if (queriesStr.length <= 1990) blocks.push(makeBlock(queriesStr));
+
+    if (blocks.length > 0) return blocks;
+    // Fall through to standard truncation only if ALL blocks failed
   }
 
   // Insights: split into core (summary + bullets) and extras (initiatives)
