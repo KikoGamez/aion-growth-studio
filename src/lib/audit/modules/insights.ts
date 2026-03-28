@@ -13,73 +13,88 @@ export async function runInsights(
   const summary = buildSummary(url, results);
   const prompt = buildPrompt(summary);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 55000);
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2500,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    const data = await res.json();
-    const text: string = data?.content?.[0]?.text || '';
-
-    // Extract balanced JSON object (not greedy regex)
-    function extractJSON(str: string): string | null {
-      const start = str.indexOf('{');
-      if (start === -1) return null;
-      let depth = 0;
-      let inString = false;
-      let escape = false;
-      for (let i = start; i < str.length; i++) {
-        const c = str[i];
-        if (escape) { escape = false; continue; }
-        if (c === '\\' && inString) { escape = true; continue; }
-        if (c === '"') { inString = !inString; continue; }
-        if (inString) continue;
-        if (c === '{') depth++;
-        if (c === '}') { depth--; if (depth === 0) return str.slice(start, i + 1); }
-      }
-      return null;
+  // Extract balanced JSON from LLM response
+  function extractJSON(str: string): string | null {
+    const start = str.indexOf('{');
+    if (start === -1) return null;
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = start; i < str.length; i++) {
+      const c = str[i];
+      if (escape) { escape = false; continue; }
+      if (c === '\\' && inString) { escape = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === '{') depth++;
+      if (c === '}') { depth--; if (depth === 0) return str.slice(start, i + 1); }
     }
-
-    const jsonStr = extractJSON(text);
-    if (!jsonStr) throw new Error('No JSON in response');
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      const fixed = jsonStr.replace(/,\s*([\]}])/g, '$1');
-      parsed = JSON.parse(fixed);
-    }
-    const result = {
-      summary: parsed.summary || undefined,
-      visibilitySummary: parsed.visibilitySummary || undefined,
-      benchmarkSummary: parsed.benchmarkSummary || undefined,
-      experienceSummary: parsed.experienceSummary || undefined,
-      bullets: (parsed.bullets || []).slice(0, 6),
-      initiatives: (parsed.initiatives || []).slice(0, 3),
-    };
-    console.log(`[audit:insights] OK — ${result.bullets.length} bullets, ${result.initiatives.length} initiatives`);
-    return result;
-  } catch (err: any) {
-    const msg = err.name === 'AbortError' ? 'Insights timed out (55s)' : err.message?.slice(0, 100);
-    return { bullets: [], initiatives: [], error: msg };
-  } finally {
-    clearTimeout(timer);
+    return null;
   }
+
+  // Retry up to 2 times if JSON extraction fails
+  const MAX_ATTEMPTS = 2;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 55000);
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      const data = await res.json();
+      const text: string = data?.content?.[0]?.text || '';
+
+      const jsonStr = extractJSON(text);
+      if (!jsonStr) {
+        console.log(`[audit:insights] Attempt ${attempt}/${MAX_ATTEMPTS}: No JSON found (${text.length} chars)`);
+        if (attempt < MAX_ATTEMPTS) { clearTimeout(timer); continue; }
+        return { bullets: [], initiatives: [], error: 'No JSON in response after retries' };
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch {
+        const fixed = jsonStr.replace(/,\s*([\]}])/g, '$1');
+        parsed = JSON.parse(fixed);
+      }
+      const result = {
+        summary: parsed.summary || undefined,
+        visibilitySummary: parsed.visibilitySummary || undefined,
+        benchmarkSummary: parsed.benchmarkSummary || undefined,
+        experienceSummary: parsed.experienceSummary || undefined,
+        bullets: (parsed.bullets || []).slice(0, 6),
+        initiatives: (parsed.initiatives || []).slice(0, 3),
+      };
+      console.log(`[audit:insights] OK — ${result.bullets.length} bullets, ${result.initiatives.length} initiatives`);
+      return result;
+    } catch (err: any) {
+      clearTimeout(timer);
+      if (attempt < MAX_ATTEMPTS && err.name !== 'AbortError') {
+        console.log(`[audit:insights] Attempt ${attempt} failed: ${err.message?.slice(0, 60)}, retrying...`);
+        continue;
+      }
+      const msg = err.name === 'AbortError' ? 'Insights timed out (55s)' : err.message?.slice(0, 100);
+      return { bullets: [], initiatives: [], error: msg };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return { bullets: [], initiatives: [], error: 'Exhausted retries' };
 }
 
 function buildSummary(url: string, r: Record<string, ModuleResult>): string {
