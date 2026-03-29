@@ -44,6 +44,7 @@ const cc = (!r.content_cadence?.skipped && (r.content_cadence?.totalPosts ?? 0) 
 const rep = (!r.reputation?.skipped && r.reputation?.reputationLevel && r.reputation.reputationLevel !== 'no_data') ? r.reputation : null;
 const repRaw = r.reputation || {}; // always available, even when reputationLevel === 'no_data'
 const metaAds = (!r.meta_ads?.skipped && r.meta_ads) ? r.meta_ads : null;
+const shopping = (!r.google_shopping?.skipped && r.google_shopping) ? r.google_shopping : null;
 const qa = r.qa || null;
 const qaSuppressed: string[] = qa?.suppressedSections || [];
 const insights = r.insights || {};
@@ -1938,6 +1939,25 @@ const donutSVG = buildDonutSVG();
                         {metaAds!.competitorDetails!.filter((c:any)=>c.hasMetaAds).slice(0,3).map((c:any)=>(
                           <span style="font-size:10px;background:#FFF3EE;color:#D85A30;padding:2px 8px;border-radius:4px;font-weight:600;">{c.name}</span>
                         ))}
+                      </div>
+                    )}
+                    {shopping && (shopping.advertisers?.length ?? 0) > 0 && (
+                      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #F3F4F6;">
+                        <div style="font-size:0.68rem;font-weight:700;color:#D85A30;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">
+                          Google Shopping
+                          {shopping.clientFound && <span style="font-size:10px;font-weight:600;color:#085041;background:#E1F5EE;padding:1px 6px;border-radius:4px;margin-left:6px;">Tu dominio aparece</span>}
+                        </div>
+                        <p style="font-size:11px;color:#5A6478;line-height:1.4;margin-bottom:6px;">
+                          {shopping.advertisers.length} competidores detectados en Google Shopping para tus keywords principales.
+                          {!shopping.clientFound && ' Tu dominio no aparece — oportunidad de captar compradores con intención de compra directa.'}
+                        </p>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                          {shopping.advertisers.slice(0, 6).map((a: any) => (
+                            <span style="font-size:10px;background:#FFF3EE;color:#D85A30;padding:2px 8px;border-radius:4px;font-weight:600;">
+                              {a.name || a.domain} ({a.appearances})
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

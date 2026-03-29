@@ -218,37 +218,81 @@ export async function runSEO(url: string): Promise<SEOResult> {
       }
     } catch { /* non-fatal */ }
 
-    // ── Tier 3: top paid keywords (only when domain invests in ads) ──
-    if (paidKeywordsTotal > 0) {
+    // ── Tier 3: paid keywords — always try ranked_keywords with paid filter ──
+    // The domain_rank_overview often returns 0 for paid even when Google Ads are active,
+    // so we no longer gate this call on paidKeywordsTotal > 0.
+    try {
+      const pkRes = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{
+          target: domain,
+          location_code: 2724,
+          language_code: 'es',
+          filters: ['ranked_serp_element.serp_item.is_paid', '=', true],
+          order_by: ['ranked_serp_element.serp_item.etv,desc'],
+          limit: 6,
+        }]),
+      });
+
+      if (pkRes.ok) {
+        const pkData = await pkRes.json();
+        const pkTask = pkData?.tasks?.[0];
+        if (pkTask?.status_code === 20000 && pkTask.result_count > 0) {
+          const pkItems: any[] = pkTask.result[0]?.items || [];
+          const topPaidKeywords = pkItems
+            .map((it: any) => ({
+              keyword: it.keyword_data?.keyword || '',
+              position: it.ranked_serp_element?.serp_item?.rank_absolute ?? 0,
+              volume: it.keyword_data?.keyword_info?.search_volume ?? 0,
+              etv: Math.round(it.ranked_serp_element?.serp_item?.etv ?? 0),
+            }))
+            .filter((kw) => kw.keyword);
+
+          if (topPaidKeywords.length > 0) {
+            baseResult.paidTopKeywords = topPaidKeywords;
+            // Fix metrics if overview missed them
+            if (!baseResult.paidKeywordsTotal) {
+              baseResult.paidKeywordsTotal = pkTask.result[0]?.total_count ?? topPaidKeywords.length;
+              baseResult.isInvestingPaid = true;
+              const totalPaidEtv = topPaidKeywords.reduce((s, k) => s + (k.etv || 0), 0);
+              if (!baseResult.paidTrafficEstimate && totalPaidEtv > 0) {
+                baseResult.paidTrafficEstimate = totalPaidEtv;
+              }
+              _logParts.push(`paid:fix(${baseResult.paidKeywordsTotal}kw)`);
+            }
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    // ── Tier 3b: SERP fallback for paid detection ──
+    // If still no paid data, do a quick brand SERP check to see live ads
+    if (!baseResult.isInvestingPaid) {
       try {
-        const pkRes = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
+        const brandKw = domain.replace(/\.[a-z]{2,6}$/i, '').replace(/[-_.]/g, ' ');
+        const serpRes = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
           method: 'POST',
           signal: controller.signal,
           headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
           body: JSON.stringify([{
-            target: domain,
+            keyword: brandKw,
             location_code: 2724,
             language_code: 'es',
-            filters: ['paid_etv', '>', 0],
-            order_by: ['paid_etv,desc'],
-            limit: 6,
+            depth: 10,
           }]),
         });
-
-        if (pkRes.ok) {
-          const pkData = await pkRes.json();
-          const pkTask = pkData?.tasks?.[0];
-          if (pkTask?.status_code === 20000 && pkTask.result_count > 0) {
-            const pkItems: any[] = pkTask.result[0]?.items || [];
-            const topPaidKeywords = pkItems
-              .map((it: any) => ({
-                keyword: it.keyword_data?.keyword || '',
-                position: it.ranked_serp_element?.serp_item?.rank_absolute ?? 0,
-                volume: it.keyword_data?.keyword_info?.search_volume ?? 0,
-              }))
-              .filter((kw) => kw.keyword);
-
-            if (topPaidKeywords.length > 0) baseResult.paidTopKeywords = topPaidKeywords;
+        if (serpRes.ok) {
+          const serpData = await serpRes.json();
+          const serpItems: any[] = serpData?.tasks?.[0]?.result?.[0]?.items || [];
+          const paidItems = serpItems.filter((it: any) =>
+            it.type === 'paid' && (it.domain || '').includes(domain)
+          );
+          if (paidItems.length > 0) {
+            baseResult.isInvestingPaid = true;
+            baseResult.paidKeywordsTotal = baseResult.paidKeywordsTotal || 1; // at least 1
+            _logParts.push('paid:serp-detected');
           }
         }
       } catch { /* non-fatal */ }

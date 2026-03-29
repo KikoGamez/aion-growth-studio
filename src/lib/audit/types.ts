@@ -22,6 +22,7 @@ export type AuditStep =
   | 'score'
   | 'insights'
   | 'meta_ads'
+  | 'google_shopping'
   | 'qa';
 
 export type AuditStepOrDone = AuditStep | 'done';
@@ -33,7 +34,7 @@ export const STEP_ORDER: AuditStep[] = [
   'competitors', 'competitor_traffic', 'keyword_gap',
   'geo', 'competitor_pagespeed',
   'instagram', 'linkedin', 'techstack', 'conversion', 'score', 'insights',
-  'meta_ads', 'qa',
+  'meta_ads', 'google_shopping', 'qa',
 ];
 
 export const STEP_PROGRESS: Record<AuditStep, number> = {
@@ -60,6 +61,7 @@ export const STEP_PROGRESS: Record<AuditStep, number> = {
   score: 90,
   insights: 95,
   meta_ads: 97,
+  google_shopping: 98,
   qa: 100,
 };
 
@@ -86,7 +88,8 @@ export const NEXT_STEP: Record<AuditStep, AuditStepOrDone> = {
   conversion: 'score',
   score: 'insights',
   insights: 'meta_ads',
-  meta_ads: 'qa',
+  meta_ads: 'google_shopping',
+  google_shopping: 'qa',
   qa: 'done',
 };
 

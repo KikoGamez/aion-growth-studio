@@ -20,6 +20,7 @@ import { runInsights } from './modules/insights';
 import { runContentCadence } from './modules/content-cadence';
 import { runReputation } from './modules/reputation';
 import { runMetaAds } from './modules/meta-ads';
+import { runGoogleShopping } from './modules/google-shopping';
 import { runQAAgent } from './modules/qa-agent';
 import { runCompetitorPageSpeed } from './modules/competitor-pagespeed';
 import { NEXT_STEP } from './types';
@@ -42,7 +43,7 @@ export const PHASE_STEPS: Record<string, AuditStep[]> = {
   // Phase 3: steps that need competitors from phase 2
   competitor_traffic: [
     'competitor_traffic', 'competitor_pagespeed', 'keyword_gap',
-    'geo', 'instagram', 'linkedin', 'meta_ads',
+    'geo', 'instagram', 'linkedin', 'meta_ads', 'google_shopping',
   ],
 };
 
@@ -223,6 +224,15 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
       const comps: Array<{ name: string; url: string }> =
         (results.competitors as any)?.competitors || [];
       return runMetaAds(url, results.crawl || {}, comps);
+    }
+
+    case 'google_shopping': {
+      const businessType = (results.crawl as any)?.businessType;
+      if (businessType !== 'ecommerce') return { skipped: true, reason: 'Not ecommerce' };
+      const topKw: any[] = (results.seo as any)?.topKeywords || [];
+      const comps: Array<{ name: string; url: string }> =
+        (results.competitors as any)?.competitors || [];
+      return runGoogleShopping(url, topKw, comps);
     }
 
     case 'qa':
