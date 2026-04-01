@@ -799,7 +799,13 @@ const donutSVG = buildDonutSVG();
       .sidebar{display:none}
       .layout{display:block;overflow-x:hidden}
       .main-content{margin-left:0;overflow-x:hidden}
-      .top-bar{position:fixed;top:0;left:0;right:0;z-index:100;padding:0.5rem 1rem}
+
+      /* ── 1. Header: compact 40px ── */
+      .top-bar{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 12px;height:40px;min-height:40px}
+      .top-bar img{height:20px!important}
+      .top-bar-title{font-size:0.68rem!important}
+      .btn-export{padding:6px 10px!important;font-size:0.72rem!important}
+      .btn-export-text{display:none!important}
 
       .report{
         display:flex!important;
@@ -813,12 +819,13 @@ const donutSVG = buildDonutSVG();
         margin:0!important;
         max-width:none!important;
         width:100vw!important;
-        height:calc(100vh - 48px)!important;
+        height:calc(100vh - 40px)!important;
         gap:0!important;
       }
       .report::-webkit-scrollbar{display:none}
       .report{-ms-overflow-style:none;scrollbar-width:none}
 
+      /* ── 2. Carousel pages: overflow control ── */
       .carousel-page{
         min-width:100vw!important;
         max-width:100vw!important;
@@ -828,9 +835,13 @@ const donutSVG = buildDonutSVG();
         overflow-x:hidden!important;
         scroll-snap-align:start;
         flex-shrink:0!important;
-        padding:16px 20px 80px!important;
-        padding-top:64px!important;
+        padding:16px 16px 80px!important;
+        padding-top:52px!important;
         box-sizing:border-box!important;
+      }
+      .carousel-page > * {
+        max-width:100%!important;
+        overflow-x:hidden!important;
       }
 
       /* Hide desktop-only elements on mobile */
@@ -867,7 +878,7 @@ const donutSVG = buildDonutSVG();
         box-shadow:0 0 10px rgba(105,255,135,0.7);
       }
 
-      /* Mobile grids: always single column */
+      /* ── Mobile grids: always single column ── */
       .carousel-page .grid-3,.carousel-page .grid-4{grid-template-columns:1fr!important}
       .carousel-page .grid-2{grid-template-columns:1fr!important}
 
@@ -910,6 +921,80 @@ const donutSVG = buildDonutSVG();
       .hero-gauge-wrap{width:140px!important;height:140px!important}
       .hero-gauge-wrap svg{width:140px!important;height:140px!important}
       .hero-gauge-wrap #score-counter{font-size:2.5rem!important}
+
+      /* ── 3. Tables → card layout on mobile ── */
+      .carousel-page table{width:100%!important;border-collapse:separate!important;border-spacing:0 6px!important}
+      .carousel-page table,
+      .carousel-page thead,
+      .carousel-page tbody,
+      .carousel-page tr,
+      .carousel-page th,
+      .carousel-page td{display:block!important;width:100%!important;max-width:100%!important}
+      .carousel-page thead{display:none!important}
+      .carousel-page tbody tr{
+        background:rgba(51,51,72,0.3)!important;
+        border-radius:10px!important;
+        padding:12px 14px!important;
+        margin-bottom:8px!important;
+        border:1px solid rgba(141,144,155,0.08)!important;
+      }
+      .carousel-page tbody tr.own-row{
+        background:rgba(170,199,255,0.12)!important;
+        border:1px solid rgba(170,199,255,0.18)!important;
+      }
+      .carousel-page tbody td{
+        padding:3px 0!important;
+        display:flex!important;
+        justify-content:space-between!important;
+        align-items:center!important;
+        text-align:left!important;
+        font-size:0.78rem!important;
+        border-bottom:none!important;
+      }
+      .carousel-page tbody td:first-child{
+        font-weight:700!important;
+        font-size:0.85rem!important;
+        margin-bottom:4px!important;
+      }
+      /* IA section tables (white bg) */
+      .ia-section tbody tr{
+        background:rgba(0,0,0,0.03)!important;
+        border:1px solid rgba(0,0,0,0.06)!important;
+      }
+
+      /* ── 4. Category breakdown grid (IA section) ── */
+      .category-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
+      .category-grid > *{min-width:0!important;overflow:hidden!important}
+
+      /* ── 5. TOFU/MOFU/BOFU methodology grid ── */
+      .methodology-grid{grid-template-columns:1fr!important;gap:8px!important}
+
+      /* ── 6. Mention rate gauge ── */
+      .mention-rate-row{flex-direction:column!important;align-items:center!important;gap:16px!important}
+      .mention-gauge{width:120px!important;height:120px!important}
+      .mention-gauge svg{width:120px!important;height:120px!important}
+      .mention-gauge span[style*="font-size:2.2rem"]{font-size:1.6rem!important}
+
+      /* ── 7. SVG charts constrained ── */
+      .carousel-page svg{max-width:100%!important;height:auto!important}
+
+      /* ── 8. Card padding reduction ── */
+      .carousel-page .glass-card{padding:14px!important}
+      .carousel-page .surface-card{padding:14px!important}
+      .carousel-page .surface-high-card{padding:14px!important}
+      .carousel-page .metric-card-dark{padding:12px 14px!important}
+      .carousel-page .plan-card{padding:14px 16px!important}
+      .carousel-page .callout{padding:12px 14px!important}
+      .carousel-page .ia-section{padding:16px!important}
+
+      /* ── Misc mobile fixes ── */
+      .section-title{font-size:1.4rem!important}
+      .section-subtitle{font-size:0.82rem!important}
+      .carousel-page .block-header{margin-bottom:1rem!important}
+      .carousel-page .tech-item-dark{padding:10px 12px!important}
+
+      /* Hero banner compact */
+      .carousel-page .surface-card[style*="padding:3rem"]{padding:1.5rem 1rem!important}
     }
 
     /* Desktop: hide mobile-only elements */
@@ -988,7 +1073,7 @@ const donutSVG = buildDonutSVG();
         </div>
         <a class="btn-export" href={`/es/audit/${id}/pdf`} target="_blank">
           <span class="material-symbols-outlined" style="font-size:16px;">picture_as_pdf</span>
-          Exportar PDF
+          <span class="btn-export-text">Exportar PDF</span>
         </a>
       </div>
 
@@ -1493,7 +1578,7 @@ const donutSVG = buildDonutSVG();
           <!-- TOFU/MOFU/BOFU -->
           <div style="background:#f5f2ff;border-radius:12px;padding:20px;margin-bottom:1.5rem;">
             <div style="font-size:0.72rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Metodologia: {geo?.queries?.length ?? 30} consultas en 6 categorias de intencion</div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+            <div class="methodology-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
               <div style="background:#EBF2FF;border-radius:10px;padding:14px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                   <div style="font-size:0.72rem;font-weight:800;color:#1A4B8C;text-transform:uppercase;letter-spacing:0.06em;">TOFU</div>
@@ -1536,8 +1621,8 @@ const donutSVG = buildDonutSVG();
           {!qaSuppressed.includes('geo_analysis') && geo ? (
             <div>
               <!-- Mention rate -->
-              <div style="display:flex;align-items:center;gap:24px;margin-bottom:1.5rem;flex-wrap:wrap;">
-                <div style="position:relative;width:160px;height:160px;flex-shrink:0;">
+              <div class="mention-rate-row" style="display:flex;align-items:center;gap:24px;margin-bottom:1.5rem;flex-wrap:wrap;">
+                <div class="mention-gauge" style="position:relative;width:160px;height:160px;flex-shrink:0;">
                   <svg viewBox="0 0 36 36" style="width:160px;height:160px;transform:rotate(-90deg);">
                     <defs>
                       <linearGradient id="geo-gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -1568,7 +1653,7 @@ const donutSVG = buildDonutSVG();
               {Object.keys(categoryBreakdown).length > 0 && (
                 <div style="margin-bottom:1.5rem;">
                   <div style="font-size:0.72rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Visibilidad por tipo de consulta</div>
-                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                  <div class="category-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
                     {Object.entries(categoryBreakdown).map(([cat, data]) => {
                       const meta = categoryLabels[cat];
                       if (!meta) return null;
