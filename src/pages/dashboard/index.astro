@@ -10,17 +10,36 @@ import GEOProgressBar from '../../components/charts/GEOProgressBar.astro';
 import { getClient, getLatestSnapshot, getAlerts, getContextEntries } from '../../lib/db';
 import type { Tier } from '../../lib/demo-data';
 
+import { findAuditByEmail, createSnapshotFromAudit } from '../../lib/db';
+
 const client = Astro.locals.client ?? await getClient();
-const snapshot = await getLatestSnapshot(client.id);
-const alerts = await getAlerts(client.id);
-const contextEntries = await getContextEntries(client.id);
+const user = Astro.locals.user;
+let snapshot = await getLatestSnapshot(client.id);
+const isEmptySnapshot = snapshot.id === 'empty';
+
+// Auto-link: if no snapshots, try to find a completed audit by user email
+if (isEmptySnapshot && user?.email) {
+  const pendingAudit = await findAuditByEmail(user.email);
+  if (pendingAudit) {
+    try {
+      await createSnapshotFromAudit(pendingAudit.id, client.id);
+      snapshot = await getLatestSnapshot(client.id);
+    } catch (e) {
+      console.error('[dashboard] Auto-link failed:', (e as Error).message);
+    }
+  }
+}
+
+const hasData = snapshot.id !== 'empty';
+const alerts = hasData ? await getAlerts(client.id) : [];
+const contextEntries = hasData ? await getContextEntries(client.id) : [];
 const tier: Tier = client.tier;
 
 const canAccessSeñales = tier === 'señales' || tier === 'palancas';
 
-const r = snapshot.pipeline_output;
-const score = snapshot.score;
-const prevScore = 68; // previous snapshot
+const r = snapshot.pipeline_output || {};
+const score = snapshot.score || 0;
+const prevScore = 0; // will be calculated from previous snapshot when available
 const geo = r.geo || {};
 const seo = r.seo || {};
 const visits = seo.organicTrafficEstimate || 12400;
@@ -60,8 +79,184 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
   tier={tier}
   clientName={client.name}
   domain={client.domain}
-  lastReportMonth="Mar 2026"
+  lastReportMonth={hasData ? snapshot.month : ''}
 >
+
+{!hasData ? (
+  <!-- ══ Empty State: First Audit ══ -->
+  <div style="max-width:640px;margin:80px auto;text-align:center;">
+    <div style="font-size:48px;margin-bottom:16px;">📊</div>
+    <h2 style="font-size:24px;font-weight:700;color:#1A1A2E;margin-bottom:8px;">
+      Lanza tu primer diagnóstico
+    </h2>
+    <p style="color:#666;margin-bottom:32px;line-height:1.6;">
+      Analiza tu presencia digital y la de tus competidores. En menos de 3 minutos tendrás un informe completo con tu score, oportunidades SEO, visibilidad IA y más.
+    </p>
+
+    <form id="first-audit-form" style="text-align:left;display:flex;flex-direction:column;gap:20px;">
+      <!-- URL principal -->
+      <div>
+        <label for="audit-url" style="display:block;font-weight:600;margin-bottom:6px;color:#1A1A2E;">
+          Tu sitio web
+        </label>
+        <input type="url" id="audit-url" name="url" required
+          placeholder="https://tuempresa.es"
+          style="width:100%;padding:12px 16px;border:1px solid #ddd;border-radius:8px;font-size:15px;"
+        />
+      </div>
+
+      <!-- Competidores -->
+      <div>
+        <label style="display:block;font-weight:600;margin-bottom:6px;color:#1A1A2E;">
+          Competidores (hasta 3)
+        </label>
+        <p style="font-size:13px;color:#888;margin-bottom:8px;">
+          Introduce las URLs de empresas con las que compites. Verificaremos que son accesibles.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <input type="url" name="comp1" placeholder="https://competidor1.es"
+            style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
+          <input type="url" name="comp2" placeholder="https://competidor2.es"
+            style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
+          <input type="url" name="comp3" placeholder="https://competidor3.es"
+            style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
+        </div>
+      </div>
+
+      <!-- Validation status -->
+      <div id="validation-status" style="display:none;padding:12px 16px;border-radius:8px;font-size:14px;"></div>
+
+      <!-- Buttons -->
+      <div style="display:flex;gap:12px;">
+        <button type="button" id="validate-btn"
+          style="flex:1;padding:12px;background:#F8F9FB;color:#1A4B8C;border:1px solid #1A4B8C;border-radius:8px;font-weight:600;cursor:pointer;">
+          Verificar URLs
+        </button>
+        <button type="submit" id="launch-btn" disabled
+          style="flex:1;padding:12px;background:#1A4B8C;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;opacity:0.5;">
+          Lanzar diagnóstico
+        </button>
+      </div>
+
+      <!-- Progress -->
+      <div id="audit-progress" style="display:none;">
+        <div style="background:#f0f0f0;border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px;">
+          <div id="progress-bar" style="height:100%;background:#1A4B8C;width:0%;transition:width 0.5s;"></div>
+        </div>
+        <p id="progress-text" style="font-size:13px;color:#888;text-align:center;"></p>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('first-audit-form') as HTMLFormElement;
+    const validateBtn = document.getElementById('validate-btn') as HTMLButtonElement;
+    const launchBtn = document.getElementById('launch-btn') as HTMLButtonElement;
+    const statusDiv = document.getElementById('validation-status') as HTMLDivElement;
+    const progressDiv = document.getElementById('audit-progress') as HTMLDivElement;
+    const progressBar = document.getElementById('progress-bar') as HTMLDivElement;
+    const progressText = document.getElementById('progress-text') as HTMLParagraphElement;
+
+    let validatedUrls: string[] = [];
+
+    validateBtn.addEventListener('click', async () => {
+      const url = (form.querySelector('[name="url"]') as HTMLInputElement).value.trim();
+      const comps = ['comp1', 'comp2', 'comp3']
+        .map(n => (form.querySelector(`[name="${n}"]`) as HTMLInputElement).value.trim())
+        .filter(Boolean);
+
+      if (!url) { showStatus('Introduce tu URL', 'error'); return; }
+
+      validateBtn.textContent = 'Verificando...';
+      validateBtn.disabled = true;
+      const allUrls = [url, ...comps];
+      const results: { url: string; ok: boolean }[] = [];
+
+      for (const u of allUrls) {
+        try {
+          const normalized = u.startsWith('http') ? u : `https://${u}`;
+          const res = await fetch(`/api/validate-url?url=${encodeURIComponent(normalized)}`);
+          const data = await res.json();
+          results.push({ url: normalized, ok: data.reachable });
+        } catch {
+          results.push({ url: u, ok: false });
+        }
+      }
+
+      const failed = results.filter(r => !r.ok);
+      if (failed.length > 0) {
+        showStatus(`No se pudo acceder a: ${failed.map(f => f.url).join(', ')}. Verifica que las URLs son correctas.`, 'error');
+        validateBtn.textContent = 'Verificar URLs';
+        validateBtn.disabled = false;
+      } else {
+        validatedUrls = results.map(r => r.url);
+        showStatus(`${results.length} URL${results.length > 1 ? 's' : ''} verificada${results.length > 1 ? 's' : ''} correctamente`, 'success');
+        launchBtn.disabled = false;
+        launchBtn.style.opacity = '1';
+        validateBtn.textContent = 'URLs verificadas';
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (validatedUrls.length === 0) return;
+
+      launchBtn.disabled = true;
+      launchBtn.textContent = 'Lanzando...';
+      progressDiv.style.display = 'block';
+
+      const mainUrl = validatedUrls[0];
+      const competitors = validatedUrls.slice(1);
+
+      // Start audit
+      const startRes = await fetch('/api/audit/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: mainUrl, email: '', selectedCompetitors: competitors }),
+      });
+      const { audit_id } = await startRes.json();
+      if (!audit_id) { showStatus('Error al iniciar el diagnóstico', 'error'); return; }
+
+      // Poll for completion
+      progressText.textContent = 'Analizando tu sitio web...';
+      const phases = ['Crawling', 'Analizando SEO', 'Evaluando competidores', 'Generando insights', 'Finalizando'];
+      let phase = 0;
+
+      const poll = setInterval(async () => {
+        const res = await fetch(`/api/audit/${audit_id}/status`);
+        const data = await res.json();
+        const pct = data.progress || Math.min(95, phase * 20 + 10);
+        progressBar.style.width = `${pct}%`;
+        progressText.textContent = phases[Math.min(phase, phases.length - 1)] + '...';
+
+        if (data.status === 'completed' || data.currentModule === 'done') {
+          clearInterval(poll);
+          progressBar.style.width = '100%';
+          progressText.textContent = 'Vinculando a tu dashboard...';
+
+          // Link audit to client snapshot
+          await fetch('/api/dashboard/link-audit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auditId: audit_id }),
+          });
+
+          progressText.textContent = '¡Listo! Cargando dashboard...';
+          setTimeout(() => window.location.reload(), 1000);
+        }
+
+        phase++;
+      }, 10000);
+    });
+
+    function showStatus(msg: string, type: 'success' | 'error') {
+      statusDiv.style.display = 'block';
+      statusDiv.textContent = msg;
+      statusDiv.style.background = type === 'success' ? '#e1f5ee' : '#fcebeb';
+      statusDiv.style.color = type === 'success' ? '#1D9E75' : '#E24B4A';
+    }
+  </script>
+) : (
   <div style="display:flex;flex-direction:column;gap:32px;">
 
     <!-- Metric Cards -->
@@ -197,4 +392,5 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
     </section>
 
   </div>
+)}
 </DashboardLayout>

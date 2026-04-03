@@ -90,6 +90,68 @@ export async function getContextEntries(clientId: string): Promise<ContextEntry[
   return data as ContextEntry[];
 }
 
+// ─── Audit → Snapshot bridge ──────────────────────────────────────────────────
+
+const MONTH_NAMES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+/**
+ * Creates a snapshot from a completed audit.
+ * This is the bridge between the free audit (audits table) and the
+ * dashboard experience (snapshots table).
+ */
+export async function createSnapshotFromAudit(auditId: string, clientId: string): Promise<string> {
+  if (IS_DEMO) return 'demo-snapshot';
+  const sb = getSupabase();
+
+  // Read the completed audit
+  const { data: audit, error: auditErr } = await sb
+    .from('audits')
+    .select('results, score, completed_at, url')
+    .eq('id', auditId)
+    .single();
+  if (auditErr || !audit) throw new Error(`Audit not found: ${auditId}`);
+  if (!audit.results || Object.keys(audit.results).length === 0) {
+    throw new Error('Audit has no results — is it completed?');
+  }
+
+  const completedAt = audit.completed_at ? new Date(audit.completed_at) : new Date();
+  const dateStr = completedAt.toISOString().slice(0, 10);
+  const month = `${MONTH_NAMES[completedAt.getMonth()]}-${completedAt.getFullYear()}`;
+
+  const { data: snap, error: snapErr } = await sb
+    .from('snapshots')
+    .upsert({
+      client_id: clientId,
+      date: dateStr,
+      month,
+      score: audit.score ?? 0,
+      pipeline_output: audit.results,
+    }, { onConflict: 'client_id,month' })
+    .select('id')
+    .single();
+  if (snapErr) throw new Error(`Failed to create snapshot: ${snapErr.message}`);
+  return snap?.id ?? 'created';
+}
+
+/**
+ * Find a completed audit by email (for linking after registration).
+ * Returns the most recent completed audit for that email.
+ */
+export async function findAuditByEmail(email: string): Promise<{ id: string; url: string; score: number } | null> {
+  if (IS_DEMO) return null;
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('audits')
+    .select('id, url, score')
+    .eq('email', email)
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
 export async function updateClientTier(clientId: string, tier: Tier): Promise<void> {
   if (IS_DEMO) return;
   const sb = getSupabase();

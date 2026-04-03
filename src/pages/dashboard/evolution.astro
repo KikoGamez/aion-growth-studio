@@ -10,6 +10,7 @@ const client = Astro.locals.client ?? await getClient();
 const snapshots = await getAllSnapshots(client.id);
 const contextEntries = await getContextEntries(client.id);
 const tier: Tier = client.tier;
+const needsMoreData = snapshots.length < 2;
 
 // Build evolution data
 const chartData = snapshots.map(s => ({
@@ -32,10 +33,10 @@ const tableData = snapshots.map((s, i) => {
   };
 });
 
-// Sub-score cards
-const latest = snapshots[snapshots.length - 1];
-const prev = snapshots[snapshots.length - 2];
-const lr = latest.pipeline_output;
+// Sub-score cards (safe defaults when <2 snapshots)
+const latest = snapshots[snapshots.length - 1] || { pipeline_output: {}, score: 0, month: '' };
+const prev = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : undefined;
+const lr = latest.pipeline_output || {};
 const pr = prev?.pipeline_output;
 
 interface SubScore { label: string; value: number | string; delta?: number; sparkValues: number[]; }
@@ -83,6 +84,19 @@ function deltaColor(d: number | null | undefined): string {
     <div>
       <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Evolución</h1>
       <p style="font-size:14px;color:#434750;margin-top:4px;">Progreso histórico de tu presencia digital</p>
+    </div>
+
+    {needsMoreData && (
+      <div style="background:#F8F9FB;border-radius:12px;padding:48px;text-align:center;">
+        <div style="font-size:36px;margin-bottom:12px;">📈</div>
+        <h3 style="font-size:18px;font-weight:700;color:#1A1A2E;margin-bottom:8px;">
+          Necesitas más de 1 diagnóstico para ver la evolución
+        </h3>
+        <p style="color:#666;font-size:14px;line-height:1.6;max-width:480px;margin:0 auto;">
+          Cuando AION Radar ejecute el próximo análisis semanal, podrás comparar tu progreso mes a mes en SEO, visibilidad IA, rendimiento web y más.
+        </p>
+      </div>
+    )}
     </div>
 
     <!-- Main chart -->
