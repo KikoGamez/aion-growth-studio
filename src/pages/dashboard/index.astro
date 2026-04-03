@@ -45,9 +45,11 @@ const seo = r.seo || {};
 const visits = seo.organicTrafficEstimate || 12400;
 const visits_prev = 10800;
 
-// Action items: combine insights bullets + context entries
-interface ActionEntry { title: string; status: 'done' | 'in_progress' | 'pending'; impact: 'high' | 'medium' | 'low'; }
+// Action items: prefer personalized briefing > generic insights > context entries
+const briefing = r.briefing;
+interface ActionEntry { title: string; status: 'done' | 'in_progress' | 'pending'; impact: 'high' | 'medium' | 'low'; description?: string; }
 const actionItems: ActionEntry[] = [
+  // 1. Context entries (user-managed actions)
   ...contextEntries
     .filter(e => e.type === 'action')
     .map(e => ({
@@ -55,12 +57,23 @@ const actionItems: ActionEntry[] = [
       status: (e.status as 'done' | 'in_progress' | 'pending') || 'pending',
       impact: (e.impact as 'high' | 'medium' | 'low') || 'medium',
     })),
-  ...(r.insights?.bullets || []).slice(0, 3).map((b: string) => ({
+  // 2. Briefing priorities (personalized, from onboarding + audit)
+  ...(briefing?.priorities || []).map((p: any) => ({
+    title: p.title,
+    status: 'pending' as const,
+    impact: (p.impact as 'high' | 'medium' | 'low') || 'high',
+    description: p.description,
+  })),
+  // 3. Fallback: generic insights bullets (only if no briefing)
+  ...(!briefing ? (r.insights?.bullets || []).slice(0, 3).map((b: string) => ({
     title: b,
     status: 'pending' as const,
     impact: 'medium' as const,
-  })),
+  })) : []),
 ];
+
+// Quick wins from briefing
+const quickWins: string[] = briefing?.quickWins || [];
 
 const doneCount = actionItems.filter(a => a.status === 'done').length;
 const progressPct = actionItems.length > 0 ? Math.round((doneCount / actionItems.length) * 100) : 0;
@@ -359,6 +372,28 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
             <ActionItem title={item.title} status={item.status} impact={item.impact} />
           ))}
         </div>
+
+        {quickWins.length > 0 && (
+          <div style="margin-top:24px;padding-top:20px;border-top:1px solid #f0f0f0;">
+            <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1D9E75;margin-bottom:12px;">
+              Quick Wins (esta semana)
+            </h4>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              {quickWins.map((qw: string) => (
+                <div style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#434750;">
+                  <span style="color:#1D9E75;flex-shrink:0;">→</span>
+                  {qw}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {briefing?.summary && (
+          <div style="margin-top:20px;padding:16px;background:#f7f9ff;border-radius:8px;font-size:13px;color:#434750;line-height:1.6;">
+            <strong style="color:#1A4B8C;">Resumen personalizado:</strong> {briefing.summary}
+          </div>
+        )}
       </div>
     </section>
 

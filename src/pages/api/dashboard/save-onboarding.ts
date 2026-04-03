@@ -1,11 +1,12 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { saveClientOnboarding } from '../../../lib/db';
+import { saveClientOnboarding, getClientOnboarding, getLatestSnapshot, IS_DEMO } from '../../../lib/db';
+import { generateBriefing } from '../../../lib/briefing';
 
 /**
  * POST /api/dashboard/save-onboarding
- * Saves the onboarding business context for the authenticated client.
+ * Saves the onboarding business context and auto-generates a personalized briefing.
  */
 export const POST: APIRoute = async ({ request, locals }) => {
   const client = (locals as any).client;
@@ -20,7 +21,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const body = await request.json();
 
-    await saveClientOnboarding({
+    const onboardingData = {
       client_id: client.id,
       business_description: body.business_description || null,
       primary_goal: body.primary_goal || null,
@@ -32,9 +33,45 @@ export const POST: APIRoute = async ({ request, locals }) => {
       monthly_budget: body.monthly_budget || null,
       team_size: body.team_size || null,
       competitors: body.competitors || [],
-    });
+    };
 
-    return new Response(JSON.stringify({ ok: true }), {
+    await saveClientOnboarding(onboardingData);
+
+    // Auto-generate briefing if we have audit data
+    let briefingGenerated = false;
+    const snapshot = await getLatestSnapshot(client.id);
+    if (snapshot.id !== 'empty') {
+      try {
+        const onboarding = await getClientOnboarding(client.id);
+        if (onboarding) {
+          const briefing = await generateBriefing({
+            onboarding,
+            auditResults: snapshot.pipeline_output,
+            clientName: client.name,
+            domain: client.domain,
+          });
+
+          // Save briefing into snapshot
+          if (!IS_DEMO) {
+            const { createClient } = await import('@supabase/supabase-js');
+            const url = import.meta.env?.SUPABASE_URL || process.env.SUPABASE_URL;
+            const key = import.meta.env?.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY;
+            if (url && key) {
+              const sb = createClient(url, key);
+              await sb.from('snapshots')
+                .update({ pipeline_output: { ...snapshot.pipeline_output, briefing } })
+                .eq('id', snapshot.id);
+            }
+          }
+          briefingGenerated = true;
+          console.log('[save-onboarding] Briefing auto-generated for', client.domain);
+        }
+      } catch (err) {
+        console.error('[save-onboarding] Briefing generation failed (non-blocking):', (err as Error).message);
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, briefingGenerated }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
