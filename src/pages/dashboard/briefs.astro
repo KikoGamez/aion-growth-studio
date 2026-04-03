@@ -2,13 +2,13 @@
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import TierGate from '../../components/dashboard/TierGate.astro';
-import { getClient, getLatestSnapshot } from '../../lib/db';
+import { getClient, getLatestSnapshot, hasTierAccess } from '../../lib/db';
 import type { Tier } from '../../lib/demo-data';
 
 const client = Astro.locals.client ?? await getClient();
 const snapshot = await getLatestSnapshot(client.id);
 const tier: Tier = client.tier;
-const canAccess = tier === 'señales' || tier === 'palancas';
+const canAccess = hasTierAccess(tier, 'señales');
 
 const topKws = snapshot.pipeline_output.seo?.topKeywords || [];
 

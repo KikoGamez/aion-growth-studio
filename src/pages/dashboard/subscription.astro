@@ -115,7 +115,8 @@ const tiers = [
           </div>
           {t.id !== tier && (
             <button
-              onclick={IS_DEMO ? `alert('Modo demo — selecciona el tier en Ajustes para probar.')` : undefined}
+              data-tier={t.id}
+              class="tier-upgrade-btn"
               style={`margin-top:24px;width:100%;padding:10px;border-radius:8px;background:${t.id === 'palancas' ? '#7c3aed' : '#1a4b8c'};color:white;font-size:13px;font-weight:700;border:none;cursor:pointer;`}
             >
               {t.id === 'radar' ? 'Cambiar a Radar' : `Actualizar a ${t.name}`}
@@ -154,4 +155,31 @@ const tiers = [
     </div>
 
   </div>
+
+  <script>
+    document.querySelectorAll('.tier-upgrade-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tier = (btn as HTMLElement).dataset.tier;
+        const name = tier === 'radar' ? 'Radar' : tier === 'señales' ? 'Señales' : 'Palancas';
+        if (!confirm(`¿Cambiar al plan ${name}? (Stripe se configurará próximamente)`)) return;
+
+        (btn as HTMLButtonElement).disabled = true;
+        (btn as HTMLButtonElement).textContent = 'Actualizando...';
+
+        const res = await fetch('/api/dashboard/set-tier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier }),
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert('Error al cambiar plan');
+          (btn as HTMLButtonElement).disabled = false;
+          (btn as HTMLButtonElement).textContent = `Actualizar a ${name}`;
+        }
+      });
+    });
+  </script>
 </DashboardLayout>

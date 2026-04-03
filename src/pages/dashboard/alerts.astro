@@ -3,13 +3,15 @@ export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import AlertCard from '../../components/dashboard/AlertCard.astro';
 import TierGate from '../../components/dashboard/TierGate.astro';
-import { getClient, getAlerts } from '../../lib/db';
+import { getClient, getAlerts, hasTierAccess } from '../../lib/db';
 import type { Tier } from '../../lib/demo-data';
 
 const client = Astro.locals.client ?? await getClient();
-const allAlerts = await getAlerts(client.id);
 const tier: Tier = client.tier;
-const canAccess = tier === 'señales' || tier === 'palancas';
+const canAccess = hasTierAccess(tier, 'señales');
+
+// Server-side: only fetch full data if user has access
+const allAlerts = await getAlerts(client.id);
 
 const filterParam = Astro.url.searchParams.get('type') || 'all';
 const filtered = filterParam === 'all' ? allAlerts : allAlerts.filter(a => a.type === filterParam);

@@ -9,6 +9,13 @@ export { DEMO_USERS } from './demo-data';
 
 export const IS_DEMO = !import.meta.env.SUPABASE_URL;
 
+// Tier access helpers (server-side freemium wall)
+const TIER_LEVEL: Record<Tier, number> = { radar: 0, señales: 1, palancas: 2 };
+
+export function hasTierAccess(currentTier: Tier, requiredTier: Tier): boolean {
+  return TIER_LEVEL[currentTier] >= TIER_LEVEL[requiredTier];
+}
+
 function getSupabase() {
   const url = import.meta.env.SUPABASE_URL || process.env.SUPABASE_URL;
   const key = import.meta.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -235,4 +242,52 @@ export async function deleteClientUser(clientId: string, userId: string): Promis
   if (IS_DEMO) return;
   const sb = getSupabase();
   await sb.from('client_users').delete().eq('client_id', clientId).eq('user_id', userId);
+}
+
+// ─── Client Onboarding Context ────────────────────────────────────────────────
+
+export interface ClientOnboarding {
+  id?: string;
+  client_id: string;
+  business_description?: string;
+  primary_goal?: string;
+  goal_detail?: string;
+  geo_scope?: string;
+  geo_detail?: string;
+  url_architecture?: string;
+  url_detail?: string;
+  monthly_budget?: string;
+  team_size?: string;
+  competitors?: Array<{ url: string; name?: string }>;
+  completed_at?: string;
+}
+
+export async function getClientOnboarding(clientId: string): Promise<ClientOnboarding | null> {
+  if (IS_DEMO) return null;
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('client_onboarding')
+    .select('*')
+    .eq('client_id', clientId)
+    .single();
+  if (error || !data) return null;
+  return data as ClientOnboarding;
+}
+
+export async function saveClientOnboarding(onboarding: ClientOnboarding): Promise<void> {
+  if (IS_DEMO) return;
+  const sb = getSupabase();
+  const { error } = await sb
+    .from('client_onboarding')
+    .upsert({
+      ...onboarding,
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'client_id' });
+  if (error) throw new Error(`Failed to save onboarding: ${error.message}`);
+}
+
+export function isOnboardingComplete(onboarding: ClientOnboarding | null): boolean {
+  if (!onboarding) return false;
+  return !!(onboarding.business_description && onboarding.primary_goal && onboarding.geo_scope);
 }
