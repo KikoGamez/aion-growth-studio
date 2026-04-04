@@ -1,7 +1,7 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { saveClientOnboarding, getClientOnboarding, getLatestSnapshot, IS_DEMO } from '../../../lib/db';
+import { saveClientOnboarding, getClientOnboarding, getLatestSnapshot, IS_DEMO, logRecommendation } from '../../../lib/db';
 import { generateBriefing } from '../../../lib/briefing';
 
 /**
@@ -63,6 +63,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
                 .eq('id', snapshot.id);
             }
           }
+          // Seed briefing priorities as trackable recommendations
+          for (const priority of briefing.priorities || []) {
+            logRecommendation({
+              client_id: client.id,
+              source: 'briefing',
+              title: priority.title,
+              description: priority.description,
+              impact: priority.impact || 'high',
+              status: 'pending',
+            }).catch(() => {});
+          }
+
           briefingGenerated = true;
           console.log('[save-onboarding] Briefing auto-generated for', client.domain);
         }

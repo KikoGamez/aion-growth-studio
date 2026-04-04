@@ -7,10 +7,8 @@ import ActionItem from '../../components/dashboard/ActionItem.astro';
 import TierGate from '../../components/dashboard/TierGate.astro';
 import UpsellCallout from '../../components/dashboard/UpsellCallout.astro';
 import GEOProgressBar from '../../components/charts/GEOProgressBar.astro';
-import { getClient, getLatestSnapshot, getAlerts, getContextEntries } from '../../lib/db';
+import { getClient, getLatestSnapshot, getAlerts, getContextEntries, getActiveRecommendations, findAuditByEmail, createSnapshotFromAudit } from '../../lib/db';
 import type { Tier } from '../../lib/demo-data';
-
-import { findAuditByEmail, createSnapshotFromAudit } from '../../lib/db';
 
 const client = Astro.locals.client ?? await getClient();
 const user = Astro.locals.user;
@@ -45,27 +43,28 @@ const seo = r.seo || {};
 const visits = seo.organicTrafficEstimate || 12400;
 const visits_prev = 10800;
 
-// Action items: prefer personalized briefing > generic insights > context entries
+// Action items: use tracked recommendations (from DB) + fallback to briefing/insights
 const briefing = r.briefing;
-interface ActionEntry { title: string; status: 'done' | 'in_progress' | 'pending'; impact: 'high' | 'medium' | 'low'; description?: string; }
+const trackedRecs = hasData ? await getActiveRecommendations(client.id) : [];
+interface ActionEntry { title: string; status: 'done' | 'in_progress' | 'pending'; impact: 'high' | 'medium' | 'low'; description?: string; recommendationId?: string; }
 const actionItems: ActionEntry[] = [
-  // 1. Context entries (user-managed actions)
-  ...contextEntries
-    .filter(e => e.type === 'action')
-    .map(e => ({
-      title: e.title,
-      status: (e.status as 'done' | 'in_progress' | 'pending') || 'pending',
-      impact: (e.impact as 'high' | 'medium' | 'low') || 'medium',
-    })),
-  // 2. Briefing priorities (personalized, from onboarding + audit)
-  ...(briefing?.priorities || []).map((p: any) => ({
+  // 1. Tracked recommendations from DB (have IDs, can be toggled)
+  ...trackedRecs.map(rec => ({
+    title: rec.title,
+    status: (rec.status as 'done' | 'in_progress' | 'pending') || 'pending',
+    impact: (rec.impact as 'high' | 'medium' | 'low') || 'medium',
+    description: rec.description,
+    recommendationId: rec.id,
+  })),
+  // 2. If no tracked recs, show briefing priorities (not yet seeded to DB)
+  ...(trackedRecs.length === 0 && briefing?.priorities ? briefing.priorities.map((p: any) => ({
     title: p.title,
     status: 'pending' as const,
     impact: (p.impact as 'high' | 'medium' | 'low') || 'high',
     description: p.description,
-  })),
-  // 3. Fallback: generic insights bullets (only if no briefing)
-  ...(!briefing ? (r.insights?.bullets || []).slice(0, 3).map((b: string) => ({
+  })) : []),
+  // 3. If no briefing either, show generic insights
+  ...(trackedRecs.length === 0 && !briefing ? (r.insights?.bullets || []).slice(0, 3).map((b: string) => ({
     title: b,
     status: 'pending' as const,
     impact: 'medium' as const,
@@ -369,7 +368,7 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
 
         <div style="display:flex;flex-direction:column;gap:4px;">
           {actionItems.map(item => (
-            <ActionItem title={item.title} status={item.status} impact={item.impact} />
+            <ActionItem title={item.title} status={item.status} impact={item.impact} recommendationId={item.recommendationId} description={item.description} />
           ))}
         </div>
 
@@ -427,5 +426,40 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
     </section>
 
   </div>
+
+  <!-- Action toggle script -->
+  <script>
+    document.querySelectorAll('.action-item[data-rec-id]').forEach(item => {
+      const recId = (item as HTMLElement).dataset.recId;
+      if (!recId) return;
+
+      item.addEventListener('click', async () => {
+        const currentStatus = (item as HTMLElement).dataset.status;
+        const newStatus = currentStatus === 'done' ? 'pending' : 'done';
+
+        // Optimistic UI update
+        (item as HTMLElement).dataset.status = newStatus;
+        const toggle = item.querySelector('.action-toggle');
+        const titleEl = item.querySelector('span[style*="font-size:14px"]') as HTMLElement;
+
+        if (toggle) {
+          toggle.innerHTML = newStatus === 'done'
+            ? '<span class="material-symbols-outlined filled-icon" style="color:#1d9e75;font-size:20px;">check_circle</span>'
+            : '<span class="material-symbols-outlined" style="color:#c3c6d2;font-size:20px;">radio_button_unchecked</span>';
+        }
+        if (titleEl) {
+          titleEl.style.textDecoration = newStatus === 'done' ? 'line-through' : 'none';
+          titleEl.style.opacity = newStatus === 'done' ? '0.5' : '1';
+        }
+
+        // Save to server
+        await fetch('/api/dashboard/update-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recommendationId: recId, status: newStatus }),
+        });
+      });
+    });
+  </script>
 )}
 </DashboardLayout>
