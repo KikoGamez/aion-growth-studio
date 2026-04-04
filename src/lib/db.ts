@@ -326,3 +326,136 @@ export async function updateLeadStatus(email: string, url: string, status: strin
   if (auditId) update.audit_id = auditId;
   await sb.from('leads').update(update).eq('email', email).eq('url', url);
 }
+
+// ─── Recommendations ──────────────────────────────────────────────────────────
+
+export interface Recommendation {
+  id?: string;
+  client_id: string;
+  source: string;
+  title: string;
+  description?: string;
+  impact?: 'high' | 'medium' | 'low';
+  status?: string;
+  feedback?: string;
+  data?: Record<string, any>;
+}
+
+export async function logRecommendation(rec: Recommendation): Promise<string | null> {
+  if (IS_DEMO) return null;
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('recommendations_log')
+    .insert(rec)
+    .select('id')
+    .single();
+  if (error) { console.error('[recommendations] Insert failed:', error.message); return null; }
+  return data?.id ?? null;
+}
+
+export async function getActiveRecommendations(clientId: string): Promise<Recommendation[]> {
+  if (IS_DEMO) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('recommendations_log')
+    .select('*')
+    .eq('client_id', clientId)
+    .in('status', ['pending', 'accepted', 'in_progress'])
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error || !data) return [];
+  return data as Recommendation[];
+}
+
+export async function updateRecommendationStatus(
+  recId: string,
+  status: string,
+  feedback?: string,
+): Promise<void> {
+  if (IS_DEMO) return;
+  const sb = getSupabase();
+  const update: Record<string, any> = { status, updated_at: new Date().toISOString() };
+  if (feedback) update.feedback = feedback;
+  await sb.from('recommendations_log').update(update).eq('id', recId);
+}
+
+// ─── Interaction Log ──────────────────────────────────────────────────────────
+
+export async function logInteraction(
+  clientId: string,
+  action: string,
+  detail?: Record<string, any>,
+  userId?: string,
+): Promise<void> {
+  if (IS_DEMO) return;
+  const sb = getSupabase();
+  await sb.from('interaction_log').insert({
+    client_id: clientId,
+    user_id: userId || null,
+    action,
+    detail: detail || {},
+  });
+}
+
+// ─── Briefing ─────────────────────────────────────────────────────────────────
+
+export async function getActiveBriefing(clientId: string): Promise<Record<string, any> | null> {
+  if (IS_DEMO) return null;
+  // Briefing is stored in the latest snapshot's pipeline_output.briefing
+  const snapshot = await getLatestSnapshot(clientId);
+  if (snapshot.id === 'empty') return null;
+  return snapshot.pipeline_output?.briefing || null;
+}
+
+// ─── Client Documents ─────────────────────────────────────────────────────────
+
+export interface ClientDocument {
+  id?: string;
+  client_id: string;
+  filename: string;
+  file_path: string;
+  file_type?: string;
+  file_size_bytes?: number;
+  status?: string;
+  extracted_text?: string;
+  summary?: string;
+  category?: string;
+}
+
+export async function getClientDocuments(clientId: string): Promise<ClientDocument[]> {
+  if (IS_DEMO) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('client_documents')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data as ClientDocument[];
+}
+
+export async function saveClientDocument(doc: ClientDocument): Promise<string | null> {
+  if (IS_DEMO) return null;
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('client_documents')
+    .insert(doc)
+    .select('id')
+    .single();
+  if (error) { console.error('[documents] Insert failed:', error.message); return null; }
+  return data?.id ?? null;
+}
+
+export async function updateDocumentStatus(
+  docId: string,
+  status: string,
+  updates?: { extracted_text?: string; summary?: string; entities?: any; category?: string; error_message?: string },
+): Promise<void> {
+  if (IS_DEMO) return;
+  const sb = getSupabase();
+  await sb.from('client_documents').update({
+    status,
+    ...updates,
+    updated_at: new Date().toISOString(),
+  }).eq('id', docId);
+}
