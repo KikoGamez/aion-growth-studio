@@ -1,16 +1,18 @@
 ---
 export const prerender = false;
-import { listAllClients } from '../../lib/db';
+import { listAllClients, getLeadStats, IS_DEMO } from '../../lib/db';
 
 const clients = await listAllClients();
+const leadStats = IS_DEMO ? null : await getLeadStats();
+const statusColors = { new: '#94a3b8', audit_started: '#BA7517', audit_completed: '#1A4B8C', registered: '#1D9E75', paying: '#7c3aed' } as any;
 const error = Astro.url.searchParams.get('error');
 
-const tierBg: Record<string, string> = {
+const tierBg = {
   radar: '#e2e0fc',
   señales: '#d6e3ff',
   palancas: '#ede7f6',
-};
-const tierFg: Record<string, string> = {
+} as any;
+const tierFg = {
   radar: '#325ea0',
   señales: '#1a4b8c',
   palancas: '#6200ea',
@@ -62,6 +64,110 @@ const tierFg: Record<string, string> = {
   </div>
 
   <div style="max-width:1100px;margin:0 auto;padding:40px 24px;">
+
+    <!-- Metrics -->
+    {leadStats && (
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;">
+        <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin:0 0 8px;">Leads totales</p>
+          <p style="font-size:32px;font-weight:900;color:#1A1A2E;margin:0;">{leadStats.total}</p>
+        </div>
+        <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin:0 0 8px;">Ultimos 30 dias</p>
+          <p style="font-size:32px;font-weight:900;color:#1A4B8C;margin:0;">{leadStats.last30Days}</p>
+        </div>
+        <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin:0 0 8px;">Auditorias completadas</p>
+          <p style="font-size:32px;font-weight:900;color:#1D9E75;margin:0;">{leadStats.byStatus['audit_completed'] || 0}</p>
+        </div>
+        <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin:0 0 8px;">Registrados</p>
+          <p style="font-size:32px;font-weight:900;color:#7c3aed;margin:0;">{leadStats.byStatus['registered'] || 0}</p>
+        </div>
+      </div>
+    )}
+
+    <!-- Lead funnel -->
+    {leadStats && leadStats.total > 0 && (
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px;">
+        <!-- By status -->
+        <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin:0 0 16px;">Funnel de conversion</p>
+          {Object.entries(leadStats.byStatus).map(([status, count]) => {
+            const pct = Math.round((count as number / leadStats.total) * 100);
+            return (
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <span style="font-size:12px;color:#666;width:120px;text-overflow:ellipsis;overflow:hidden;">{status}</span>
+                <div style="flex:1;background:#f0f0f0;border-radius:4px;height:20px;overflow:hidden;">
+                  <div style={`background:${statusColors[status] || '#94a3b8'};height:100%;width:${pct}%;min-width:2px;border-radius:4px;`}></div>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:#1A1A2E;width:40px;text-align:right;">{count as number}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <!-- By source -->
+        <div style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin:0 0 16px;">Fuentes (UTM)</p>
+          {Object.entries(leadStats.bySource).map(([source, count]) => {
+            const pct = Math.round((count as number / leadStats.total) * 100);
+            return (
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <span style="font-size:12px;color:#666;width:120px;">{source}</span>
+                <div style="flex:1;background:#f0f0f0;border-radius:4px;height:20px;overflow:hidden;">
+                  <div style={`background:#1A4B8C;height:100%;width:${pct}%;min-width:2px;border-radius:4px;`}></div>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:#1A1A2E;width:40px;text-align:right;">{count as number}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    <!-- Recent leads -->
+    {leadStats && leadStats.recentLeads.length > 0 && (
+      <div style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;margin-bottom:32px;">
+        <div style="padding:16px 20px;border-bottom:1px solid #f0eeff;">
+          <p style="font-size:13px;font-weight:700;color:#1A1A2E;margin:0;">Leads recientes</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>URL</th>
+              <th>Estado</th>
+              <th>Fuente</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leadStats.recentLeads.map((lead: any) => (
+              <tr>
+                <td style="font-weight:600;font-size:13px;">{lead.email}</td>
+                <td style="font-size:12px;color:#666;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{lead.url}</td>
+                <td>
+                  <span style={`display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${
+                    lead.status === 'audit_completed' ? '#e1f5ee' :
+                    lead.status === 'registered' ? '#ede9fe' :
+                    lead.status === 'paying' ? '#d6e3ff' : '#f0f0f0'
+                  };color:${
+                    lead.status === 'audit_completed' ? '#1D9E75' :
+                    lead.status === 'registered' ? '#7c3aed' :
+                    lead.status === 'paying' ? '#1A4B8C' : '#666'
+                  };`}>
+                    {lead.status}
+                  </span>
+                </td>
+                <td style="font-size:12px;color:#888;">{lead.utm_source || lead.source || '—'}</td>
+                <td style="font-size:12px;color:#888;">{new Date(lead.created_at).toLocaleDateString('es-ES')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
 
     <div style="margin-bottom:32px;">
       <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;margin:0 0 4px;">Clientes</h1>

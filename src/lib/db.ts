@@ -319,6 +319,43 @@ export async function saveLead(lead: Lead): Promise<void> {
   if (error) console.error('[leads] Save failed:', error.message);
 }
 
+export async function getLeadStats(): Promise<{
+  total: number;
+  byStatus: Record<string, number>;
+  bySource: Record<string, number>;
+  last30Days: number;
+  recentLeads: Lead[];
+}> {
+  if (IS_DEMO) return { total: 0, byStatus: {}, bySource: {}, last30Days: 0, recentLeads: [] };
+  const sb = getSupabase();
+
+  const { data: all, error } = await sb
+    .from('leads')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error || !all) return { total: 0, byStatus: {}, bySource: {}, last30Days: 0, recentLeads: [] };
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const byStatus: Record<string, number> = {};
+  const bySource: Record<string, number> = {};
+  let last30Days = 0;
+
+  for (const lead of all) {
+    byStatus[lead.status || 'new'] = (byStatus[lead.status || 'new'] || 0) + 1;
+    const src = lead.utm_source || lead.source || 'direct';
+    bySource[src] = (bySource[src] || 0) + 1;
+    if (lead.created_at >= thirtyDaysAgo) last30Days++;
+  }
+
+  return {
+    total: all.length,
+    byStatus,
+    bySource,
+    last30Days,
+    recentLeads: all.slice(0, 20) as Lead[],
+  };
+}
+
 export async function updateLeadStatus(email: string, url: string, status: string, auditId?: string): Promise<void> {
   if (IS_DEMO) return;
   const sb = getSupabase();
