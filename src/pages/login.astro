@@ -59,27 +59,8 @@ const error = Astro.url.searchParams.get('error');
       <div style="flex:1;height:1px;background:#c3c6ce;"></div>
     </div>
 
-    <!-- Magic Link (primary) -->
-    <div id="magic-link-form" style="background:white;padding:32px;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:16px;">
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:12px;font-weight:700;color:#434750;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Email</label>
-        <input type="email" id="magic-email" placeholder="tu@empresa.com" required autocomplete="email" />
-      </div>
-      <button type="button" id="magic-btn" style="width:100%;padding:14px;border-radius:10px;background:#69ff87;color:#000e41;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;">
-        Enviar enlace de acceso
-      </button>
-      <div id="magic-status" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:13px;text-align:center;"></div>
-    </div>
-
-    <!-- Password toggle -->
-    <div style="text-align:center;margin-bottom:16px;">
-      <button type="button" id="toggle-password" style="background:none;border:none;color:#9ca3af;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline;">
-        Acceder con contraseña
-      </button>
-    </div>
-
-    <!-- Password form (hidden by default) -->
-    <form id="password-form" method="POST" action="/api/auth/login" style="display:none;flex-direction:column;gap:16px;background:white;padding:32px;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+    <!-- Password form (primary) -->
+    <form id="password-form" method="POST" action="/api/auth/login" style="display:flex;flex-direction:column;gap:16px;background:white;padding:32px;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
       <div>
         <label style="display:block;font-size:12px;font-weight:700;color:#434750;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Email</label>
         <input type="email" name="email" placeholder="tu@empresa.com" required autocomplete="email" />
@@ -91,11 +72,30 @@ const error = Astro.url.searchParams.get('error');
       <button type="submit">Entrar →</button>
     </form>
 
+    <!-- Magic link toggle -->
+    <div style="text-align:center;margin:16px 0;">
+      <button type="button" id="toggle-magic" style="background:none;border:none;color:#9ca3af;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline;">
+        Acceder con enlace magico (sin contraseña)
+      </button>
+    </div>
+
+    <!-- Magic Link (hidden by default) -->
+    <div id="magic-link-form" style="display:none;background:white;padding:32px;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;font-weight:700;color:#434750;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">Email</label>
+        <input type="email" id="magic-email" placeholder="tu@empresa.com" required autocomplete="email" />
+      </div>
+      <button type="button" id="magic-btn" style="width:100%;padding:14px;border-radius:10px;background:#69ff87;color:#000e41;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;">
+        Enviar enlace de acceso
+      </button>
+      <div id="magic-status" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:13px;text-align:center;"></div>
+    </div>
+
     <script>
       const magicBtn = document.getElementById('magic-btn') as HTMLButtonElement;
       const magicEmail = document.getElementById('magic-email') as HTMLInputElement;
       const magicStatus = document.getElementById('magic-status') as HTMLDivElement;
-      const toggleBtn = document.getElementById('toggle-password') as HTMLButtonElement;
+      const toggleBtn = document.getElementById('toggle-magic') as HTMLButtonElement;
       const passwordForm = document.getElementById('password-form') as HTMLFormElement;
       const magicForm = document.getElementById('magic-link-form') as HTMLDivElement;
 
@@ -133,10 +133,10 @@ const error = Astro.url.searchParams.get('error');
       });
 
       toggleBtn.addEventListener('click', () => {
-        const showingPassword = passwordForm.style.display === 'flex';
-        passwordForm.style.display = showingPassword ? 'none' : 'flex';
-        magicForm.style.display = showingPassword ? 'block' : 'none';
-        toggleBtn.textContent = showingPassword ? 'Acceder con contraseña' : 'Acceder con magic link';
+        const showingMagic = magicForm.style.display === 'block';
+        magicForm.style.display = showingMagic ? 'none' : 'block';
+        passwordForm.style.display = showingMagic ? 'flex' : 'none';
+        toggleBtn.textContent = showingMagic ? 'Acceder con enlace magico (sin contraseña)' : 'Acceder con email y contraseña';
       });
     </script>
   </div>
