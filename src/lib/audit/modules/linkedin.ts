@@ -10,7 +10,12 @@ const DFS_PASSWORD = import.meta.env?.DATAFORSEO_PASSWORD || process.env.DATAFOR
 async function searchLinkedInUrl(crawl: CrawlResult): Promise<string | null> {
   if (!DFS_LOGIN || !DFS_PASSWORD) return null;
 
-  const brand = crawl.title?.split(/[-|–—·:]/)[0]?.trim();
+  let brand = crawl.title?.split(/[-|–—·:]/)[0]?.trim();
+  // Fallback: use domain name if no title
+  if (!brand || brand.length < 2) {
+    const url = crawl.finalUrl || '';
+    try { brand = new URL(url).hostname.replace(/^www\./, '').split('.')[0]; } catch {}
+  }
   if (!brand || brand.length < 2) return null;
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
