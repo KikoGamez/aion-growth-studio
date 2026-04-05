@@ -691,11 +691,9 @@ const donutSVG = buildDonutSVG();
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Informe de Presencia Digital — {domain}</title>
-  <meta name="description" content={`Diagnóstico completo de presencia digital de ${domain}. Score: ${health.total ?? 0}/100. Análisis SEO, visibilidad IA, competidores y plan de acción.`} />
+  <meta name="description" content={`Diagnóstico completo de presencia digital de ${domain}. Score: ${health.total ?? 0}/100.`} />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <meta name="robots" content="noindex,nofollow" />
-
-  <!-- Open Graph (for sharing audit links) -->
   <meta property="og:title" content={`Informe de Presencia Digital — ${domain}`} />
   <meta property="og:description" content={`Score: ${health.total ?? 0}/100. Diagnóstico completo de SEO, visibilidad IA, competidores y oportunidades de crecimiento.`} />
   <meta property="og:image" content="/images/og-report.png" />
@@ -803,215 +801,7 @@ const donutSVG = buildDonutSVG();
 
     /* Print */
     @media print{.no-print,.sidebar,.top-bar{display:none!important}.main-content{margin-left:0!important}.report{padding:0}.glass-card,.surface-card{box-shadow:none;border:1px solid #E5E7EB;background:#fff;color:#1a1a2e}}
-    @media(max-width:768px){
-      .sidebar{display:none}
-      .layout{display:block;overflow-x:hidden}
-      .main-content{margin-left:0;overflow-x:hidden}
-
-      /* ── 1. Header: compact 40px ── */
-      .top-bar{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 12px;height:40px;min-height:40px}
-      .top-bar img{height:20px!important}
-      .top-bar-title{font-size:0.68rem!important}
-      .btn-export{padding:6px 10px!important;font-size:0.72rem!important}
-      .btn-export-text{display:none!important}
-
-      .report{
-        display:flex!important;
-        flex-direction:row!important;
-        flex-wrap:nowrap!important;
-        overflow-x:scroll!important;
-        overflow-y:hidden!important;
-        scroll-snap-type:x mandatory;
-        -webkit-overflow-scrolling:touch;
-        padding:0!important;
-        margin:0!important;
-        max-width:none!important;
-        width:100vw!important;
-        height:calc(100vh - 40px)!important;
-        gap:0!important;
-      }
-      .report::-webkit-scrollbar{display:none}
-      .report{-ms-overflow-style:none;scrollbar-width:none}
-
-      /* ── 2. Carousel pages: overflow control ── */
-      .carousel-page{
-        min-width:100vw!important;
-        max-width:100vw!important;
-        width:100vw!important;
-        height:100%!important;
-        overflow-y:auto!important;
-        overflow-x:hidden!important;
-        scroll-snap-align:start;
-        flex-shrink:0!important;
-        padding:16px 16px 80px!important;
-        padding-top:52px!important;
-        box-sizing:border-box!important;
-      }
-      .carousel-page > * {
-        max-width:100%!important;
-        overflow-x:hidden!important;
-      }
-
-      /* Hide desktop-only elements on mobile */
-      .desktop-only{display:none!important}
-      .section-sep{display:none}
-
-      /* Pagination dots */
-      .mobile-dots{
-        position:fixed;
-        bottom:1.5rem;
-        left:50%;
-        transform:translateX(-50%);
-        display:flex;
-        align-items:center;
-        gap:8px;
-        padding:10px 18px;
-        background:rgba(17,17,37,0.7);
-        backdrop-filter:blur(16px);
-        -webkit-backdrop-filter:blur(16px);
-        border-radius:9999px;
-        box-shadow:0 10px 40px rgba(0,0,0,0.5);
-        z-index:200;
-      }
-      .mobile-dots .dot{
-        width:6px;height:6px;
-        border-radius:50%;
-        background:rgba(226,224,252,0.25);
-        transition:all 0.3s ease;
-        cursor:pointer;
-      }
-      .mobile-dots .dot.active{
-        width:9px;height:9px;
-        background:#69FF87;
-        box-shadow:0 0 10px rgba(105,255,135,0.7);
-      }
-
-      /* ── Mobile grids: always single column ── */
-      .carousel-page .grid-3,.carousel-page .grid-4{grid-template-columns:1fr!important}
-      .carousel-page .grid-2{grid-template-columns:1fr!important}
-
-      /* Light page variants */
-      .carousel-page.light-page{background:#FCFAFF;color:#111125}
-      .carousel-page.light-page .surface-card{background:#fff;border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
-
-      /* Estado por area rows: compact on mobile */
-      .area-row{flex-wrap:wrap!important;gap:6px!important;padding:8px 10px!important}
-      .area-row .area-detail-link{display:none!important}
-      .area-row .area-name{min-width:auto!important;font-size:0.75rem!important}
-      .area-row .area-summary{font-size:0.68rem!important;flex:1!important}
-
-      /* Swipe hint */
-      .swipe-hint{
-        display:flex!important;
-        align-items:center;
-        justify-content:center;
-        gap:8px;
-        margin-top:16px;
-        padding:12px 20px;
-        background:rgba(105,255,135,0.08);
-        border:1px solid rgba(105,255,135,0.15);
-        border-radius:12px;
-        color:#69FF87;
-        font-size:0.78rem;
-        font-weight:600;
-        animation:swipe-pulse 2s ease-in-out infinite;
-      }
-      @keyframes swipe-pulse{
-        0%,100%{opacity:0.7;transform:translateX(0)}
-        50%{opacity:1;transform:translateX(4px)}
-      }
-
-      /* Desktop sections hidden on mobile */
-      .cta-section-desktop{display:none!important}
-      .footer-bar{display:none!important}
-
-      /* Hero gauge responsive */
-      .hero-gauge-wrap{width:140px!important;height:140px!important}
-      .hero-gauge-wrap svg{width:140px!important;height:140px!important}
-      .hero-gauge-wrap #score-counter{font-size:2.5rem!important}
-
-      /* ── 3. Tables → card layout on mobile ── */
-      .carousel-page table{width:100%!important;border-collapse:separate!important;border-spacing:0 6px!important}
-      .carousel-page table,
-      .carousel-page thead,
-      .carousel-page tbody,
-      .carousel-page tr,
-      .carousel-page th,
-      .carousel-page td{display:block!important;width:100%!important;max-width:100%!important}
-      .carousel-page thead{display:none!important}
-      .carousel-page tbody tr{
-        background:rgba(51,51,72,0.3)!important;
-        border-radius:10px!important;
-        padding:12px 14px!important;
-        margin-bottom:8px!important;
-        border:1px solid rgba(141,144,155,0.08)!important;
-      }
-      .carousel-page tbody tr.own-row{
-        background:rgba(170,199,255,0.12)!important;
-        border:1px solid rgba(170,199,255,0.18)!important;
-      }
-      .carousel-page tbody td{
-        padding:3px 0!important;
-        display:flex!important;
-        justify-content:space-between!important;
-        align-items:center!important;
-        text-align:left!important;
-        font-size:0.78rem!important;
-        border-bottom:none!important;
-      }
-      .carousel-page tbody td:first-child{
-        font-weight:700!important;
-        font-size:0.85rem!important;
-        margin-bottom:4px!important;
-      }
-      /* IA section tables (white bg) */
-      .ia-section tbody tr{
-        background:rgba(0,0,0,0.03)!important;
-        border:1px solid rgba(0,0,0,0.06)!important;
-      }
-
-      /* ── 4. Category breakdown grid (IA section) ── */
-      .category-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
-      .category-grid > *{min-width:0!important;overflow:hidden!important}
-
-      /* ── 5. TOFU/MOFU/BOFU methodology grid ── */
-      .methodology-grid{grid-template-columns:1fr!important;gap:8px!important}
-
-      /* ── 6. Mention rate gauge ── */
-      .mention-rate-row{flex-direction:column!important;align-items:center!important;gap:16px!important}
-      .mention-gauge{width:120px!important;height:120px!important}
-      .mention-gauge svg{width:120px!important;height:120px!important}
-      .mention-gauge span[style*="font-size:2.2rem"]{font-size:1.6rem!important}
-
-      /* ── 7. SVG charts constrained ── */
-      .carousel-page svg{max-width:100%!important;height:auto!important}
-
-      /* ── 8. Card padding reduction ── */
-      .carousel-page .glass-card{padding:14px!important}
-      .carousel-page .surface-card{padding:14px!important}
-      .carousel-page .surface-high-card{padding:14px!important}
-      .carousel-page .metric-card-dark{padding:12px 14px!important}
-      .carousel-page .plan-card{padding:14px 16px!important}
-      .carousel-page .callout{padding:12px 14px!important}
-      .carousel-page .ia-section{padding:16px!important}
-
-      /* ── Misc mobile fixes ── */
-      .section-title{font-size:1.4rem!important}
-      .section-subtitle{font-size:0.82rem!important}
-      .carousel-page .block-header{margin-bottom:1rem!important}
-      .carousel-page .tech-item-dark{padding:10px 12px!important}
-
-      /* Hero banner compact */
-      .carousel-page .surface-card[style*="padding:3rem"]{padding:1.5rem 1rem!important}
-    }
-
-    /* Desktop: hide mobile-only elements */
-    @media(min-width:769px){
-      .mobile-only{display:none!important}
-      .mobile-dots{display:none!important}
-      .swipe-hint{display:none!important}
-      .carousel-page{display:contents}
-    }
+    @media(max-width:768px){.sidebar{display:none}.main-content{margin-left:0}.report{padding:1rem}.grid-3,.grid-4{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -1075,19 +865,19 @@ const donutSVG = buildDonutSVG();
       <!-- TOP BAR -->
       <div class="top-bar no-print">
         <div class="top-bar-left">
-          <img src="/images/aion-logo-dark.png" height="28" alt="AION" style="height:28px;" />
+          <img src="/images/aion-logo-transparent.png" height="28" alt="AION" style="height:28px;opacity:0.8;" />
           <span style="width:1px;height:18px;background:rgba(141,144,155,0.2);display:inline-block;"></span>
           <span class="top-bar-title">{domain}</span>
         </div>
         <a class="btn-export" href={`/es/audit/${id}/pdf`} target="_blank">
           <span class="material-symbols-outlined" style="font-size:16px;">picture_as_pdf</span>
-          <span class="btn-export-text">Exportar PDF</span>
+          Exportar PDF
         </a>
       </div>
 
-      <!-- Coverage warning (desktop) -->
+      <!-- Coverage warning -->
       {lowCoverage && (
-        <div class="desktop-only" style="background:rgba(255,180,171,0.1);border-left:4px solid #ffb4ab;padding:14px 20px;margin:0 2rem 12px;border-radius:0 12px 12px 0;font-size:0.82rem;color:#ffb4ab;line-height:1.5;">
+        <div style="background:rgba(255,180,171,0.1);border-left:4px solid #ffb4ab;padding:14px 20px;margin:0 2rem 12px;border-radius:0 12px 12px 0;font-size:0.82rem;color:#ffb4ab;line-height:1.5;">
           <strong>Informe parcial</strong> — Cobertura de datos: {coverage.coveragePct}% ({coverage.successfulPoints}/{coverage.totalPoints}).
           {coverage.allMissing.length > 0 && (
             <span> Datos no disponibles: {coverage.allMissing.join(', ')}.</span>
@@ -1101,15 +891,6 @@ const donutSVG = buildDonutSVG();
         <!-- ================================================================
              BLOCK 1 - #hero - Resumen Ejecutivo
         ================================================================ -->
-        <div class="carousel-page">
-
-        <!-- Coverage warning (mobile - inside carousel page) -->
-        {lowCoverage && (
-          <div class="mobile-only" style="background:rgba(255,180,171,0.1);border-left:4px solid #ffb4ab;padding:10px 14px;margin-bottom:12px;border-radius:0 8px 8px 0;font-size:0.75rem;color:#ffb4ab;line-height:1.4;">
-            <strong>Informe parcial</strong> — Cobertura: {coverage.coveragePct}%
-          </div>
-        )}
-
         <div id="hero" class="reveal" style="margin-bottom:2.5rem;">
 
           <!-- Hero Banner -->
@@ -1236,13 +1017,14 @@ const donutSVG = buildDonutSVG();
             <div style="display:flex;flex-direction:column;gap:2px;">
               {statusByArea.map(area => {
                 const dotColor = area.status === 'good' ? '#69FF87' : area.status === 'medium' ? '#ffb4ab' : '#ffb4ab';
+                const dotBg = area.status === 'good' ? 'rgba(105,255,135,0.15)' : area.status === 'medium' ? 'rgba(255,180,171,0.1)' : 'rgba(255,180,171,0.15)';
                 return (
-                  <div class="area-row" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;background:rgba(51,51,72,0.2);transition:background 0.15s;" >
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;background:rgba(51,51,72,0.2);transition:background 0.15s;" >
                     <span style={`width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0;box-shadow:0 0 8px ${dotColor}40;`}></span>
                     {area.status === 'bad' && <span style="font-size:0.68rem;font-weight:800;color:#ffb4ab;white-space:nowrap;">CRITICO</span>}
-                    <span class="area-name" style="font-size:0.82rem;font-weight:700;color:#e2e0fc;min-width:130px;">{area.area}</span>
-                    <span class="area-summary" style="font-size:0.75rem;color:#8d909b;flex:1;">{area.summary}</span>
-                    <a href={area.anchor} class="area-detail-link" style="font-size:0.72rem;color:#aac7ff;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.82rem;font-weight:700;color:#e2e0fc;min-width:130px;">{area.area}</span>
+                    <span style="font-size:0.75rem;color:#8d909b;flex:1;">{area.summary}</span>
+                    <a href={area.anchor} style="font-size:0.72rem;color:#aac7ff;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:4px;">
                       Ver detalle <span class="material-symbols-outlined" style="font-size:14px;">arrow_forward</span>
                     </a>
                   </div>
@@ -1250,26 +1032,17 @@ const donutSVG = buildDonutSVG();
               })}
             </div>
             <!-- Transparency note -->
-            <div class="desktop-only" style="margin-top:16px;padding:12px 16px;background:rgba(141,144,155,0.06);border-radius:8px;">
+            <div style="margin-top:16px;padding:12px 16px;background:rgba(141,144,155,0.06);border-radius:8px;">
               <p style="font-size:0.72rem;color:#8d909b;line-height:1.5;font-style:italic;margin:0;">Este diagnostico analiza datos observables publicamente (SEO, velocidad web, Schema Markup, redes sociales). Para datos reales de trafico y rendimiento de campanas, necesitamos acceso a tus herramientas — eso es lo que hace Radar cada mes.</p>
             </div>
           </div>
-
-          <!-- Swipe hint (mobile only) -->
-          <div class="swipe-hint">
-            <span>Desliza para ver el informe completo</span>
-            <span class="material-symbols-outlined" style="font-size:18px;">swipe_left</span>
-          </div>
-
         </div>
-        </div><!-- END carousel-page #hero -->
 
 
         <!-- ================================================================
              BLOCK 2 - #seo - Visibilidad Digital / SEO Organico
         ================================================================ -->
-        <div class="carousel-page">
-        <div id="seo" class="reveal" style="margin-bottom:0;">
+        <div id="seo" class="reveal" style="margin-bottom:2.5rem;">
           <div class="block-header">
             <div class="section-label">Visibilidad Digital</div>
             <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
@@ -1399,9 +1172,8 @@ const donutSVG = buildDonutSVG();
               )}
             </div>
           )}
-        </div><!-- END #seo overview -->
 
-          <!-- SEO metrics (same slide, scrollable) -->
+          <!-- SEO metrics -->
           {seo ? (
             <div>
               <div class="grid-4" style="margin-bottom:1rem;">
@@ -1551,14 +1323,12 @@ const donutSVG = buildDonutSVG();
             <div class="callout callout-warning">No se han podido obtener datos de SEO organico para este dominio.</div>
           )}
         </div>
-        </div><!-- END carousel-page #seo (single slide with all SEO content) -->
 
         <div class="section-sep"></div>
 
         <!-- ================================================================
              #ia - Visibilidad IA (White theme section)
         ================================================================ -->
-        <div class="carousel-page">
         <div id="ia" class="reveal ia-section" style="margin-bottom:2.5rem;">
           <div class="block-header">
             <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#7c3aed;margin-bottom:6px;">Visibilidad IA</div>
@@ -1577,7 +1347,7 @@ const donutSVG = buildDonutSVG();
           <!-- TOFU/MOFU/BOFU -->
           <div style="background:#f5f2ff;border-radius:12px;padding:20px;margin-bottom:1.5rem;">
             <div style="font-size:0.72rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Metodologia: {geo?.queries?.length ?? 30} consultas en 6 categorias de intencion</div>
-            <div class="methodology-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
               <div style="background:#EBF2FF;border-radius:10px;padding:14px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                   <div style="font-size:0.72rem;font-weight:800;color:#1A4B8C;text-transform:uppercase;letter-spacing:0.06em;">TOFU</div>
@@ -1620,8 +1390,8 @@ const donutSVG = buildDonutSVG();
           {!qaSuppressed.includes('geo_analysis') && geo ? (
             <div>
               <!-- Mention rate -->
-              <div class="mention-rate-row" style="display:flex;align-items:center;gap:24px;margin-bottom:1.5rem;flex-wrap:wrap;">
-                <div class="mention-gauge" style="position:relative;width:160px;height:160px;flex-shrink:0;">
+              <div style="display:flex;align-items:center;gap:24px;margin-bottom:1.5rem;flex-wrap:wrap;">
+                <div style="position:relative;width:160px;height:160px;flex-shrink:0;">
                   <svg viewBox="0 0 36 36" style="width:160px;height:160px;transform:rotate(-90deg);">
                     <defs>
                       <linearGradient id="geo-gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -1652,7 +1422,7 @@ const donutSVG = buildDonutSVG();
               {Object.keys(categoryBreakdown).length > 0 && (
                 <div style="margin-bottom:1.5rem;">
                   <div style="font-size:0.72rem;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Visibilidad por tipo de consulta</div>
-                  <div class="category-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
                     {Object.entries(categoryBreakdown).map(([cat, data]) => {
                       const meta = categoryLabels[cat];
                       if (!meta) return null;
@@ -1789,12 +1559,10 @@ const donutSVG = buildDonutSVG();
             <div style="padding:14px 18px;border-radius:12px;font-size:0.82rem;line-height:1.55;background:rgba(186,117,23,0.08);border-left:3px solid #BA7517;color:#BA7517;">No se han podido obtener datos de visibilidad en IA para este dominio.</div>
           )}
         </div>
-        </div><!-- END carousel-page #ia -->
 
         <!-- ================================================================
              #autoridad - Reputacion / Autoridad de Marca
         ================================================================ -->
-        <div class="carousel-page">
         <div id="autoridad" class="reveal" style="margin-bottom:2.5rem;">
           <div class="block-header">
             <div class="section-label">Reputacion</div>
@@ -1977,14 +1745,12 @@ const donutSVG = buildDonutSVG();
             </div>
           )}
         </div>
-        </div><!-- END carousel-page #autoridad -->
 
         <div class="section-sep"></div>
 
         <!-- ================================================================
              BLOCK 3 - #competidores - Benchmark Competitivo
         ================================================================ -->
-        <div class="carousel-page">
         <div id="competidores" class="reveal" style="margin-bottom:2.5rem;">
           <div class="block-header">
             <div class="section-label">Benchmark</div>
@@ -2296,15 +2062,12 @@ const donutSVG = buildDonutSVG();
             </div>
           )}
         </div>
-        </div>
-        </div><!-- END carousel-page #competidores -->
 
         <div class="section-sep"></div>
 
         <!-- ================================================================
              BLOCK 4 - #experiencia - Web, Velocidad & Conversion
         ================================================================ -->
-        <div class="carousel-page">
         <div id="experiencia" class="reveal" style="margin-bottom:2.5rem;">
           <div class="block-header">
             <div class="section-label">Web & Rendimiento</div>
@@ -2689,14 +2452,12 @@ const donutSVG = buildDonutSVG();
             </div>
           )}
         </div>
-        </div></div></div></div></div><!-- END carousel-page #experiencia -->
 
         <div class="section-sep"></div>
 
         <!-- ================================================================
              BLOCK 5 - #plan - Plan de Accion
         ================================================================ -->
-        <div class="carousel-page">
         <div id="plan" class="reveal" style="margin-bottom:2.5rem;">
           <!-- Gradient top band -->
           <div style="background:linear-gradient(135deg,rgba(105,255,135,0.08) 0%,rgba(170,199,255,0.06) 100%);border-radius:16px 16px 0 0;padding:2rem 2rem 1.5rem;">
@@ -2772,52 +2533,12 @@ const donutSVG = buildDonutSVG();
             </div>
           </div>
         </div>
-        </div><!-- END carousel-page #plan -->
-
-        <!-- ================================================================
-             Page 8 (mobile-only) - #cierre - CTA
-        ================================================================ -->
-        <div class="carousel-page mobile-only" id="cierre">
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:60vh;gap:24px;padding:2rem 1rem;">
-            <div style="width:56px;height:56px;border-radius:50%;background:rgba(105,255,135,0.12);display:flex;align-items:center;justify-content:center;">
-              <span class="material-symbols-outlined" style="font-size:28px;color:#69FF87;">radar</span>
-            </div>
-            <div style="font-size:1.4rem;font-weight:800;color:#e2e0fc;letter-spacing:-0.02em;line-height:1.2;">
-              Activa AION Radar para {domain}
-            </div>
-            <p style="font-size:0.88rem;color:#c3c6d2;line-height:1.6;max-width:400px;">
-              Monitoriza estos KPIs semanalmente. Ve como evolucionan tu SEO, visibilidad IA y competidores con cada accion que tomes.
-            </p>
-            <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;font-size:0.82rem;color:#c3c6d2;text-align:left;margin:0 auto;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-outlined" style="font-size:16px;color:#69FF87;">trending_up</span>
-                Evolucion semanal de todos tus KPIs
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-outlined" style="font-size:16px;color:#69FF87;">notifications_active</span>
-                Alertas cuando un competidor te supera
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-outlined" style="font-size:16px;color:#69FF87;">lightbulb</span>
-                Recomendaciones personalizadas con IA
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px;margin-top:8px;">
-              <a href="/dashboard/onboarding"
-                 style="background:#69ff87;color:#002108;padding:0.85rem 1.75rem;border-radius:9999px;text-decoration:none;font-size:0.92rem;font-weight:700;text-align:center;">
-                Activar AION Radar
-              </a>
-              <p style="font-size:0.72rem;color:#8d909b;">Desde 149€/mes · Sin permanencia · Cancela cuando quieras</p>
-            </div>
-            <p style="font-size:0.68rem;color:#8d909b;margin-top:8px;">Informe confidencial · {domain} · {auditDate}</p>
-          </div>
-        </div>
 
       </div>
       <!-- END .report -->
 
-      <!-- CTA Section (dark gradient) - desktop only -->
-      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#111125 100%);padding:3rem 2rem;" class="no-print cta-section-desktop">
+      <!-- CTA Section (dark gradient) -->
+      <div style="background:linear-gradient(135deg,#1a1a2e 0%,#111125 100%);padding:3rem 2rem;" class="no-print">
         <div style="max-width:1100px;width:100%;margin:0 auto;">
           <div style="display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;">
             <div>
@@ -2843,7 +2564,7 @@ const donutSVG = buildDonutSVG();
       </div>
 
       <!-- Footer -->
-      <div class="footer-bar" style="background:#111125;padding:16px 2rem;display:flex;align-items:center;justify-content:space-between;">
+      <div style="background:#111125;padding:16px 2rem;display:flex;align-items:center;justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:10px;">
           <img src="/logo-aion-dark.png" height="18" alt="AION" style="height:18px;filter:brightness(0) invert(1);opacity:0.5;" />
           <span style="color:rgba(226,224,252,0.3);font-size:0.68rem;">Informe confidencial generado el {auditDate}</span>
@@ -2908,48 +2629,6 @@ const donutSVG = buildDonutSVG();
     }, { rootMargin: '-80px 0px -60% 0px', threshold: 0 });
 
     sectionEls.forEach(el => navObs.observe(el));
-
-    // ── Mobile carousel pagination ──────────────────────────────────
-    if (window.innerWidth <= 768) {
-      const report = document.querySelector('.report');
-      const pages = report ? report.querySelectorAll(':scope > .carousel-page') : [];
-      const dotsContainer = document.getElementById('carousel-dots');
-
-      if (report && pages.length > 0 && dotsContainer) {
-        // Create dots (clickable to navigate)
-        pages.forEach(function(page, i) {
-          var dot = document.createElement('div');
-          dot.className = 'dot' + (i === 0 ? ' active' : '');
-          dot.addEventListener('click', function() {
-            page.scrollIntoView({ behavior:'smooth', inline:'start', block:'nearest' });
-          });
-          dotsContainer.appendChild(dot);
-        });
-
-        // Update dots on scroll
-        var dots = dotsContainer.querySelectorAll('.dot');
-        var observer = new IntersectionObserver(function(entries) {
-          entries.forEach(function(entry) {
-            if (entry.isIntersecting) {
-              var idx = Array.from(pages).indexOf(entry.target);
-              dots.forEach(function(d, i) {
-                d.classList.toggle('active', i === idx);
-              });
-            }
-          });
-        }, { root: report, threshold: 0.5 });
-
-        pages.forEach(function(page) { observer.observe(page); });
-
-        // Make reveal elements visible immediately on mobile (no scroll-trigger)
-        document.querySelectorAll('.carousel-page .reveal').forEach(function(el) {
-          el.classList.add('visible');
-        });
-      }
-    }
   </script>
-
-  <!-- Mobile pagination dots -->
-  <nav class="mobile-dots mobile-only" id="carousel-dots"></nav>
 </body>
 </html>
