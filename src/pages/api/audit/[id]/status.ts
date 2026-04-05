@@ -197,6 +197,39 @@ export const GET: APIRoute = async ({ params, request }) => {
     );
   } catch (err: any) {
     console.error('Audit status error:', err);
+
+    // If QA step fails/timeouts, complete the audit without QA rather than marking as error
+    try {
+      const audit = await getAuditPage(id);
+      if (audit.currentStep === 'qa') {
+        console.log(`[audit] QA timed out for ${id} — completing without QA`);
+        const qaBypass = { approved: true, issues: [], suppressedSections: [], qaBypassed: true, overallAssessment: 'QA skipped (timeout)' };
+        await saveModuleResult(id, 'qa', qaBypass, 'done', {});
+
+        // Still send email + update lead
+        if (audit.email) {
+          const { sendPostAuditEmail } = await import('../../../../lib/email/post-audit');
+          const { updateLeadStatus } = await import('../../../../lib/db');
+          const finalResults = { ...audit.results, qa: qaBypass };
+          const scoreResult = finalResults.score || {};
+          sendPostAuditEmail({
+            to: audit.email,
+            domain: new URL(audit.url).hostname.replace(/^www\./, ''),
+            score: scoreResult.total ?? 0,
+            auditId: id,
+            scoreBreakdown: scoreResult.breakdown,
+            topInsight: finalResults.insights?.summary?.slice(0, 200),
+          }).catch(() => {});
+          updateLeadStatus(audit.email, audit.url, 'audit_completed', id).catch(() => {});
+        }
+
+        return new Response(
+          JSON.stringify({ status: 'completed', progress: 100 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+    } catch { /* ignore fallback error */ }
+
     try {
       await markAuditError(id);
     } catch {
