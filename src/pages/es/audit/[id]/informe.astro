@@ -1034,7 +1034,7 @@ const donutSVG = buildDonutSVG();
       <!-- TOP BAR -->
       <div class="top-bar no-print">
         <div class="top-bar-left">
-          <img src="/images/aion-logo-transparent.png" height="28" alt="AION" style="height:28px;opacity:0.8;" />
+          <img src="/images/aion-logo-dark.png" alt="AION" style="height:3rem;width:auto;" />
           <span style="width:1px;height:18px;background:rgba(141,144,155,0.2);display:inline-block;"></span>
           <span class="top-bar-title">{domain}</span>
         </div>
@@ -2806,6 +2806,13 @@ const donutSVG = buildDonutSVG();
       const report = document.querySelector('.report');
       const dots = document.querySelectorAll('.mc-dots-mobile .dot');
       const navBtns = document.querySelectorAll('#mc-nav-mobile button');
+
+      // Always start at first page (Resumen) on mobile
+      if (report) {
+        setTimeout(() => { report.scrollTo({ left: 0, behavior: 'instant' }); }, 50);
+        // Clear URL hash that might scroll to another section
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+      }
       const sections = ['hero','seo','ia','competidores','experiencia','plan'];
 
       function updateMobileActive(idx) {
