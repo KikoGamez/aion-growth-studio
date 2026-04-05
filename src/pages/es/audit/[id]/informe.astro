@@ -2763,9 +2763,9 @@ const donutSVG = buildDonutSVG();
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(51,51,72,0.4);border-radius:10px;">
-            <span style="font-size:0.78rem;color:#c3c6d2;">Reputación: {visRepSub}/100</span>
+            <span style="font-size:0.78rem;color:#c3c6d2;">Reputación: {(health.breakdown?.reputation ?? 0)}/100</span>
             <div style="width:60px;height:4px;background:rgba(141,144,155,0.15);border-radius:2px;overflow:hidden;">
-              <div style={`width:${visRepSub}%;height:100%;background:${scoreColor(visRepSub)};`}></div>
+              <div style={`width:${(health.breakdown?.reputation ?? 0)}%;height:100%;background:${scoreColor((health.breakdown?.reputation ?? 0))};`}></div>
             </div>
           </div>
         </div>
@@ -2786,19 +2786,19 @@ const donutSVG = buildDonutSVG();
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
           <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmtNum(seo?.keywordsTop10 ?? 0)}</div>
+            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.keywordsTop10 ?? 0)}</div>
             <div class="metric-label-sm">Keywords Top 10</div>
           </div>
           <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmtNum(seo?.keywordsTop3 ?? 0)}</div>
+            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.keywordsTop3 ?? 0)}</div>
             <div class="metric-label-sm">Keywords Top 3</div>
           </div>
           <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmtNum(seo?.organicTrafficEstimate ?? 0)}</div>
+            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.organicTrafficEstimate ?? 0)}</div>
             <div class="metric-label-sm">Tráfico estimado</div>
           </div>
           <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">~{fmtNum(seo?.estimatedAdsCost ?? 0)}€</div>
+            <div class="metric-value-lg" style="color:#e2e0fc;">~{fmt(seo?.estimatedAdsCost ?? 0)}€</div>
             <div class="metric-label-sm">Valor tráfico</div>
           </div>
         </div>
@@ -2821,7 +2821,7 @@ const donutSVG = buildDonutSVG();
             {ctItems.slice(0, 3).map((c: any) => (
               <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(51,51,72,0.3);border-radius:8px;margin-bottom:6px;">
                 <span style="font-size:0.78rem;color:#c3c6d2;font-weight:600;">{c.name || c.domain}</span>
-                <span style="font-size:0.72rem;color:#8d909b;">{fmtNum(c.keywordsTop10 ?? 0)} kw</span>
+                <span style="font-size:0.72rem;color:#8d909b;">{fmt(c.keywordsTop10 ?? 0)} kw</span>
               </div>
             ))}
           </div>
@@ -2875,7 +2875,7 @@ const donutSVG = buildDonutSVG();
             <div class="metric-label-sm">Domain Rank</div>
           </div>
           <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmtNum(seo?.backlinksTotal ?? 0)}</div>
+            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.backlinksTotal ?? 0)}</div>
             <div class="metric-label-sm">Backlinks</div>
           </div>
         </div>
