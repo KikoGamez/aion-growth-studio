@@ -149,7 +149,7 @@ Si alguna sección no tiene datos suficientes para ser valiosa, suprímela:
 - "reputation" → si no hay ni rating ni news
 - "techstack" → si todo vacío
 
-FORMATO DE RESPUESTA — JSON VÁLIDO, SIN MARKDOWN:
+FORMATO DE RESPUESTA — RESPONDE SOLO CON JSON VÁLIDO. NO uses markdown, NO uses backticks, NO uses \`\`\`json. Empieza directamente con {:
 {
   "approved": true/false,
   "issues": [

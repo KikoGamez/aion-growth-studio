@@ -107,14 +107,14 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
     repComponents.push({ value: Math.min(100, pressCount * 8), weight: 0.20 });
   }
 
-  // Blog activity
+  // Blog activity — only include if blog detected (don't penalize for no blog)
   const hasBlog = !!(crawl.hasBlog || (cc.totalPosts ?? 0) >= 1);
-  const postsLast90 = cc.postsLast90Days ?? 0;
-  const postsPerMonth = postsLast90 / 3;
-  const blogScore = hasBlog
-    ? (postsPerMonth >= 2 ? 100 : postsPerMonth >= 1 ? 70 : postsPerMonth >= 0.33 ? 40 : 20)
-    : 0;
-  repComponents.push({ value: blogScore, weight: 0.15 });
+  if (hasBlog) {
+    const postsLast90 = cc.postsLast90Days ?? 0;
+    const postsPerMonth = postsLast90 / 3;
+    const blogScore = postsPerMonth >= 2 ? 100 : postsPerMonth >= 1 ? 70 : postsPerMonth >= 0.33 ? 40 : 20;
+    repComponents.push({ value: blogScore, weight: 0.15 });
+  }
 
   // LinkedIn followers — ONLY if scraped successfully (never penalizes if Apify fails)
   if (!linkedin.skipped && linkedin.found && (linkedin.followers ?? 0) > 0) {
