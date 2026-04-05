@@ -801,22 +801,82 @@ const donutSVG = buildDonutSVG();
 
     /* Print */
     @media print{.no-print,.sidebar,.top-bar{display:none!important}.main-content{margin-left:0!important}.report{padding:0}.glass-card,.surface-card{box-shadow:none;border:1px solid #E5E7EB;background:#fff;color:#1a1a2e}}
-    /* Mobile: hide desktop, show carousel */
-    .mobile-carousel{display:none}
+    /* Mobile: carousel from existing desktop sections */
+    .mc-nav-mobile{display:none}
+    .mc-dots-mobile{display:none}
     @media(max-width:768px){
-      .layout{display:none!important}
-      .mobile-carousel{display:flex;flex-direction:column;min-height:100vh}
-      .mobile-carousel .mc-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(17,17,37,0.9);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100}
-      .mobile-carousel .mc-pages{flex:1;overflow-x:auto;scroll-snap-type:x mandatory;display:flex;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-      .mobile-carousel .mc-pages::-webkit-scrollbar{display:none}
-      .mobile-carousel .mc-page{min-width:100vw;scroll-snap-align:start;padding:24px 20px 100px;overflow-y:auto;max-height:calc(100vh - 100px)}
-      .mobile-carousel .mc-dots{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:6px;padding:16px;background:linear-gradient(transparent,#111125 40%);z-index:100}
-      .mobile-carousel .mc-dot{width:8px;height:8px;border-radius:50%;background:rgba(226,224,252,0.2);transition:all 0.2s}
-      .mobile-carousel .mc-dot.active{background:#69FF87;width:24px;border-radius:4px}
-      .mobile-carousel .mc-label{font-size:0.7rem;color:#8d909b;text-align:center;margin-top:4px}
-      .mobile-carousel .mc-nav{position:fixed;bottom:40px;left:0;right:0;display:flex;justify-content:center;gap:4px;padding:0 20px;z-index:99}
-      .mobile-carousel .mc-nav button{background:rgba(51,51,72,0.6);border:none;color:#c3c6d2;font-size:0.7rem;padding:6px 14px;border-radius:20px;font-family:inherit;cursor:pointer;white-space:nowrap}
-      .mobile-carousel .mc-nav button.active{background:#1a4b8c;color:#fff;font-weight:600}
+      .sidebar{display:none!important}
+      .top-bar{padding:0.5rem 1rem}
+      .main-content{margin-left:0!important}
+
+      /* Convert .report into horizontal carousel */
+      .report{
+        display:flex!important;
+        overflow-x:auto;
+        scroll-snap-type:x mandatory;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+        padding:0!important;
+        max-width:100vw!important;
+        gap:0;
+      }
+      .report::-webkit-scrollbar{display:none}
+
+      /* Each section becomes a carousel page */
+      .report > div[id]{
+        min-width:100vw;
+        scroll-snap-align:start;
+        padding:20px 16px 120px;
+        overflow-y:auto;
+        max-height:calc(100vh - 52px);
+        margin-bottom:0!important;
+        flex-shrink:0;
+      }
+
+      /* Hide separators between sections */
+      .report > .section-sep{display:none}
+
+      /* Responsive grids */
+      .grid-3,.grid-4{grid-template-columns:1fr 1fr!important}
+      .grid-2{grid-template-columns:1fr!important}
+
+      /* Tables scroll */
+      table{display:block;overflow-x:auto}
+
+      /* Smaller typography */
+      .section-title{font-size:1.4rem!important}
+      .metric-value-lg{font-size:1.4rem!important}
+
+      /* Fix IA section on mobile */
+      .ia-section{padding:20px 16px!important}
+
+      /* Navigation tabs */
+      .mc-nav-mobile{
+        display:flex;
+        position:fixed;bottom:0;left:0;right:0;
+        overflow-x:auto;scrollbar-width:none;
+        gap:4px;padding:10px 12px;
+        background:linear-gradient(transparent,#111125 30%);
+        z-index:200;
+        -webkit-overflow-scrolling:touch;
+      }
+      .mc-nav-mobile::-webkit-scrollbar{display:none}
+      .mc-nav-mobile button{
+        background:rgba(51,51,72,0.7);border:none;color:#c3c6d2;
+        font-size:0.68rem;padding:7px 14px;border-radius:20px;
+        font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0;
+      }
+      .mc-nav-mobile button.active{background:#1a4b8c;color:#fff;font-weight:600}
+
+      /* Dot indicators */
+      .mc-dots-mobile{
+        display:flex;position:fixed;bottom:48px;left:0;right:0;
+        justify-content:center;gap:5px;padding:6px;z-index:199;
+      }
+      .mc-dots-mobile .dot{
+        width:6px;height:6px;border-radius:50%;background:rgba(226,224,252,0.2);transition:all 0.2s;
+      }
+      .mc-dots-mobile .dot.active{background:#69FF87;width:20px;border-radius:3px}
     }
   </style>
 </head>
@@ -2647,400 +2707,51 @@ const donutSVG = buildDonutSVG();
     sectionEls.forEach(el => navObs.observe(el));
   </script>
 
-  <!-- ================================================================
-       MOBILE CAROUSEL
-       Hidden on desktop, visible on mobile via CSS media query
-  ================================================================ -->
-  <div class="mobile-carousel">
-    <!-- Header -->
-    <div class="mc-header">
-      <img src="/images/aion-logo-dark.png" alt="AION" style="height:2.5rem;" />
-      <span style="font-size:0.7rem;color:#8d909b;text-transform:uppercase;letter-spacing:0.08em;">{domain.toUpperCase()}</span>
-      <a href="#" onclick="window.print();return false" class="btn-export" style="font-size:0.7rem;padding:6px 14px;">
-        <span class="material-symbols-outlined" style="font-size:14px;">picture_as_pdf</span>
-        PDF
-      </a>
-    </div>
-
-    <!-- Navigation tabs -->
-    <div class="mc-nav" id="mc-nav">
-      <button data-page="0" class="active">Resumen</button>
-      <button data-page="1">Visibilidad</button>
-      <button data-page="2">SEO</button>
-      <button data-page="3">IA</button>
-      <button data-page="4">Reputación</button>
-      <button data-page="5">Web</button>
-      <button data-page="6">Plan</button>
-    </div>
-
-    <!-- Scrollable pages -->
-    <div class="mc-pages" id="mc-pages">
-
-      <!-- PAGE 1: Resumen Ejecutivo -->
-      <div class="mc-page">
-        <div style="text-align:center;margin-bottom:24px;">
-          <div class="status-pill" style="background:rgba(105,255,135,0.1);color:#69FF87;margin-bottom:16px;">
-            <span class="status-dot pulse-dot" style="background:#69FF87;"></span>
-            En desarrollo
-          </div>
-          <h1 style="font-size:1.6rem;font-weight:900;color:#e2e0fc;margin-bottom:8px;">{domain}</h1>
-          <div style="display:inline-flex;gap:8px;align-items:center;">
-            <span class="tag" style="background:rgba(170,199,255,0.15);color:#aac7ff;">{r.sector?.sector || 'Empresa'}</span>
-            <span style="font-size:0.72rem;color:#8d909b;">{auditDate}</span>
-          </div>
-        </div>
-
-        <div style="text-align:center;margin:32px 0;">
-          <div style="width:140px;height:140px;margin:0 auto;position:relative;">
-            <svg viewBox="0 0 36 36" style="width:140px;height:140px;transform:rotate(-90deg);">
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(141,144,155,0.15)" stroke-width="2"></circle>
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke={scoreColor(health.total)} stroke-width="2.5" stroke-linecap="round"
-                stroke-dasharray={`${health.total} ${100 - health.total}`}></circle>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <span style="font-size:2.8rem;font-weight:900;color:#e2e0fc;">{health.total}</span>
-              <span style="font-size:0.72rem;color:#8d909b;">/100</span>
-            </div>
-          </div>
-          <p style="font-size:0.78rem;color:#8d909b;margin-top:8px;">SCORE DE PRESENCIA DIGITAL</p>
-          <span class="status-pill" style={`background:${statusStyle(ss(health.total)).bg};color:${statusStyle(ss(health.total)).fg};margin-top:8px;`}>
-            {ss(health.total) === 'good' ? 'Bien' : ss(health.total) === 'ok' ? 'Medio' : 'Bajo'}
-          </span>
-        </div>
-
-        <div style="font-size:0.85rem;color:#c3c6d2;line-height:1.65;margin-bottom:24px;">
-          {healthSummaryText}
-        </div>
-
-        <!-- Semaphore -->
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
-          {Object.entries(health.breakdown || {}).map(([key, val]: [string, any]) => {
-            const labels = { seo: 'SEO', geo: 'GEO', web: 'Web', conversion: 'Conversión', reputation: 'Reputación' } as any;
-            return (
-              <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(51,51,72,0.4);border-radius:10px;">
-                <span style="font-size:0.75rem;color:#8d909b;width:80px;">{labels[key] || key}</span>
-                <div style="flex:1;height:6px;background:rgba(141,144,155,0.15);border-radius:3px;overflow:hidden;">
-                  <div style={`width:${val}%;height:100%;background:${scoreColor(val)};border-radius:3px;`}></div>
-                </div>
-                <span style={`font-size:0.78rem;font-weight:700;color:${scoreColor(val)};width:30px;text-align:right;`}>{val}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <!-- PAGE 2: Visibilidad Digital -->
-      <div class="mc-page">
-        <div class="section-label">VISIBILIDAD DIGITAL</div>
-        <div class="section-title" style="font-size:1.4rem;">Visibilidad Digital</div>
-        <p class="section-subtitle">Análisis de presencia orgánica, IA y reputación</p>
-
-        <div style="text-align:center;margin:24px 0;">
-          <div style="width:120px;height:120px;margin:0 auto;position:relative;">
-            <svg viewBox="0 0 36 36" style="width:120px;height:120px;transform:rotate(-90deg);">
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(141,144,155,0.15)" stroke-width="2"></circle>
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#aac7ff" stroke-width="2.5" stroke-linecap="round"
-                stroke-dasharray={`${visScore} ${100 - visScore}`}></circle>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <span style="font-size:2rem;font-weight:900;color:#e2e0fc;">{visScore}</span>
-              <span style="font-size:0.65rem;color:#8d909b;">PUNTAJE</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(51,51,72,0.4);border-radius:10px;">
-            <span style="font-size:0.78rem;color:#c3c6d2;">SEO: {visSeoSub}/100</span>
-            <div style="width:60px;height:4px;background:rgba(141,144,155,0.15);border-radius:2px;overflow:hidden;">
-              <div style={`width:${visSeoSub}%;height:100%;background:${scoreColor(visSeoSub)};`}></div>
-            </div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(51,51,72,0.4);border-radius:10px;">
-            <span style="font-size:0.78rem;color:#c3c6d2;">GEO: {visGeoSub}/100</span>
-            <div style="width:60px;height:4px;background:rgba(141,144,155,0.15);border-radius:2px;overflow:hidden;">
-              <div style={`width:${visGeoSub}%;height:100%;background:${scoreColor(visGeoSub)};`}></div>
-            </div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(51,51,72,0.4);border-radius:10px;">
-            <span style="font-size:0.78rem;color:#c3c6d2;">Reputación: {(health.breakdown?.reputation ?? 0)}/100</span>
-            <div style="width:60px;height:4px;background:rgba(141,144,155,0.15);border-radius:2px;overflow:hidden;">
-              <div style={`width:${(health.breakdown?.reputation ?? 0)}%;height:100%;background:${scoreColor((health.breakdown?.reputation ?? 0))};`}></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="metric-card-dark" style="text-align:center;margin-bottom:16px;">
-          <div style="font-size:0.68rem;color:#8d909b;text-transform:uppercase;margin-bottom:4px;">Tendencia orgánica</div>
-          <span style={`font-size:1.6rem;font-weight:800;color:${(seo?.organicTrend === 'up' || (seo?.organicTrendPct ?? 0) > 0) ? '#69FF87' : '#ffb4ab'};`}>
-            {seo?.organicTrendPct != null ? `${seo.organicTrendPct > 0 ? '+' : ''}${seo.organicTrendPct}%` : 'N/D'}
-          </span>
-        </div>
-      </div>
-
-      <!-- PAGE 3: SEO Orgánico -->
-      <div class="mc-page">
-        <div class="section-label">SEO ORGÁNICO</div>
-        <div class="section-title" style="font-size:1.4rem;">SEO Orgánico</div>
-        <p class="section-subtitle">Posicionamiento en buscadores y tráfico orgánico</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.keywordsTop10 ?? 0)}</div>
-            <div class="metric-label-sm">Keywords Top 10</div>
-          </div>
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.keywordsTop3 ?? 0)}</div>
-            <div class="metric-label-sm">Keywords Top 3</div>
-          </div>
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.organicTrafficEstimate ?? 0)}</div>
-            <div class="metric-label-sm">Tráfico estimado</div>
-          </div>
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">~{fmt(seo?.estimatedAdsCost ?? 0)}€</div>
-            <div class="metric-label-sm">Valor tráfico</div>
-          </div>
-        </div>
-
-        {(seo?.topKeywords || []).length > 0 && (
-          <div style="margin-bottom:20px;">
-            <h3 style="font-size:0.78rem;font-weight:700;color:#8d909b;text-transform:uppercase;margin-bottom:12px;">Top Keywords</h3>
-            {(seo.topKeywords as any[]).slice(0, 5).map((kw: any) => (
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(141,144,155,0.08);">
-                <span style="font-size:0.78rem;color:#c3c6d2;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px;">{kw.keyword}</span>
-                <span style="font-size:0.72rem;color:#8d909b;white-space:nowrap;">pos {kw.position}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {ctItems.length > 0 && (
-          <div>
-            <h3 style="font-size:0.78rem;font-weight:700;color:#8d909b;text-transform:uppercase;margin-bottom:12px;">Benchmark Competidores</h3>
-            {ctItems.slice(0, 3).map((c: any) => (
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(51,51,72,0.3);border-radius:8px;margin-bottom:6px;">
-                <span style="font-size:0.78rem;color:#c3c6d2;font-weight:600;">{c.name || c.domain}</span>
-                <span style="font-size:0.72rem;color:#8d909b;">{fmt(c.keywordsTop10 ?? 0)} kw</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <!-- PAGE 4: Visibilidad IA -->
-      <div class="mc-page">
-        <div class="section-label">VISIBILIDAD IA</div>
-        <div class="section-title" style="font-size:1.4rem;">Visibilidad en IA</div>
-        <p class="section-subtitle">Presencia en ChatGPT, Claude y otros asistentes IA</p>
-
-        <div style="text-align:center;margin:20px 0;">
-          <div style="width:120px;height:120px;margin:0 auto;position:relative;">
-            <svg viewBox="0 0 36 36" style="width:120px;height:120px;transform:rotate(-90deg);">
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(141,144,155,0.15)" stroke-width="2"></circle>
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke={scoreColor(geo?.overallScore ?? 0)} stroke-width="2.5" stroke-linecap="round"
-                stroke-dasharray={`${geo?.overallScore ?? 0} ${100 - (geo?.overallScore ?? 0)}`}></circle>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <span style="font-size:2rem;font-weight:900;color:#e2e0fc;">{geo?.overallScore ?? 0}</span>
-              <span style="font-size:0.65rem;color:#8d909b;">/100</span>
-            </div>
-          </div>
-        </div>
-
-        {(geo?.queries || []).length > 0 && (
-          <div>
-            <h3 style="font-size:0.78rem;font-weight:700;color:#8d909b;text-transform:uppercase;margin-bottom:12px;">Queries analizadas</h3>
-            {(geo.queries as any[]).slice(0, 8).map((q: any) => (
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(141,144,155,0.08);">
-                <span style="font-size:0.75rem;color:#c3c6d2;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px;">{q.query || q.keyword}</span>
-                <span style={`font-size:0.72rem;font-weight:600;color:${q.mentioned ? '#69FF87' : '#ffb4ab'};`}>
-                  {q.mentioned ? '✓' : '✗'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <!-- PAGE 5: Reputación -->
-      <div class="mc-page">
-        <div class="section-label">AUTORIDAD Y REPUTACIÓN</div>
-        <div class="section-title" style="font-size:1.4rem;">Autoridad y Reputación</div>
-        <p class="section-subtitle">Presencia de marca, reseñas y autoridad digital</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{seo?.domainRank ?? 'N/D'}</div>
-            <div class="metric-label-sm">Domain Rank</div>
-          </div>
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style="color:#e2e0fc;">{fmt(seo?.backlinksTotal ?? 0)}</div>
-            <div class="metric-label-sm">Backlinks</div>
-          </div>
-        </div>
-
-        {r.gbp?.found && (
-          <div class="surface-card" style="display:flex;align-items:center;gap:16px;padding:16px;margin-bottom:16px;">
-            <div style="font-size:2rem;font-weight:900;color:#69FF87;">{r.gbp.rating}</div>
-            <div>
-              <div style="font-size:0.78rem;font-weight:600;color:#e2e0fc;">Google Business Profile</div>
-              <div style="font-size:0.72rem;color:#8d909b;">{r.gbp.reviewCount || 0} reseñas</div>
-            </div>
-          </div>
-        )}
-
-        {r.reputation?.newsHeadlines && (r.reputation.newsHeadlines as any[]).length > 0 && (
-          <div>
-            <h3 style="font-size:0.78rem;font-weight:700;color:#8d909b;text-transform:uppercase;margin-bottom:12px;">Menciones en prensa</h3>
-            {(r.reputation.newsHeadlines as any[]).slice(0, 3).map((h: any) => (
-              <div style="padding:10px 14px;background:rgba(51,51,72,0.3);border-radius:8px;margin-bottom:6px;">
-                <p style="font-size:0.78rem;color:#c3c6d2;line-height:1.4;">{typeof h === 'string' ? h : h.title || h}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <!-- PAGE 6: Web & Conversión -->
-      <div class="mc-page">
-        <div class="section-label">WEB & RENDIMIENTO</div>
-        <div class="section-title" style="font-size:1.4rem;">Web & Conversión</div>
-        <p class="section-subtitle">Velocidad, experiencia de usuario y conversión</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style={`color:${scoreColor(r.pagespeed?.mobile?.performance ?? 0)};`}>{r.pagespeed?.mobile?.performance ?? 'N/D'}</div>
-            <div class="metric-label-sm">Mobile</div>
-          </div>
-          <div class="metric-card-dark" style="text-align:center;">
-            <div class="metric-value-lg" style={`color:${scoreColor(r.pagespeed?.desktop?.performance ?? 0)};`}>{r.pagespeed?.desktop?.performance ?? 'N/D'}</div>
-            <div class="metric-label-sm">Desktop</div>
-          </div>
-        </div>
-
-        {r.pagespeed?.mobile && (
-          <div style="margin-bottom:20px;">
-            <h3 style="font-size:0.78rem;font-weight:700;color:#8d909b;text-transform:uppercase;margin-bottom:12px;">Core Web Vitals</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-              <div class="metric-card-dark" style="text-align:center;padding:12px;">
-                <div style={`font-size:1.2rem;font-weight:800;color:${(r.pagespeed.mobile.lcp ?? 0) > 2500 ? '#ffb4ab' : '#69FF87'};`}>
-                  {((r.pagespeed.mobile.lcp ?? 0) / 1000).toFixed(1)}s
-                </div>
-                <div class="metric-label-sm">LCP</div>
-              </div>
-              <div class="metric-card-dark" style="text-align:center;padding:12px;">
-                <div style={`font-size:1.2rem;font-weight:800;color:${(r.pagespeed.mobile.cls ?? 0) > 0.1 ? '#ffb4ab' : '#69FF87'};`}>
-                  {(r.pagespeed.mobile.cls ?? 0).toFixed(3)}
-                </div>
-                <div class="metric-label-sm">CLS</div>
-              </div>
-              <div class="metric-card-dark" style="text-align:center;padding:12px;">
-                <div style={`font-size:1.2rem;font-weight:800;color:${(r.pagespeed.mobile.fcp ?? 0) > 1800 ? '#ffb4ab' : '#69FF87'};`}>
-                  {((r.pagespeed.mobile.fcp ?? 0) / 1000).toFixed(1)}s
-                </div>
-                <div class="metric-label-sm">FCP</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div class="metric-card-dark" style="margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-            <span style="font-size:0.78rem;color:#c3c6d2;">Funnel de conversión</span>
-            <span style={`font-size:0.78rem;font-weight:700;color:${scoreColor(r.conversion?.funnelScore ?? r.conversion?.score ?? 0)};`}>
-              {r.conversion?.funnelScore ?? r.conversion?.score ?? 0}/100
-            </span>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <span class="tag" style={`font-size:0.65rem;${r.conversion?.hasContactForm ? 'background:rgba(105,255,135,0.1);color:#69FF87;' : 'background:rgba(255,180,171,0.1);color:#ffb4ab;'}`}>
-              {r.conversion?.hasContactForm ? '✓' : '✗'} Formulario
-            </span>
-            <span class="tag" style={`font-size:0.65rem;${r.conversion?.hasCTA ? 'background:rgba(105,255,135,0.1);color:#69FF87;' : 'background:rgba(255,180,171,0.1);color:#ffb4ab;'}`}>
-              {r.conversion?.hasCTA ? '✓' : '✗'} CTA
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAGE 7: Plan de Acción -->
-      <div class="mc-page">
-        <div class="section-label">PLAN DE ACCIÓN</div>
-        <div class="section-title" style="font-size:1.4rem;">Qué hacer ahora</div>
-        <p class="section-subtitle">Acciones priorizadas para mejorar tu presencia digital</p>
-
-        {(insights as any)?.initiatives && ((insights as any).initiatives as any[]).map((init: any, i: number) => (
-          <div class="plan-card" style="margin-bottom:10px;">
-            <div class="plan-num" style={`background:${i === 0 ? 'rgba(105,255,135,0.15);color:#69FF87' : i === 1 ? 'rgba(170,199,255,0.15);color:#aac7ff' : 'rgba(141,144,155,0.15);color:#8d909b'};`}>
-              {i + 1}
-            </div>
-            <div style="flex:1;">
-              <p style="font-size:0.85rem;font-weight:700;color:#e2e0fc;margin-bottom:4px;">{init.title}</p>
-              <p style="font-size:0.75rem;color:#8d909b;line-height:1.5;">{init.description}</p>
-            </div>
-          </div>
-        ))}
-
-        {(insights as any)?.bullets && (
-          <div style="margin-top:20px;">
-            <h3 style="font-size:0.78rem;font-weight:700;color:#8d909b;text-transform:uppercase;margin-bottom:12px;">Executive Summary</h3>
-            <div style="font-size:0.82rem;color:#c3c6d2;line-height:1.6;">
-              {(insights as any).summary}
-            </div>
-          </div>
-        )}
-
-        <!-- CTA Radar -->
-        <div style="background:rgba(26,75,140,0.2);border:1px solid rgba(170,199,255,0.15);border-radius:12px;padding:20px;text-align:center;margin-top:24px;">
-          <span class="material-symbols-outlined" style="font-size:28px;color:#69FF87;margin-bottom:8px;">radar</span>
-          <p style="font-size:0.92rem;font-weight:700;color:#e2e0fc;margin-bottom:4px;">Activa AION Radar</p>
-          <p style="font-size:0.75rem;color:#8d909b;margin-bottom:12px;">Monitoriza estos KPIs semanalmente</p>
-          <a href="/dashboard/onboarding" style="background:#69ff87;color:#002108;padding:10px 24px;border-radius:9999px;text-decoration:none;font-size:0.82rem;font-weight:700;display:inline-block;">
-            Activar Radar
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Dots indicator -->
-    <div class="mc-dots" id="mc-dots">
-      <div class="mc-dot active"></div>
-      <div class="mc-dot"></div>
-      <div class="mc-dot"></div>
-      <div class="mc-dot"></div>
-      <div class="mc-dot"></div>
-      <div class="mc-dot"></div>
-      <div class="mc-dot"></div>
-    </div>
+  <!-- Mobile navigation (hidden on desktop via CSS) -->
+  <div class="mc-nav-mobile" id="mc-nav-mobile">
+    <button class="active" data-section="hero">Resumen</button>
+    <button data-section="seo">SEO</button>
+    <button data-section="ia">Visibilidad IA</button>
+    <button data-section="competidores">Benchmark</button>
+    <button data-section="experiencia">Web</button>
+    <button data-section="plan">Plan</button>
+  </div>
+  <div class="mc-dots-mobile" id="mc-dots-mobile">
+    <div class="dot active"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
   </div>
 
-  <!-- Mobile carousel script -->
   <script>
     if (window.innerWidth <= 768) {
-      const pages = document.getElementById('mc-pages');
-      const dots = document.querySelectorAll('.mc-dot');
-      const navBtns = document.querySelectorAll('#mc-nav button');
+      const report = document.querySelector('.report');
+      const dots = document.querySelectorAll('.mc-dots-mobile .dot');
+      const navBtns = document.querySelectorAll('#mc-nav-mobile button');
+      const sections = ['hero','seo','ia','competidores','experiencia','plan'];
 
-      function updateActive(idx) {
+      function updateMobileActive(idx) {
         dots.forEach((d, i) => d.classList.toggle('active', i === idx));
         navBtns.forEach((b, i) => b.classList.toggle('active', i === idx));
       }
 
       // Scroll snap detection
       let scrollTimer;
-      pages?.addEventListener('scroll', () => {
+      report?.addEventListener('scroll', () => {
         clearTimeout(scrollTimer);
         scrollTimer = setTimeout(() => {
-          const idx = Math.round((pages.scrollLeft) / window.innerWidth);
-          updateActive(idx);
+          const idx = Math.round((report.scrollLeft) / window.innerWidth);
+          updateMobileActive(idx);
         }, 50);
       });
 
-      // Nav button clicks
+      // Nav button clicks → scroll to section
       navBtns.forEach((btn, i) => {
         btn.addEventListener('click', () => {
-          pages?.scrollTo({ left: i * window.innerWidth, behavior: 'smooth' });
-          updateActive(i);
+          report?.scrollTo({ left: i * window.innerWidth, behavior: 'smooth' });
+          updateMobileActive(i);
         });
       });
     }
