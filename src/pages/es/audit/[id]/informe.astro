@@ -1976,6 +1976,16 @@ const donutSVG = buildDonutSVG();
           ) : (
             <div>
 
+          {/* When we have competitor names but no SEO data for them */}
+          {displayCompetitors.length === 0 && competitors.length > 0 && (
+            <div class="callout callout-info" style="margin-bottom:1.5rem;">
+              <strong>Competidores del sector detectados:</strong> {competitors.map((c: any) => c.name || c.url).join(', ')}.
+              No disponemos de datos de trafico SEO para estos competidores en nuestras fuentes de datos.
+              Esto es habitual en sectores nicho donde los competidores directos tienen baja presencia digital.
+              Para una comparativa completa, recomendamos activar AION Radar con competidores confirmados.
+            </div>
+          )}
+
           <!-- Radar chart -->
           {displayCompetitors.length > 0 && (
             <div class="surface-card" style="margin-bottom:1.5rem;">

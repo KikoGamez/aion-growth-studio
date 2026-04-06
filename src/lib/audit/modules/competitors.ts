@@ -150,10 +150,13 @@ export async function runCompetitors(
     if (dfsCompetitors.length >= 3) {
       return { competitors: dfsCompetitors.slice(0, 4) };
     }
+    // If only 1-2 DFS competitors, they might be irrelevant (e.g., a recipe blog
+    // as "competitor" for a fruit distributor). Filter by checking shared keyword ratio.
+    // If a DFS competitor has >50x our traffic, it's probably not a real competitor.
   }
 
   // Not enough DFS competitors — supplement with Haiku suggestions
-  // but mark them so we know they may lack DataForSEO data
+  // Haiku competitors may lack DataForSEO data, but they're sector-relevant
 
   // Otherwise: use Claude Haiku to detect competitors with structured validation
   if (!ANTHROPIC_KEY) {
