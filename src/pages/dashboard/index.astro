@@ -115,18 +115,20 @@ function extractPillar(snap: Record<string, any>, key: string): number {
     }
     case 'reputation': {
       const rep = snap.reputation || {};
-      // Use combined rating from pipeline if available (already weighted across GBP, Trustpilot, etc.)
       const rating = rep.combinedRating ?? rep.gbpRating ?? rep.trustpilotRating;
       const reviews = rep.totalReviews || 0;
       const newsCount = rep.newsCount || 0;
       if (!rating && reviews === 0 && newsCount === 0) return 0;
-      // Rating component (0-50): normalized from 0-5 scale
-      const ratingScore = rating ? Math.round((rating / 5) * 50) : 0;
-      // Reviews volume (0-30): scales up to 30 pts at 50+ reviews
-      const reviewScore = Math.min(30, Math.round(reviews * 0.6));
-      // News presence (0-20): media mentions boost
-      const newsScore = Math.min(20, newsCount * 5);
-      return Math.min(100, ratingScore + reviewScore + newsScore);
+      // Only score sources that have data — don't average with zero
+      const components: Array<{ score: number; maxPts: number }> = [];
+      if (rating) components.push({ score: Math.round((rating / 5) * 100), maxPts: 50 });
+      if (reviews > 0) components.push({ score: Math.min(100, Math.round(reviews * 1.2)), maxPts: 30 });
+      if (newsCount > 0) components.push({ score: Math.min(100, newsCount * 25), maxPts: 20 });
+      if (components.length === 0) return 0;
+      // Redistribute max points across available sources
+      const totalMax = components.reduce((s, c) => s + c.maxPts, 0);
+      const weighted = components.reduce((s, c) => s + (c.score / 100) * (c.maxPts / totalMax) * 100, 0);
+      return Math.min(100, Math.round(weighted));
     }
     default: return 0;
   }
