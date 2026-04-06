@@ -64,6 +64,24 @@ const existing = client ? await getClientOnboarding(client.id) : null;
 
     <form id="onboarding-form" style="display:flex;flex-direction:column;gap:24px;">
 
+      <!-- 0. Website URL (required — must exist in audit or we'll run one) -->
+      <div class="section">
+        <label for="website_url">
+          <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">language</span>
+          Tu sitio web
+        </label>
+        <p class="hint">Confirma la URL de tu web para vincular tu diagnóstico. Si no tenemos un audit previo, lo lanzaremos automáticamente.</p>
+        <div style="display:flex;gap:8px;">
+          <input type="url" id="website_url" name="website_url" required
+            placeholder="https://tuempresa.es"
+            value={client?.domain ? `https://${client.domain}` : ''}
+            style="flex:1;" />
+          <div id="url-check" style="width:44px;height:44px;border-radius:10px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          </div>
+        </div>
+        <div id="url-status" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;font-size:13px;"></div>
+      </div>
+
       <!-- 1. Business description -->
       <div class="section">
         <label for="business_description">
@@ -197,19 +215,26 @@ const existing = client ? await getClientOnboarding(client.id) : null;
           <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">swords</span>
           Competidores que te preocupan
         </label>
-        <p class="hint">Introduce las URLs de empresas con las que compites. Verificaremos que sean accesibles.</p>
+        <p class="hint">Hemos detectado estos competidores automáticamente. Puedes cambiar cualquiera por otro que te preocupe más — verificaremos que el dominio es real.</p>
         <div id="comp-list">
           {[0, 1, 2].map(i => {
             const comp = (existing?.competitors || [])[i];
             return (
-              <div class="comp-row">
+              <div class="comp-row" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
                 <input type="url" name={`comp_${i}`} placeholder={`https://competidor${i+1}.es`}
-                  value={comp?.url || ''} />
-                <div class="comp-status" id={`comp-status-${i}`}></div>
+                  value={comp?.url || ''} style="flex:1;" />
+                <div class="comp-status" id={`comp-status-${i}`}
+                  style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+                  {comp?.url ? '✓' : ''}
+                </div>
               </div>
             );
           })}
         </div>
+        <p id="comp-hint" style="display:none;font-size:12px;color:#BA7517;margin-top:8px;display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:14px;">info</span>
+          <span></span>
+        </p>
       </div>
 
       <!-- Submit -->
@@ -240,6 +265,59 @@ const existing = client ? await getClientOnboarding(client.id) : null;
       });
     });
 
+    // ── Website URL verification ──────────────────────────────────────────
+    const urlInput = document.getElementById('website_url') as HTMLInputElement;
+    const urlCheck = document.getElementById('url-check')!;
+    const urlStatusDiv = document.getElementById('url-status')!;
+    let urlVerified = false;
+
+    async function verifyWebsiteUrl() {
+      const raw = urlInput.value.trim();
+      if (!raw) return;
+      const url = raw.startsWith('http') ? raw : `https://${raw}`;
+      urlInput.value = url;
+
+      urlCheck.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;color:#888;">hourglass_top</span>';
+      urlStatusDiv.style.display = 'none';
+
+      try {
+        // 1. Check if URL is reachable
+        const valRes = await fetch(`/api/validate-url?url=${encodeURIComponent(url)}`);
+        const valData = await valRes.json();
+
+        if (!valData.reachable) {
+          urlCheck.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;color:#E24B4A;">close</span>';
+          urlStatusDiv.style.display = 'block';
+          urlStatusDiv.style.background = '#fcebeb';
+          urlStatusDiv.style.color = '#E24B4A';
+          urlStatusDiv.textContent = 'No pudimos acceder a esta URL. Verifica que es correcta.';
+          urlVerified = false;
+          return;
+        }
+
+        // 2. Check if we have an audit for this domain
+        const domain = new URL(url).hostname.replace(/^www\./, '');
+        urlCheck.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;color:#1D9E75;">check_circle</span>';
+        urlStatusDiv.style.display = 'block';
+        urlStatusDiv.style.background = '#e1f5ee';
+        urlStatusDiv.style.color = '#1D9E75';
+        urlStatusDiv.textContent = `URL verificada: ${domain}`;
+        urlVerified = true;
+
+      } catch {
+        urlCheck.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;color:#E24B4A;">error</span>';
+        urlStatusDiv.style.display = 'block';
+        urlStatusDiv.style.background = '#fcebeb';
+        urlStatusDiv.style.color = '#E24B4A';
+        urlStatusDiv.textContent = 'Error al verificar. Inténtalo de nuevo.';
+        urlVerified = false;
+      }
+    }
+
+    urlInput.addEventListener('blur', verifyWebsiteUrl);
+    // Auto-verify if pre-filled
+    if (urlInput.value.trim()) verifyWebsiteUrl();
+
     // Show URL architecture when multi-country or global
     const geoRadios = document.querySelectorAll('[name="geo_scope"]');
     const urlSection = document.getElementById('url-arch-section')!;
@@ -250,35 +328,58 @@ const existing = client ? await getClientOnboarding(client.id) : null;
     geoRadios.forEach(r => r.addEventListener('change', updateUrlSection));
     updateUrlSection();
 
-    // Competitor URL validation
+    // ── Competitor validation (enhanced) ──────────────────────────────────
     const compInputs = [0, 1, 2].map(i => ({
       input: document.querySelector(`[name="comp_${i}"]`) as HTMLInputElement,
       status: document.getElementById(`comp-status-${i}`)!,
     }));
 
-    compInputs.forEach(({ input, status }) => {
-      input.addEventListener('blur', async () => {
-        const url = input.value.trim();
-        if (!url) { status.textContent = ''; return; }
-        status.textContent = '...';
-        status.style.color = '#888';
-        try {
-          const normalized = url.startsWith('http') ? url : `https://${url}`;
-          const res = await fetch(`/api/validate-url?url=${encodeURIComponent(normalized)}`);
-          const data = await res.json();
-          if (data.reachable) {
-            status.textContent = '✓';
-            status.style.color = '#1D9E75';
-            input.value = normalized;
-          } else {
-            status.textContent = '✗';
-            status.style.color = '#E24B4A';
+    async function validateCompetitor(input: HTMLInputElement, status: HTMLElement) {
+      const raw = input.value.trim();
+      if (!raw) { status.textContent = ''; status.style.background = '#f0f0f0'; return; }
+
+      const url = raw.startsWith('http') ? raw : `https://${raw}`;
+      status.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;color:#888;">hourglass_top</span>';
+      status.style.background = '#f0f0f0';
+
+      try {
+        // Check domain is real and reachable
+        const res = await fetch(`/api/validate-url?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+
+        if (data.reachable) {
+          input.value = url;
+          status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#1D9E75;">check_circle</span>';
+          status.style.background = '#e1f5ee';
+
+          // Check it's not the same as the client's own URL
+          const clientDomain = (document.getElementById('website_url') as HTMLInputElement)?.value;
+          if (clientDomain) {
+            const clientHost = new URL(clientDomain).hostname.replace(/^www\./, '');
+            const compHost = new URL(url).hostname.replace(/^www\./, '');
+            if (clientHost === compHost) {
+              status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#BA7517;">warning</span>';
+              status.style.background = '#FAEEDA';
+              input.value = '';
+            }
           }
-        } catch {
-          status.textContent = '✗';
-          status.style.color = '#E24B4A';
+        } else {
+          status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#E24B4A;">close</span>';
+          status.style.background = '#fcebeb';
         }
-      });
+      } catch {
+        status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#E24B4A;">error</span>';
+        status.style.background = '#fcebeb';
+      }
+    }
+
+    compInputs.forEach(({ input, status }) => {
+      input.addEventListener('blur', () => validateCompetitor(input, status));
+      // Auto-validate pre-filled values
+      if (input.value.trim()) {
+        status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#1D9E75;">check_circle</span>';
+        status.style.background = '#e1f5ee';
+      }
     });
 
     // Form submission
@@ -288,6 +389,17 @@ const existing = client ? await getClientOnboarding(client.id) : null;
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      // Verify URL is filled
+      const websiteUrl = (fd => fd)(document.getElementById('website_url') as HTMLInputElement).value.trim();
+      if (!websiteUrl) {
+        urlStatusDiv.style.display = 'block';
+        urlStatusDiv.style.background = '#fcebeb';
+        urlStatusDiv.style.color = '#E24B4A';
+        urlStatusDiv.textContent = 'Introduce la URL de tu web antes de continuar.';
+        return;
+      }
+
       saveBtn.disabled = true;
       saveBtn.textContent = 'Guardando...';
 
@@ -295,9 +407,13 @@ const existing = client ? await getClientOnboarding(client.id) : null;
       const competitors = [0, 1, 2]
         .map(i => fd.get(`comp_${i}`) as string)
         .filter(Boolean)
-        .map(url => ({ url, name: new URL(url).hostname.replace(/^www\./, '') }));
+        .map(url => {
+          try { return { url, name: new URL(url).hostname.replace(/^www\./, '') }; }
+          catch { return { url, name: url }; }
+        });
 
       const payload = {
+        website_url: websiteUrl,
         business_description: fd.get('business_description'),
         primary_goal: fd.get('primary_goal'),
         goal_detail: fd.get('goal_detail') || null,
