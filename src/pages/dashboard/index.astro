@@ -53,6 +53,40 @@ interface PillarData {
   sparkline: number[];
 }
 
+// Content weights by business type
+function getContentWeights(sector: string): { blog: number; ig: number; li: number } {
+  const s = (sector || '').toLowerCase();
+  // B2C patterns
+  if (/retail|moda|hostel|restaura|fitness|belleza|deporte|alimenta/i.test(s)) return { blog: 0.25, ig: 0.55, li: 0.10 };
+  if (/ecommerce|tienda|shop/i.test(s)) return { blog: 0.30, ig: 0.50, li: 0.15 };
+  if (/local|clínica|peluquer|dental/i.test(s)) return { blog: 0.20, ig: 0.60, li: 0.10 };
+  // B2B patterns
+  if (/b2b|software|saas|consult|industr|tecnolog|ingeni/i.test(s)) return { blog: 0.45, ig: 0.10, li: 0.45 };
+  // Default: mixed
+  return { blog: 0.35, ig: 0.25, li: 0.40 };
+}
+
+function scoreSource(posts90d: number, daysSinceLast: number, engagementRate?: number): number {
+  // Base: volume in last 90 days
+  let base = 0;
+  if (posts90d >= 8) base = 85;
+  else if (posts90d >= 4) base = 60;
+  else if (posts90d >= 2) base = 40;
+  else if (posts90d >= 1) base = 20;
+  else base = 5;
+  // Freshness bonus/penalty
+  if (daysSinceLast <= 7) base = Math.min(100, base + 15);
+  else if (daysSinceLast > 30) base = Math.round(base * 0.5);
+  // Engagement bonus (Instagram)
+  if (engagementRate !== undefined) {
+    if (engagementRate > 3) base = Math.min(100, base + 15);
+    else if (engagementRate > 1.5) base = Math.min(100, base + 8);
+  }
+  return Math.min(100, Math.max(0, base));
+}
+
+const contentWeights = getContentWeights(client.sector || r.sector?.sector || '');
+
 function extractPillar(snap: Record<string, any>, key: string): number {
   switch (key) {
     case 'seo': return Math.min(100, Math.round((snap.seo?.keywordsTop10 || 0) * 2));
@@ -60,12 +94,24 @@ function extractPillar(snap: Record<string, any>, key: string): number {
     case 'web': return snap.pagespeed?.mobile?.performance || 0;
     case 'conversion': return snap.conversion?.funnelScore || 0;
     case 'content': {
-      const posts = snap.content_cadence?.postsLast90Days || 0;
-      if (posts >= 8) return 90;
-      if (posts >= 4) return 60;
-      if (posts >= 2) return 40;
-      if (posts >= 1) return 20;
-      return 5;
+      const cc = snap.content_cadence || {};
+      const ig = snap.instagram || {};
+      const li = snap.linkedin || {};
+
+      const blogScore = scoreSource(cc.postsLast90Days || 0, cc.daysSinceLastPost ?? 999);
+      const igScore = ig.found !== false && ig.posts ? scoreSource(ig.postsLast90Days || 0, ig.lastPostDate ? Math.round((Date.now() - new Date(ig.lastPostDate).getTime()) / 86400000) : 999, ig.engagementRate) : 0;
+      // LinkedIn: no post data yet, score based on presence + followers
+      const liScore = li.found !== false && li.followers ? Math.min(100, 30 + Math.min(40, (li.followers || 0) / 100) + (li.employees ? 20 : 0)) : 0;
+
+      const w = contentWeights;
+      // Redistribute weight if a source is missing
+      let totalWeight = 0;
+      let weighted = 0;
+      if (blogScore > 0 || cc.totalPosts !== undefined) { weighted += blogScore * w.blog; totalWeight += w.blog; }
+      if (igScore > 0 || ig.found) { weighted += igScore * w.ig; totalWeight += w.ig; }
+      if (liScore > 0 || li.found) { weighted += liScore * w.li; totalWeight += w.li; }
+
+      return totalWeight > 0 ? Math.round(weighted / totalWeight) : blogScore || 5;
     }
     case 'reputation': {
       const rating = snap.reputation?.gbpRating;
