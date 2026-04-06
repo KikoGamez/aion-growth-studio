@@ -1,0 +1,145 @@
+---
+export const prerender = false;
+/**
+ * Mock checkout page — simulates Stripe checkout.
+ * When Stripe is integrated (P2-S1), this redirects to Stripe Checkout Session.
+ * For now: collects email, shows summary, and proceeds to onboarding.
+ */
+
+const plan = Astro.url.searchParams.get('plan') || 'radar';
+const auditId = Astro.url.searchParams.get('audit') || '';
+const emailParam = Astro.url.searchParams.get('email') || '';
+
+const planInfo: Record<string, { name: string; price: string; icon: string }> = {
+  radar: { name: 'Radar', price: '49', icon: 'radar' },
+  señales: { name: 'Señales', price: '149', icon: 'bolt' },
+  palancas: { name: 'Palancas', price: '349', icon: 'rocket_launch' },
+};
+const info = planInfo[plan] || planInfo.radar;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout — AION Radar</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f7f9ff; color: #1a1a2e; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+    input:focus { border-color: #1A4B8C; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+  </style>
+</head>
+<body>
+
+  <div style="width:100%;max-width:480px;margin:24px;display:flex;flex-direction:column;gap:24px;">
+
+    <!-- Back link -->
+    <a href={`/es/radar?audit=${auditId}&email=${emailParam}`} style="display:inline-flex;align-items:center;gap:4px;color:#64748b;font-size:13px;text-decoration:none;font-weight:600;">
+      <span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span>
+      Volver a planes
+    </a>
+
+    <!-- Order summary -->
+    <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #f0f0f0;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#000e41;display:flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-outlined" style="font-size:22px;color:#69ff87;">{info.icon}</span>
+        </div>
+        <div style="flex:1;">
+          <p style="font-size:16px;font-weight:800;color:#1a1a2e;">Plan {info.name}</p>
+          <p style="font-size:13px;color:#64748b;">Monitorización semanal de tu presencia digital</p>
+        </div>
+        <p style="font-size:24px;font-weight:900;color:#1a1a2e;">{info.price}€<span style="font-size:12px;font-weight:400;color:#94a3b8;">/mes</span></p>
+      </div>
+
+      <!-- Mock payment form -->
+      <form id="checkout-form" style="display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;color:#434750;margin-bottom:6px;">Email</label>
+          <input type="email" id="email" name="email" required placeholder="tu@empresa.com" value={emailParam} autocomplete="email" />
+        </div>
+
+        <!-- Simulated card (disabled, visual only) -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:700;color:#434750;margin-bottom:6px;">Tarjeta de crédito</label>
+          <div style="background:#f7f9ff;border:2px dashed #cbd5e1;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+            <span class="material-symbols-outlined" style="font-size:20px;color:#94a3b8;">credit_card</span>
+            <span style="font-size:13px;color:#94a3b8;">Stripe se activará próximamente — demo sin pago</span>
+          </div>
+        </div>
+
+        <div style="background:#E1F5EE;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="font-size:18px;color:#1D9E75;">info</span>
+          <span style="font-size:12px;color:#065f46;line-height:1.4;">
+            <strong>Modo demo:</strong> Al hacer clic se activará tu cuenta sin cobro. Cuando Stripe esté integrado, se procesará el pago real.
+          </span>
+        </div>
+
+        <button type="submit" id="pay-btn"
+          style="width:100%;padding:16px;background:#1A4B8C;color:white;border:none;border-radius:10px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;"
+          onmouseover="this.style.background='#0e3a6e'" onmouseout="this.style.background='#1A4B8C'">
+          <span class="material-symbols-outlined" style="font-size:18px;">lock</span>
+          Activar Radar — {info.price}€/mes
+        </button>
+
+        <div style="text-align:center;">
+          <p style="font-size:11px;color:#94a3b8;">Sin permanencia. Cancela cuando quieras. Tus datos están protegidos.</p>
+        </div>
+      </form>
+    </div>
+
+    <!-- Trust badges -->
+    <div style="display:flex;justify-content:center;gap:24px;color:#cbd5e1;font-size:11px;">
+      <span style="display:flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">lock</span> SSL 256-bit</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">verified_user</span> RGPD</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">credit_card</span> Stripe</span>
+    </div>
+  </div>
+
+  <script define:vars={{ plan, auditId }}>
+    const form = document.getElementById('checkout-form');
+    const btn = document.getElementById('pay-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      if (!email) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;">hourglass_top</span> Activando...';
+
+      try {
+        // 1. Set tier cookie (mock payment)
+        await fetch('/api/dashboard/set-tier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier: plan }),
+        });
+
+        // 2. If there's an audit to link, do it
+        if (auditId) {
+          await fetch('/api/dashboard/link-audit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auditId }),
+          });
+        }
+
+        // 3. Redirect to onboarding
+        window.location.href = '/dashboard/onboarding';
+      } catch (err) {
+        console.error('[checkout] Error:', err);
+        btn.disabled = false;
+        btn.innerHTML = 'Reintentar';
+      }
+    });
+  </script>
+
+</body>
+</html>
