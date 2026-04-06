@@ -1,0 +1,153 @@
+---
+export const prerender = false;
+
+/**
+ * Soft email gate — shown after audit completes, before viewing the report.
+ * Captures email for nurturing (P3-S1). Optional: user can skip.
+ * After capturing (or skipping), redirects to the full report.
+ */
+
+const { id } = Astro.params;
+const reportUrl = `/es/audit/${id}/informe`;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tu informe está listo — AION Growth Studio</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000e41 0%, #001f70 50%, #0a2a6e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      margin: 24px;
+      color: #1a1a2e;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    input[type="email"] {
+      width: 100%;
+      padding: 14px 18px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="email"]:focus { border-color: #1A4B8C; }
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: #1A4B8C;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #0e3a6e; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <!-- Success animation -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:64px;height:64px;border-radius:50%;background:#E1F5EE;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:32px;color:#1D9E75;">check_circle</span>
+      </div>
+      <h1 style="font-size:24px;font-weight:900;letter-spacing:-0.03em;margin:0 0 8px;">Tu informe está listo</h1>
+      <p style="font-size:14px;color:#64748b;margin:0;line-height:1.5;">
+        Hemos analizado tu web en profundidad. ¿Dónde te enviamos una copia del informe?
+      </p>
+    </div>
+
+    <!-- Email form -->
+    <form id="gate-form" style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="tu@empresa.com"
+          autocomplete="email"
+          required
+        />
+      </div>
+
+      <button type="submit" class="btn-primary" id="submit-btn">
+        <span class="material-symbols-outlined" style="font-size:18px;">visibility</span>
+        Ver mi informe
+      </button>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <span class="material-symbols-outlined" style="font-size:14px;color:#1D9E75;">lock</span>
+        <span style="font-size:11px;color:#94a3b8;">No compartimos tu email con terceros. Solo te enviaremos tu informe.</span>
+      </div>
+    </form>
+
+    <!-- Skip link -->
+    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #f0f0f0;">
+      <a href={reportUrl} style="font-size:13px;color:#94a3b8;text-decoration:none;" onmouseover="this.style.color='#64748b'" onmouseout="this.style.color='#94a3b8'">
+        Ver sin registrar email →
+      </a>
+    </div>
+  </div>
+
+  <script define:vars={{ reportUrl, auditId: id }}>
+    const form = document.getElementById('gate-form');
+    const btn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      if (!email) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;">hourglass_top</span> Preparando...';
+
+      try {
+        // Save email as lead
+        await fetch('/api/leads/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, auditId, source: 'email_gate' }),
+        });
+      } catch (err) {
+        // Don't block the user if lead capture fails
+        console.error('[email-gate] Lead capture failed:', err);
+      }
+
+      // Always redirect to report
+      window.location.href = reportUrl;
+    });
+  </script>
+
+</body>
+</html>

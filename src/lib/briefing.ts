@@ -7,6 +7,7 @@ interface BriefingInput {
   auditResults: Record<string, any>;
   clientName: string;
   domain: string;
+  clientContext?: string;  // Extended context from buildClientContext()
 }
 
 export interface Briefing {
@@ -22,9 +23,10 @@ export async function generateBriefing(input: BriefingInput): Promise<Briefing> 
     return fallbackBriefing(input);
   }
 
-  const { onboarding: ob, auditResults: r, clientName, domain } = input;
+  const { onboarding: ob, auditResults: r, clientName, domain, clientContext } = input;
 
-  const context = `
+  // Use extended context if available, otherwise build basic context
+  const context = clientContext || `
 EMPRESA: ${clientName} (${domain})
 DESCRIPCIÓN: ${ob.business_description || 'No proporcionada'}
 OBJETIVO PRINCIPAL: ${formatGoal(ob.primary_goal, ob.goal_detail)}
@@ -47,7 +49,16 @@ DATOS DE LA AUDITORÍA:
 - GBP: ${r.gbp?.found ? `rating ${r.gbp.rating}` : 'no encontrado'}
 `.trim();
 
-  const prompt = `Eres el consultor de growth marketing de AION Growth Studio. Genera un briefing personalizado para este cliente.
+  const historyRules = clientContext
+    ? `
+7. NO repitas recomendaciones que ya están completadas o en el plan estratégico del cliente.
+8. NO sugieras acciones que el cliente descartó — respeta sus razones. Si la razón fue "muy caro", busca una alternativa más económica.
+9. Ten en cuenta el plan estratégico actual: prioriza acciones que complementen lo que ya está haciendo.
+10. Si una acción completada tuvo buen impacto verificado, sugiere acciones similares.
+11. Referencia datos concretos de la evolución (ej: "tu score subió de X a Y esta semana").`
+    : '';
+
+  const prompt = `Eres el consultor de growth marketing de AION Growth Studio. Genera un briefing semanal personalizado para este cliente.
 
 ${context}
 
@@ -57,7 +68,7 @@ REGLAS:
 3. Prioriza según el objetivo principal del cliente.
 4. Usa datos concretos de la auditoría (números, no generalidades).
 5. Si la zona es local, enfatiza SEO local y GBP. Si es multi-country, enfatiza hreflang y arquitectura.
-6. Máximo 3 prioridades, 3 quick wins, 2 warnings.
+6. Máximo 3 prioridades, 3 quick wins, 2 warnings.${historyRules}
 
 RESPONDE EN JSON VÁLIDO:
 {

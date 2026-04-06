@@ -1,0 +1,104 @@
+---
+/**
+ * Reusable RADAR conversion component.
+ * Can be embedded at the end of the audit report, in the email gate, or anywhere.
+ * The other Claude can import this into informe.astro when ready.
+ */
+export interface Props {
+  score?: number;
+  competitorName?: string;
+  competitorDelta?: number;
+  recommendationCount?: number;
+  variant?: 'full' | 'compact' | 'inline';
+}
+
+const {
+  score,
+  competitorName,
+  competitorDelta,
+  recommendationCount,
+  variant = 'full',
+} = Astro.props;
+---
+
+{variant === 'full' && (
+  <section style="background:linear-gradient(135deg, #000e41 0%, #001f70 100%);color:white;border-radius:20px;padding:48px 40px;margin:40px 0;position:relative;overflow:hidden;">
+    <!-- Decorative radar circle -->
+    <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;border:2px solid rgba(105,255,135,0.1);border-radius:50%;"></div>
+    <div style="position:absolute;top:-20px;right:-20px;width:160px;height:160px;border:1px solid rgba(105,255,135,0.05);border-radius:50%;"></div>
+
+    <div style="position:relative;z-index:1;max-width:600px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:24px;color:#69ff87;">radar</span>
+        <span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#69ff87;">AION Radar</span>
+      </div>
+
+      <h2 style="font-size:28px;font-weight:900;letter-spacing:-0.03em;line-height:1.2;margin-bottom:12px;">
+        Este informe es una foto fija.<br/>
+        <span style="color:#69ff87;">AION Radar es una película.</span>
+      </h2>
+
+      <p style="font-size:15px;color:#94a3b8;line-height:1.6;margin-bottom:24px;">
+        {score ? `Tu score actual es ${score}/100. ` : ''}Monitorizamos tu web cada semana y te decimos exactamente qué ha cambiado, qué hacer, y si tus acciones están funcionando.
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;">
+        {[
+          'Monitorización semanal automática de los 6 pilares',
+          'Alertas de competidores en tiempo real',
+          'Recomendaciones priorizadas y personalizadas a tu negocio',
+          'Verificación de impacto: ¿funcionó lo que hiciste?',
+          'Agente IA con contexto completo de tu empresa',
+          'Plan estratégico con seguimiento de progreso',
+        ].map(item => (
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#69ff87;">check_circle</span>
+            <span style="font-size:14px;color:#e2e8f0;">{item}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <a href="/dashboard/subscription" style="background:#69ff87;color:#000e41;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+          <span class="material-symbols-outlined" style="font-size:18px;">rocket_launch</span>
+          Activar Radar
+        </a>
+        <span style="font-size:13px;color:#64748b;">Sin permanencia. Cancela cuando quieras.</span>
+      </div>
+    </div>
+  </section>
+)}
+
+{variant === 'compact' && (
+  <div style="background:#f0f4ff;border:1px solid #d6e3ff;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px;">
+    <div style="width:44px;height:44px;border-radius:12px;background:#000e41;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <span class="material-symbols-outlined" style="font-size:22px;color:#69ff87;">radar</span>
+    </div>
+    <div style="flex:1;">
+      <p style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px;">
+        {score ? `Tu score es ${score}/100. ` : ''}¿Quieres ver cómo evoluciona cada semana?
+      </p>
+      <p style="font-size:12px;color:#64748b;">Monitorización semanal + recomendaciones personalizadas</p>
+    </div>
+    <a href="/dashboard/subscription" style="background:#1A4B8C;color:white;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;">
+      Activar Radar →
+    </a>
+  </div>
+)}
+
+{variant === 'inline' && (
+  <div style="background:#000e41;color:white;border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:12px;margin:16px 0;">
+    <span class="material-symbols-outlined" style="font-size:18px;color:#69ff87;">radar</span>
+    <span style="font-size:13px;flex:1;">
+      {competitorName && competitorDelta
+        ? `${competitorName} te supera en ${competitorDelta} puntos. ¿Quieres alertas cuando cambien?`
+        : recommendationCount
+          ? `Te hemos dado ${recommendationCount} acciones. ¿Quieres que verifiquemos si funcionan?`
+          : '¿Quieres ver si tu score mejora semana a semana?'
+      }
+    </span>
+    <a href="/dashboard/subscription" style="background:#69ff87;color:#000e41;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
+      Activar Radar
+    </a>
+  </div>
+)}

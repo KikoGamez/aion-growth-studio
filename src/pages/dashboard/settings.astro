@@ -10,11 +10,14 @@ const users = await listClientUsers(client.id);
 const currentUserRole = Astro.locals.user?.role ?? 'viewer';
 const canManageTeam = currentUserRole === 'admin' || currentUserRole === 'superuser';
 
-const apiConnections = [
-  { name: 'Google Analytics 4', icon: 'analytics', status: 'connected', color: '#1d9e75' },
-  { name: 'Google Ads', icon: 'ads_click', status: 'connected', color: '#1d9e75' },
-  { name: 'Meta Ads', icon: 'thumb_up', status: 'connected', color: '#1d9e75' },
-  { name: 'Google Search Console', icon: 'manage_search', status: 'connected', color: '#1d9e75' },
+// GA4 connection status — will come from integrations table when real
+const ga4Connected = false;
+const ga4QualityScore: number | null = null; // 0-100 when connected
+
+const futureConnections = [
+  { name: 'Google Ads', icon: 'ads_click' },
+  { name: 'Meta Ads', icon: 'thumb_up' },
+  { name: 'Google Search Console', icon: 'manage_search' },
 ];
 
 const tiers: Tier[] = ['radar', 'señales', 'palancas'];
@@ -127,26 +130,74 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
       </div>
     </div>
 
-    <!-- API Connections -->
+    <!-- Google Analytics 4 — primary integration -->
     <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-      <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:24px;">Conexiones API</h2>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        {apiConnections.map(api => (
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#f5f2ff;border-radius:10px;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-                <span class="material-symbols-outlined" style="font-size:18px;color:#1a1a2e;">{api.icon}</span>
+      <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:24px;">Integraciones</h2>
+
+      {ga4Connected ? (
+        <!-- GA4 Connected -->
+        <div style="padding:20px 24px;background:#E1F5EE;border-radius:12px;border:1px solid #b8e6d4;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border-radius:12px;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                <span class="material-symbols-outlined" style="font-size:22px;color:#1D9E75;">analytics</span>
               </div>
-              <p style="font-size:14px;font-weight:600;color:#1a1a2e;">{api.name}</p>
+              <div>
+                <p style="font-size:15px;font-weight:700;color:#1a1a2e;">Google Analytics 4</p>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+                  <div style="width:8px;height:8px;border-radius:50%;background:#1D9E75;"></div>
+                  <span style="font-size:12px;font-weight:600;color:#1D9E75;">Conectado</span>
+                  {ga4QualityScore !== null && (
+                    <span style={`font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;${ga4QualityScore >= 70 ? 'background:#d1fae5;color:#065f46;' : 'background:#FAEEDA;color:#92400e;'}`}>
+                      Calidad: {ga4QualityScore}/100
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style={`width:8px;height:8px;border-radius:50%;background:${api.color};`}></div>
-              <span style={`font-size:12px;font-weight:700;color:${api.color};`}>
-                {IS_DEMO ? 'Conectado ✓' : api.status === 'connected' ? 'Conectado' : 'Sin conectar'}
-              </span>
-            </div>
+            <button style="background:#FCEBEB;color:#E24B4A;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">
+              Desconectar
+            </button>
           </div>
-        ))}
+        </div>
+      ) : (
+        <!-- GA4 Not Connected — CTA -->
+        <div style="padding:24px;background:linear-gradient(135deg, #f0f4ff 0%, #f7f9ff 100%);border-radius:12px;border:2px dashed #cbd5e1;">
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="width:56px;height:56px;border-radius:14px;background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);flex-shrink:0;">
+              <span class="material-symbols-outlined" style="font-size:28px;color:#1A4B8C;">analytics</span>
+            </div>
+            <div style="flex:1;">
+              <p style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:4px;">Conecta Google Analytics 4</p>
+              <p style="font-size:13px;color:#434750;line-height:1.5;">
+                Datos reales de tráfico, conversiones y comportamiento de usuario. Tu diagnóstico será mucho más preciso con datos reales vs estimaciones.
+              </p>
+            </div>
+            <button onclick="alert('OAuth GA4 — requiere P5-S1 implementado')"
+              style="background:#1A4B8C;color:white;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Conectar con Google
+            </button>
+          </div>
+        </div>
+      )}
+
+      <!-- Future connections -->
+      <div style="margin-top:16px;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;margin-bottom:12px;">Próximamente</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          {futureConnections.map(api => (
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#f8f9fb;border-radius:10px;opacity:0.6;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:white;display:flex;align-items:center;justify-content:center;">
+                  <span class="material-symbols-outlined" style="font-size:18px;color:#94a3b8;">{api.icon}</span>
+                </div>
+                <p style="font-size:14px;font-weight:600;color:#64748b;">{api.name}</p>
+              </div>
+              <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;background:#f0f0f0;padding:3px 10px;border-radius:4px;">Pronto</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
 

@@ -8,6 +8,7 @@ import {
 } from '../db';
 import { analyzeEvolution } from './diff-engine';
 import { generateBriefing } from '../briefing';
+import { buildClientContext } from './client-context';
 
 interface RadarClient {
   id: string;
@@ -95,8 +96,9 @@ export async function runRadarForClient(client: RadarClient): Promise<RadarRunRe
     const diff = analyzeEvolution(snapshots, allRecs);
     result.correlationsFound = diff.correlations.length;
 
-    // 5. Generate new recommendations from onboarding context + latest data
-    const onboarding = await getClientOnboarding(client.id);
+    // 5. Build full client context and generate new recommendations
+    const ctx = await buildClientContext(client.id, client.name, client.domain);
+    const onboarding = ctx.onboarding;
     if (onboarding) {
       const latestSnapshot = snapshots[snapshots.length - 1];
       const briefing = await generateBriefing({
@@ -104,6 +106,7 @@ export async function runRadarForClient(client: RadarClient): Promise<RadarRunRe
         auditResults: latestSnapshot.pipeline_output,
         clientName: client.name,
         domain: client.domain,
+        clientContext: ctx.text,
       });
 
       // Seed new recommendations (only ones not already tracked)
