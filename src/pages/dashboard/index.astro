@@ -219,6 +219,7 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
   clientName={client.name}
   domain={client.domain}
   lastReportMonth={hasData ? snapshot.month : ''}
+  lastReportDate={hasData ? snapshot.date : ''}
 >
 
 {!hasData ? (

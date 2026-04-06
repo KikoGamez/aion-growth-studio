@@ -51,7 +51,7 @@ const statusLabels: Record<string, { label: string; color: string; bg: string }>
   tier={tier}
   clientName={client.name}
   domain={client.domain}
-  lastReportMonth={hasData ? snapshot.month : ''}
+  lastReportMonth={hasData ? snapshot.month : ''} lastReportDate={hasData ? snapshot.date : ''}
 >
 
 <div style="display:flex;flex-direction:column;gap:24px;">

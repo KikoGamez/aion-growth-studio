@@ -103,7 +103,7 @@ function deltaColor(d: number | null): string {
 }
 ---
 
-<DashboardLayout title="Evolución" currentPath="/dashboard/evolution" tier={tier} clientName={client.name} domain={client.domain} lastReportMonth={latest.id !== 'empty' ? latest.month : ''}>
+<DashboardLayout title="Evolución" currentPath="/dashboard/evolution" tier={tier} clientName={client.name} domain={client.domain} lastReportMonth={latest.id !== 'empty' ? latest.month : ''} lastReportDate={latest.id !== 'empty' ? latest.date : ''}>
   <div style="display:flex;flex-direction:column;gap:28px;">
 
     <div>
