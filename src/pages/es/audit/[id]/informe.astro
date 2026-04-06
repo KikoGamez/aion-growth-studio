@@ -1880,46 +1880,75 @@ const donutSVG = buildDonutSVG();
             </div>
 
             <div class="glass-card" style={(instagram?.followers ?? 0) > 0 ? 'border-left:3px solid #E1306C;' : ''}>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                 <span class="material-symbols-outlined" style="color:#E1306C;">photo_camera</span>
-                <span style="font-size:0.72rem;color:#8d909b;">Instagram</span>
+                <span style="font-size:0.78rem;font-weight:700;color:#e2e0fc;">Instagram</span>
                 {instagram?.handle && (
-                  <a href={`https://instagram.com/${instagram.handle}`} target="_blank" style="font-size:0.68rem;color:#E1306C;text-decoration:none;margin-left:auto;">@{instagram.handle}</a>
+                  <a href={`https://instagram.com/${instagram.handle}`} target="_blank" style="font-size:0.68rem;color:#E1306C;text-decoration:none;margin-left:auto;">@{instagram.handle} →</a>
                 )}
               </div>
-              {(instagram?.followers ?? 0) > 0 ? (
-                <div>
-                  <div style="display:flex;gap:16px;margin-bottom:8px;">
-                    <div>
-                      <div style="font-size:1.2rem;font-weight:900;color:#e2e0fc;">{fmt(instagram.followers)}</div>
-                      <div style="font-size:0.65rem;color:#8d909b;">seguidores</div>
+              {(instagram?.followers ?? 0) > 0 ? (() => {
+                const er = instagram.engagementRate;
+                const hasER = er != null && er > 0;
+                // Engagement diagnosis
+                const erLevel = hasER ? (er >= 3 ? 'good' : er >= 1 ? 'ok' : 'bad') : null;
+                const erColor = erLevel === 'good' ? '#69FF87' : erLevel === 'ok' ? '#ffb4ab' : erLevel === 'bad' ? '#ffb4ab' : '#8d909b';
+                const erLabel = erLevel === 'good' ? 'Excelente' : erLevel === 'ok' ? 'Aceptable' : erLevel === 'bad' ? 'Bajo' : 'N/D';
+                // Overall Instagram health score (simplified)
+                const igHealth = hasER ? (er >= 3 ? 85 : er >= 1.5 ? 60 : er >= 0.5 ? 35 : 15) : (instagram.followers > 10000 ? 50 : instagram.followers > 1000 ? 30 : 15);
+                const igHealthColor = igHealth >= 60 ? '#69FF87' : igHealth >= 40 ? '#ffb4ab' : '#ffb4ab';
+                return (
+                  <div>
+                    {/* Visual score gauge */}
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+                      <div style="position:relative;width:56px;height:56px;flex-shrink:0;">
+                        <svg viewBox="0 0 36 36" style="width:56px;height:56px;transform:rotate(-90deg);">
+                          <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(141,144,155,0.12)" stroke-width="3"/>
+                          <circle cx="18" cy="18" r="15.9" fill="none" stroke={igHealthColor} stroke-width="3" stroke-linecap="round" stroke-dasharray={`${igHealth}, 100`}/>
+                        </svg>
+                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                          <span style={`font-size:0.85rem;font-weight:800;color:${igHealthColor};`}>{igHealth}</span>
+                        </div>
+                      </div>
+                      <div style="flex:1;">
+                        <div style="font-size:0.82rem;font-weight:700;color:#e2e0fc;">
+                          {igHealth >= 60 ? 'Gestion activa y efectiva' : igHealth >= 40 ? 'Presencia correcta, margen de mejora' : 'Necesita atencion estrategica'}
+                        </div>
+                        <div style="font-size:0.68rem;color:#8d909b;margin-top:2px;">
+                          {fmt(instagram.followers)} seguidores
+                        </div>
+                      </div>
                     </div>
-                    {instagram.posts && (
-                      <div>
-                        <div style="font-size:1.2rem;font-weight:900;color:#e2e0fc;">{fmt(instagram.posts)}</div>
-                        <div style="font-size:0.65rem;color:#8d909b;">posts</div>
+                    {/* Key metric: engagement */}
+                    {hasER && (
+                      <div style={`background:${erLevel === 'good' ? 'rgba(105,255,135,0.08)' : erLevel === 'ok' ? 'rgba(255,180,171,0.06)' : 'rgba(255,180,171,0.1)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;`}>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <span style="font-size:0.75rem;color:#c3c6d2;">Engagement rate</span>
+                          <div style="display:flex;align-items:center;gap:6px;">
+                            <span style={`font-size:1rem;font-weight:800;color:${erColor};`}>{er}%</span>
+                            <span style={`font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;background:${erLevel === 'good' ? 'rgba(105,255,135,0.15)' : 'rgba(255,180,171,0.15)'};color:${erColor};`}>{erLabel}</span>
+                          </div>
+                        </div>
+                        <p style={`font-size:0.68rem;color:${erLevel === 'good' ? '#69FF87' : '#c3c6d2'};margin-top:4px;line-height:1.4;`}>
+                          {erLevel === 'good' ? 'Tu audiencia interactua activamente. Señal de contenido relevante y comunidad comprometida.' :
+                           erLevel === 'ok' ? 'Interaccion moderada. Contenido mas específico para tu audiencia puede mejorar este ratio.' :
+                           'Poca interaccion vs seguidores. Indica contenido generico o audiencia poco cualificada.'}
+                        </p>
                       </div>
                     )}
-                    {instagram.engagementRate != null && (
-                      <div>
-                        <div style={`font-size:1.2rem;font-weight:900;color:${instagram.engagementRate >= 3 ? '#69FF87' : instagram.engagementRate >= 1 ? '#ffb4ab' : '#ffb4ab'};`}>{instagram.engagementRate}%</div>
-                        <div style="font-size:0.65rem;color:#8d909b;">engagement</div>
+                    {/* No engagement data — give CEO a useful assessment anyway */}
+                    {!hasER && (
+                      <div style="font-size:0.72rem;color:#c3c6d2;line-height:1.5;">
+                        {instagram.followers > 10000 ? 'Comunidad grande pero sin datos de interaccion. Recomendamos analizar si los seguidores son activos y cualificados.' :
+                         instagram.followers > 1000 ? 'Base de seguidores establecida. Para evaluar la calidad, activa AION Radar que monitoriza engagement semanalmente.' :
+                         'Comunidad en crecimiento. Prioriza calidad sobre cantidad: mejor 500 seguidores que interactuan que 5.000 inactivos.'}
                       </div>
                     )}
                   </div>
-                  <div style="font-size:0.72rem;color:#c3c6d2;line-height:1.4;">
-                    {instagram.engagementRate != null ? (
-                      instagram.engagementRate >= 3 ? 'Engagement excelente (>3%). Tu audiencia interactua activamente con tu contenido — señal de comunidad fuerte.' :
-                      instagram.engagementRate >= 1 ? 'Engagement aceptable (1-3%). Hay margen para mejorar la interaccion con contenido mas relevante.' :
-                      'Engagement bajo (<1%). Muchos seguidores pero poca interaccion. Revisar la estrategia de contenido.'
-                    ) : (
-                      `${fmt(instagram.followers)} seguidores — ${instagram.followers > 10000 ? 'comunidad relevante' : instagram.followers > 1000 ? 'presencia establecida' : 'en fase de crecimiento'}.`
-                    )}
-                  </div>
-                </div>
-              ) : instagram?.handle ? (
+                );
+              })() : instagram?.handle ? (
                 <div style="font-size:0.72rem;margin-top:4px;">
-                  <span style="color:#8d909b;">Perfil detectado — datos de engagement no accesibles desde nuestra plataforma.</span>
+                  <span style="color:#8d909b;">Perfil detectado — conecta AION Radar para monitorizar engagement y crecimiento.</span>
                 </div>
               ) : (
                 <div style="font-size:0.72rem;color:#8d909b;margin-top:4px;">No se ha detectado perfil de empresa.</div>
