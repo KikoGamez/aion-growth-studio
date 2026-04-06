@@ -86,22 +86,38 @@ export async function runLinkedIn(
     }
   }
 
-  // Fallback 2: try direct LinkedIn URL from domain name
+  // Fallback 2: try direct LinkedIn URL from domain name (multiple slug variants)
   if (!linkedinUrl && crawlData.finalUrl) {
-    try {
-      const domainName = new URL(crawlData.finalUrl).hostname.replace(/^www\./, '').split('.')[0];
-      const directUrl = `https://www.linkedin.com/company/${domainName}`;
-      const testRes = await axios.get(directUrl, {
-        timeout: 5000,
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
-        validateStatus: (s) => s < 500,
-        ...apifyProxyConfig(),
-      });
-      if (testRes.status === 200 && String(testRes.data).includes('followers')) {
-        linkedinUrl = directUrl;
-        console.log(`[linkedin] Found via direct URL: ${directUrl}`);
+    const domainName = new URL(crawlData.finalUrl).hostname.replace(/^www\./, '').split('.')[0];
+    // Try: frutaseloy, frutas-eloy (split compound words with hyphens)
+    const slugs = [domainName];
+    // Add hyphenated version for compound names (frutaseloy → frutas-eloy)
+    if (domainName.length > 6 && !domainName.includes('-')) {
+      // Try common split points
+      for (let i = 4; i <= domainName.length - 3; i++) {
+        slugs.push(domainName.slice(0, i) + '-' + domainName.slice(i));
       }
-    } catch { /* ignore */ }
+    }
+    // Also try company name from crawl
+    const companySlug = crawlData.companyName?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (companySlug && !slugs.includes(companySlug)) slugs.push(companySlug);
+
+    for (const slug of slugs) {
+      try {
+        const directUrl = `https://www.linkedin.com/company/${slug}`;
+        const testRes = await axios.get(directUrl, {
+          timeout: 5000,
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
+          validateStatus: (s) => s < 500,
+          ...apifyProxyConfig(),
+        });
+        if (testRes.status === 200 && String(testRes.data).includes('followers')) {
+          linkedinUrl = directUrl;
+          console.log(`[linkedin] Found via direct URL: ${directUrl} (slug: ${slug})`);
+          break;
+        }
+      } catch { /* try next slug */ }
+    }
   }
 
   // Fallback 3: search Google for "site:linkedin.com/company {brand}"
