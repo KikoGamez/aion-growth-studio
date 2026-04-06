@@ -80,7 +80,9 @@ const newsHeadlinesEs: Array<{title:string;source:string;date?:string}> = repRaw
 
 // Visibility sub-scores (for the Visibilidad Digital block header)
 const visSeoSub     = r.score?.breakdown?.seo ?? r.score?.breakdown?.seoVisibility ?? 0;
-const visGeoSub     = r.score?.breakdown?.geo ?? geo?.overallScore ?? 0;
+// Use mentionRate as the primary GEO metric (% of queries where brand is mentioned)
+// overallScore is a composite that can diverge from mentionRate — confusing in the report
+const visGeoSub     = geo?.mentionRate ?? r.score?.breakdown?.geo ?? 0;
 // Build traffic channels from SEO data (organic ETV + paid ETV)
 const _organicTraf = seo?.organicTrafficEstimate ?? 0;
 const _paidTraf = seo?.paidTrafficEstimate ?? 0;
@@ -292,19 +294,17 @@ function buildHorizontalBars(items: Array<{label:string;value:number;color:strin
   return `<svg width="${totalW}" height="${h}" viewBox="0 0 ${totalW} ${h}">${bars}</svg>`;
 }
 
-// displayCompetitors: competitors with actual SEO data (no apiError).
-// Fallback: AI-detected competitor names (always populated).
+// displayCompetitors: ONLY competitors with real SEO/traffic data (no "sin datos" rows).
+// If a competitor was suggested by AI but has no DataForSEO data, it doesn't belong in the benchmark.
 const displayCompetitors: any[] = (() => {
   const seen = new Set<string>();
   const out: any[] = [];
-  // Only include ctItems with actual data — hide "sin datos" rows from the benchmark table
   for (const c of ctItems) {
-    if (c.domain && !seen.has(c.domain)) { seen.add(c.domain); out.push(c); }
-  }
-  for (const c of competitors) {
-    let d = c.url;
-    try { d = new URL(c.url.startsWith('http') ? c.url : `https://${c.url}`).hostname.replace(/^www\./, ''); } catch {}
-    if (d && !seen.has(d)) { seen.add(d); out.push({ name: c.name, domain: d, url: c.url }); }
+    // Only include if we have actual traffic or keyword data
+    if (c.domain && !seen.has(c.domain) && (c.keywordsTop10 != null || c.organicTrafficEstimate != null)) {
+      seen.add(c.domain);
+      out.push(c);
+    }
   }
   return out.slice(0, 5);
 })();

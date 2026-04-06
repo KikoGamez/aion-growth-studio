@@ -120,10 +120,11 @@ export async function runCompetitors(
     return { competitors };
   }
 
-  // If DataForSEO organic competitors are available, use them — they're guaranteed
-  // to exist in DataForSEO's database, making competitor_traffic reliable.
+  // DataForSEO organic competitors — guaranteed to have SEO data.
+  // Use them as base, then fill with Haiku if needed (up to 3-4 total).
+  const dfsCompetitors: Array<{ name: string; url: string; snippet: string }> = [];
   if (dfsOrganicCompetitors && dfsOrganicCompetitors.length > 0) {
-    const competitors = await Promise.all(
+    const resolved = await Promise.all(
       dfsOrganicCompetitors.slice(0, 5).map(async (comp) => {
         const normalized = `https://${comp.domain}`;
         try {
@@ -143,8 +144,16 @@ export async function runCompetitors(
         }
       }),
     );
-    return { competitors };
+    dfsCompetitors.push(...resolved);
+
+    // If we have 3+ DFS competitors, use them directly (best quality)
+    if (dfsCompetitors.length >= 3) {
+      return { competitors: dfsCompetitors.slice(0, 4) };
+    }
   }
+
+  // Not enough DFS competitors — supplement with Haiku suggestions
+  // but mark them so we know they may lack DataForSEO data
 
   // Otherwise: use Claude Haiku to detect competitors with structured validation
   if (!ANTHROPIC_KEY) {
@@ -216,5 +225,16 @@ CRITICAL RULES — read carefully:
     }
   }
 
-  return { competitors: validList.slice(0, 4) };
+  // Combine: DFS competitors first (guaranteed data), then Haiku-validated ones
+  const combined = [...dfsCompetitors];
+  const dfsUrls = new Set(dfsCompetitors.map(c => new URL(c.url).hostname.replace(/^www\./, '')));
+  for (const comp of validList) {
+    const compHost = new URL(comp.url.startsWith('http') ? comp.url : `https://${comp.url}`).hostname.replace(/^www\./, '');
+    if (!dfsUrls.has(compHost)) {
+      combined.push(comp);
+    }
+  }
+
+  console.log(`[competitors] ${dfsCompetitors.length} from DataForSEO + ${combined.length - dfsCompetitors.length} from Haiku = ${combined.length} total`);
+  return { competitors: combined.slice(0, 4) };
 }
