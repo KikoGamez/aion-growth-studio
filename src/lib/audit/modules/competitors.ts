@@ -59,6 +59,7 @@ export async function runCompetitors(
   crawl: CrawlResult = {},
   userCompetitorUrls?: string[],
   dfsOrganicCompetitors?: Array<{ domain: string; intersections: number }>,
+  extraContext?: { businessType?: string; instagramBio?: string; gbpCategories?: string[] },
 ): Promise<CompetitorsResult> {
   const domain = new URL(url.startsWith('http') ? url : `https://${url}`).hostname.replace(/^www\./, '');
 
@@ -170,37 +171,60 @@ export async function runCompetitors(
     return { skipped: true, reason: 'No competitor URLs provided and ANTHROPIC_API_KEY not configured' };
   }
 
-  const brandName = crawl.title?.split(/[-|]/)[0]?.trim() || domain;
+  const brandName = crawl.companyName || crawl.title?.split(/[-|]/)[0]?.trim() || domain;
   const description = crawl.description?.slice(0, 200) || '';
   const locationHint = crawl.locationHint || '';
+  const bt = extraContext?.businessType || '';
+  const igBio = extraContext?.instagramBio || '';
+  const gbpCats = extraContext?.gbpCategories?.join(', ') || '';
 
-  const prompt = `Identify 3-4 competitors for this business. These competitors MUST have a website with enough online presence to appear in SEO tools (DataForSEO, SEMrush, Ahrefs). Do NOT suggest tiny businesses with no digital footprint.
+  // Build business profile for the LLM
+  const businessProfile = [
+    `Domain: ${domain}`,
+    `Brand: ${brandName}`,
+    `Sector: ${sector}`,
+    description && `Description: ${description}`,
+    bt && `Business type: ${bt}`,
+    igBio && `Instagram bio: ${igBio}`,
+    gbpCats && `Google Business categories: ${gbpCats}`,
+    locationHint && `Location: ${locationHint}`,
+  ].filter(Boolean).join('\n');
 
-Domain: ${domain}
-Brand: ${brandName}
-Sector: ${sector}
-Description: ${description}
-${locationHint ? `Location: ${locationHint}` : ''}
+  const prompt = `You are an expert competitive analyst. Identify 3-4 REAL competitors for this specific business.
+
+${businessProfile}
+
+BUSINESS MODEL ANALYSIS (do this BEFORE choosing competitors):
+Think step by step:
+1. What does this business ACTUALLY sell? (products vs services, physical vs digital)
+2. WHO are their customers? (B2B vs B2C, businesses vs consumers, local vs national)
+3. What is their distribution channel? (wholesale, retail, online, horeca, etc.)
+4. What is their geographic scope? (local city, regional, national, international)
+
+THEN find competitors that match ALL 4 dimensions:
+- Same product/service category (fruit wholesaler ≠ supermarket ≠ food manufacturer)
+- Same customer type (B2B wholesaler ≠ B2C retailer)
+- Same distribution model (wholesale ≠ retail ≠ e-commerce)
+- Same geographic market (local Madrid ≠ national chain)
+
+EXAMPLES OF WRONG vs RIGHT:
+- Fruit wholesaler → WRONG: Mercadona (supermarket), Campofrío (manufacturer) → RIGHT: other fruit wholesalers in same city
+- Boutique law firm → WRONG: Garrigues (Big4) → RIGHT: other boutique firms of similar size
+- Local restaurant → WRONG: McDonald's → RIGHT: other restaurants in same neighborhood/cuisine
 
 Reply ONLY with valid JSON (no markdown, no backticks, start with {):
-{"competitors": [{"name": "Company Name", "url": "https://exactdomain.com", "snippet": "One sentence why they compete", "type": "direct"}]}
+{"competitors": [{"name": "Company Name", "url": "https://exactdomain.com", "snippet": "One sentence why they compete directly", "type": "direct"}]}
 
-The "type" field must be "direct" (same subsector, similar size) or "aspirational" (larger reference, include max 1).
+"type": "direct" (same niche, similar size) or "aspirational" (larger reference, max 1).
 
-CRITICAL RULES:
-1. URLS REALES: Only include companies whose EXACT website URL you know with 100% certainty. If unsure, DO NOT include.
-2. NOMBRE REAL: Must be a real brand name, NEVER a category description.
-3. MISMO SUBSECTOR Y REGIÓN: Match the specific niche AND geographic market.
-   - "${brandName}" operates in "${sector}" ${locationHint ? `in ${locationHint}` : 'in Spain'}.
-   - Find competitors in the SAME subsector and SAME region/country.
-   - Banca privada ≠ banca retail. Consultoría boutique ≠ Big4. Distribuidor B2B ≠ e-commerce B2C.
-4. PRESENCIA DIGITAL RELEVANTE: Competitors MUST have a real website with content, blog, or product pages.
-   Do NOT suggest companies that only have a one-page website or no SEO presence.
-   A good competitor should have at least 50+ indexed pages in Google.
-5. TAMAÑO SIMILAR: Prioritize competitors of similar digital size. Max 1 "aspirational" (10x+ larger).
-6. At least 2 of 3-4 must be "direct" (same subsector + comparable size).
-7. Do not include ${domain} itself.
-8. Better to return 2 verified competitors than 4 guessed ones.`;
+RULES:
+1. Only include companies whose EXACT website URL you know with 100% certainty.
+2. Must be a real brand name, NEVER a category description.
+3. Competitors MUST operate in the SAME business model and serve the SAME customer type.
+4. Competitors should have a real website with some online presence.
+5. Max 1 "aspirational" competitor. At least 2 must be "direct".
+6. Do not include ${domain} itself.
+7. Better to return 2 verified competitors than 4 guessed ones.`;
 
   // Use Sonnet for better sector understanding and competitor relevance
   const controller = new AbortController();

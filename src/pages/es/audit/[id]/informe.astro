@@ -2115,59 +2115,47 @@ const donutSVG = buildDonutSVG();
             </div>
           )}
 
-          <!-- Competitive data table (unified: SEO + Paid + IA visibility) -->
+          <!-- Competitive data: 2-column card grid -->
           {displayCompetitors.length > 0 && (
-            <div class="surface-card" style="margin-bottom:1.5rem;overflow-x:auto;">
-              <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-                <div style="font-size:0.82rem;font-weight:700;color:#e2e0fc;">Benchmark competitivo</div>
-                <div style="font-size:0.65rem;color:#8d909b;font-style:italic;">* Trafico y keywords a nivel de dominio completo · IA = % consultas donde la marca es mencionada por asistentes IA</div>
+            <div style="margin-bottom:1.5rem;">
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+                {/* Own domain card */}
+                <div class="surface-card" style="border:2px solid rgba(170,199,255,0.25);">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:#1A4B8C;flex-shrink:0;"></span>
+                    <span style="font-size:0.82rem;font-weight:700;color:#aac7ff;">{domain}</span>
+                    <span style="font-size:0.6rem;color:#8d909b;margin-left:auto;">Tu empresa</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">
+                    <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">KW Top 10</span><div style="font-size:1rem;font-weight:800;color:#e2e0fc;">{fmt(seo?.keywordsTop10)}</div></div>
+                    <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">Trafico org.</span><div style="font-size:1rem;font-weight:800;color:#e2e0fc;">{fmt(seo?.organicTrafficEstimate)}</div></div>
+                    <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">Visib. IA</span><div style={`font-size:1rem;font-weight:800;color:${(geo?.mentionRate ?? 0) >= 50 ? '#69FF87' : (geo?.mentionRate ?? 0) >= 25 ? '#ffb4ab' : '#8d909b'};`}>{geo?.mentionRate ?? 0}%</div></div>
+                    <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">Reviews</span><div style="font-size:1rem;font-weight:800;color:#e2e0fc;">{gbp?.rating ? `${gbp.rating}★` : repRaw.combinedRating ? `${repRaw.combinedRating}★` : '—'}</div></div>
+                  </div>
+                </div>
+                {/* Competitor cards */}
+                {displayCompetitors.slice(0,3).map((ct: any, idx: number) => {
+                  const compGeo = geo?.competitorMentions?.find((cm: any) => (cm.name || cm.domain || '').toLowerCase().includes((ct.name || ct.domain || '').toLowerCase().split('.')[0]));
+                  const cpItem = compPS?.items?.find((p:any)=>p.domain===ct.domain) ?? compPS?.items?.[idx];
+                  return (
+                    <div class="surface-card">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                        <span style={`width:8px;height:8px;border-radius:50%;background:${idx===0?'#D85A30':idx===1?'#888780':'#6B8E9B'};flex-shrink:0;`}></span>
+                        <span style="font-size:0.82rem;font-weight:700;color:#e2e0fc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{ct.name || ct.domain}</span>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">
+                        <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">KW Top 10</span><div style="font-size:1rem;font-weight:800;color:#e2e0fc;">{ct.keywordsTop10 != null ? fmt(ct.keywordsTop10) : '—'}</div></div>
+                        <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">Trafico org.</span><div style="font-size:1rem;font-weight:800;color:#e2e0fc;">{ct.organicTrafficEstimate != null ? fmt(ct.organicTrafficEstimate) : '—'}</div></div>
+                        <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">Visib. IA</span><div style={`font-size:1rem;font-weight:800;color:${(compGeo?.mentionRate ?? 0) >= 50 ? '#69FF87' : (compGeo?.mentionRate ?? 0) >= 25 ? '#ffb4ab' : '#8d909b'};`}>{compGeo ? `${compGeo.mentionRate}%` : '—'}</div></div>
+                        <div><span style="font-size:0.62rem;color:#8d909b;text-transform:uppercase;">Reviews</span><div style="font-size:1rem;font-weight:800;color:#e2e0fc;">{cpItem?.gbpRating ? `${cpItem.gbpRating}★` : '—'}</div></div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Dominio</th>
-                    <th>KW Top 10</th>
-                    <th>Trafico organico</th>
-                    <th>KW Paid</th>
-                    <th>Trafico paid</th>
-                    <th>Coste ads est.</th>
-                    <th style="text-align:center;">Visibilidad IA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr class="own-row">
-                    <td>{domain}</td>
-                    <td>{fmt(seo?.keywordsTop10)}</td>
-                    <td>{fmt(seo?.organicTrafficEstimate)}</td>
-                    <td>{fmt(clientPaidKw)}</td>
-                    <td>{fmt(seo?.paidTrafficEstimate ?? 0)}</td>
-                    <td>{(seo?.paidTrafficValue ?? 0) > 0 ? `${fmt(seo.paidTrafficValue)}EUR` : '—'}</td>
-                    <td style="text-align:center;">
-                      <span style={`font-weight:800;color:${(geo?.mentionRate ?? 0) >= 50 ? '#69FF87' : (geo?.mentionRate ?? 0) >= 25 ? '#ffb4ab' : '#ffb4ab'};`}>{geo?.mentionRate ?? 0}%</span>
-                    </td>
-                  </tr>
-                  {displayCompetitors.slice(0,4).map((ct: any) => {
-                    const compGeo = geo?.competitorMentions?.find((cm: any) => (cm.name || cm.domain || '').toLowerCase().includes((ct.name || ct.domain || '').toLowerCase().split('.')[0]));
-                    return (
-                      <tr>
-                        <td style="font-weight:600;color:#e2e0fc;">{ct.name || ct.domain}</td>
-                        <td>{ct.keywordsTop10 != null ? fmt(ct.keywordsTop10) : <span style="color:#8d909b;font-size:0.68rem;">sin datos</span>}</td>
-                        <td>{ct.organicTrafficEstimate != null ? fmt(ct.organicTrafficEstimate) : <span style="color:#8d909b;font-size:0.68rem;">sin datos</span>}</td>
-                        <td>{fmt(ct.paidKeywordsTotal ?? 0)}</td>
-                        <td>{fmt(ct.paidTrafficEstimate ?? 0)}</td>
-                        <td>{(ct.paidTrafficValue ?? 0) > 0 ? `${fmt(ct.paidTrafficValue)}EUR` : '—'}</td>
-                        <td style="text-align:center;">
-                          <span style={`font-weight:700;color:${(compGeo?.mentionRate ?? 0) >= 50 ? '#69FF87' : (compGeo?.mentionRate ?? 0) >= 25 ? '#ffb4ab' : '#8d909b'};`}>
-                            {compGeo ? `${compGeo.mentionRate}%` : '—'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div style="font-size:0.6rem;color:#8d909b;margin-top:8px;font-style:italic;">* Datos SEO a nivel de dominio completo · IA = % consultas donde la marca es mencionada por asistentes IA</div>
               {ctItems.length === 0 && (
-                <div style="font-size:0.68rem;color:#8d909b;margin-top:8px;font-style:italic;">* Sin datos de trafico SEO disponibles para estos competidores.</div>
+                <div style="font-size:0.68rem;color:#8d909b;margin-top:4px;font-style:italic;">* Sin datos de trafico SEO disponibles para estos competidores.</div>
               )}
               {geo && allCompGeoZero && (
                 <div class="callout callout-success" style="margin-top:12px;">

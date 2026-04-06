@@ -178,7 +178,11 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
       const dfsOrganic = !audit.userCompetitors?.length
         ? (results.seo as any)?.organicCompetitors
         : undefined;
-      return runCompetitors(url, sector, results.crawl || {}, audit.userCompetitors, dfsOrganic);
+      return runCompetitors(url, sector, results.crawl || {}, audit.userCompetitors, dfsOrganic, {
+        businessType: (results.sector as any)?.businessType,
+        instagramBio: (results.instagram as any)?.bio,
+        gbpCategories: (results.gbp as any)?.categories,
+      });
     }
 
     case 'competitor_traffic': {
