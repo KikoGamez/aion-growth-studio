@@ -1,12 +1,13 @@
 import type { GBPResult, CrawlResult } from '../types';
 
 const API_KEY = import.meta.env?.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_PLACES_API_KEY;
+const DFS_LOGIN = import.meta.env?.DATAFORSEO_LOGIN || process.env.DATAFORSEO_LOGIN;
+const DFS_PASSWORD = import.meta.env?.DATAFORSEO_PASSWORD || process.env.DATAFORSEO_PASSWORD;
 
-/**
- * Places API (New) — text search.
- * Returns all results so caller can pick the best match.
- */
+// ── Google Places API (New) ─────────────────────────────────────
+
 async function searchPlaces(query: string): Promise<any[]> {
+  if (!API_KEY) return [];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
 
@@ -16,128 +17,154 @@ async function searchPlaces(query: string): Promise<any[]> {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': API_KEY!,
+        'X-Goog-Api-Key': API_KEY,
         'X-Goog-FieldMask': 'places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.types,places.websiteUri',
       },
       body: JSON.stringify({ textQuery: query }),
     });
     clearTimeout(timer);
-
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      const errMsg = `${res.status}: ${body.slice(0, 200)}`;
-      console.error(`[gbp] Places API error: ${errMsg}`);
-      // Store last error for debug
-      (searchPlaces as any)._lastErr = errMsg;
+      console.log(`[gbp] Places API ${res.status}`);
       return [];
     }
-
     const data = await res.json();
     return data.places || [];
   } catch (err) {
     clearTimeout(timer);
-    const errMsg = (err as Error).message?.slice(0, 150) || 'unknown';
-    console.error(`[gbp] searchPlaces exception: ${errMsg}`);
-    (searchPlaces as any)._lastErr = errMsg;
+    console.log(`[gbp] Places API fail: ${(err as Error).message?.slice(0, 80)}`);
     return [];
   }
 }
 
-/** Extract bare domain from a URL (e.g. "https://tienda.frutaseloy.com/foo" → "frutaseloy.com") */
-function bareDomain(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '').replace(/^tienda\./, '');
-  } catch {
-    return '';
+// ── DataForSEO Business Data (fallback) ─────────────────────────
+
+const SPAIN_CITIES = [1005404, 1005479, 1005550]; // Madrid, Barcelona, Valencia
+
+async function searchDFS(keyword: string): Promise<{ title: string; rating: number; reviews: number; address: string; category: string } | null> {
+  if (!DFS_LOGIN || !DFS_PASSWORD) return null;
+  const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
+
+  for (const locCode of SPAIN_CITIES) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch('https://api.dataforseo.com/v3/business_data/google/my_business_info/live', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{ keyword, location_code: locCode, language_code: 'es' }]),
+      });
+      clearTimeout(timer);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const item = data?.tasks?.[0]?.result?.[0]?.items?.[0];
+      if (item?.title && item?.rating?.value) {
+        console.log(`[gbp] DFS found "${item.title}": ${item.rating.value}★ (loc=${locCode})`);
+        return {
+          title: item.title,
+          rating: item.rating.value,
+          reviews: item.rating.votes_count ?? 0,
+          address: item.address || '',
+          category: item.category || '',
+        };
+      }
+    } catch { /* try next city */ }
   }
+  return null;
 }
 
-/**
- * Pick the best GBP result: prefer the one whose website matches our audit domain,
- * then fall back to highest rating+reviews combo.
- */
+// ── Helpers ─────────────────────────────────────────────────────
+
+function bareDomain(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, '').replace(/^tienda\./, ''); }
+  catch { return ''; }
+}
+
 function pickBest(places: any[], auditDomain: string): any | null {
   if (places.length === 0) return null;
-
-  // First: exact domain match
   const domainMatch = places.find(p => {
     const web = bareDomain(p.websiteUri || '');
     return web && auditDomain.includes(web);
   });
   if (domainMatch) return domainMatch;
-
-  // Fallback: best rating × reviews
   let best = places[0];
   for (const p of places.slice(1)) {
-    const bestScore = (best.rating ?? 0) * 20 + Math.log10((best.userRatingCount ?? 0) + 1);
-    const pScore = (p.rating ?? 0) * 20 + Math.log10((p.userRatingCount ?? 0) + 1);
-    if (pScore > bestScore) best = p;
+    const bs = (best.rating ?? 0) * 20 + Math.log10((best.userRatingCount ?? 0) + 1);
+    const ps = (p.rating ?? 0) * 20 + Math.log10((p.userRatingCount ?? 0) + 1);
+    if (ps > bs) best = p;
   }
   return best;
 }
 
+// ── Public API ──────────────────────────────────────────────────
+
 /**
  * Quick GBP lookup by company name + domain — used for competitor comparison.
- * Returns { rating, reviewCount } or null.
  */
 export async function lookupGBP(companyName: string, domain: string): Promise<{ rating: number; reviewCount: number } | null> {
-  if (!API_KEY) return null;
-  try {
-    const places = await searchPlaces(companyName);
-    const place = pickBest(places, domain);
-    if (!place?.rating) return null;
-    return { rating: place.rating, reviewCount: place.userRatingCount ?? 0 };
-  } catch {
-    return null;
-  }
+  // Try Google Places first
+  const places = await searchPlaces(companyName);
+  const place = pickBest(places, domain);
+  if (place?.rating) return { rating: place.rating, reviewCount: place.userRatingCount ?? 0 };
+
+  // Fallback: DataForSEO
+  const dfs = await searchDFS(companyName);
+  if (dfs) return { rating: dfs.rating, reviewCount: dfs.reviews };
+
+  return null;
 }
 
 export async function runGBP(url: string, crawl: CrawlResult): Promise<GBPResult> {
-  if (!API_KEY) {
-    return { skipped: true, reason: 'GOOGLE_PLACES_API_KEY not configured' };
+  if (!API_KEY && !DFS_LOGIN) {
+    return { skipped: true, reason: 'No GBP API configured' };
   }
 
   const auditDomain = new URL(url).hostname.replace(/^www\./, '');
   const titleName = crawl.title?.split(/[-|–—·:]/)[0]?.trim() || '';
   const GENERIC = /^(home|inicio|welcome|bienvenid|index|main|page|untitled)$/i;
+  const companyName = crawl.companyName || (titleName && !GENERIC.test(titleName) ? titleName : '');
+  const domainName = auditDomain.split('.')[0].replace(/-/g, ' ');
 
   try {
-    console.log(`[gbp] API_KEY present: ${!!API_KEY} (len=${API_KEY?.length}), companyName: "${crawl.companyName}", title: "${titleName}", domain: "${auditDomain}"`);
-
-    // Strategy 1: Use companyName from crawl (most reliable — extracted from schema/og)
-    let places = crawl.companyName ? await searchPlaces(crawl.companyName) : [];
-    console.log(`[gbp] Strategy 1 (companyName="${crawl.companyName}"): ${places.length} results`);
-
-    // Strategy 2: Search by title name (if not generic like "Home")
-    if (places.length === 0 && titleName && !GENERIC.test(titleName)) {
-      places = await searchPlaces(titleName);
-      console.log(`[gbp] Strategy 2 (title="${titleName}"): ${places.length} results`);
+    // ── Try Google Places API first ──────────────────────────────
+    const searchTerms = [companyName, domainName].filter(Boolean);
+    for (const term of searchTerms) {
+      const places = await searchPlaces(term);
+      if (places.length > 0) {
+        const place = pickBest(places, auditDomain);
+        if (place) {
+          const name = place.displayName?.text || '';
+          console.log(`[gbp] Google Places: "${name}" ${place.rating}★ (${place.userRatingCount} reviews)`);
+          return {
+            found: true,
+            name: name.slice(0, 100),
+            rating: place.rating,
+            reviewCount: place.userRatingCount,
+            address: (place.formattedAddress || '').slice(0, 150),
+            categories: (place.types || []).slice(0, 3),
+          };
+        }
+      }
     }
 
-    // Strategy 3: Search by domain name
-    if (places.length === 0) {
-      const domainName = auditDomain.split('.')[0].replace(/-/g, ' ');
-      places = await searchPlaces(domainName);
-      console.log(`[gbp] Strategy 3 (domain="${domainName}"): ${places.length} results`);
+    // ── Fallback: DataForSEO Business Data ───────────────────────
+    console.log(`[gbp] Google Places found nothing, trying DataForSEO...`);
+    for (const term of searchTerms) {
+      const dfs = await searchDFS(term);
+      if (dfs) {
+        return {
+          found: true,
+          name: dfs.title.slice(0, 100),
+          rating: dfs.rating,
+          reviewCount: dfs.reviews,
+          address: dfs.address.slice(0, 150),
+          categories: [dfs.category].filter(Boolean),
+        };
+      }
     }
 
-    const place = pickBest(places, auditDomain);
-    if (!place) {
-      return { found: false, _debug: `key=${API_KEY?.length}ch, q="${crawl.companyName}", results=0, apiErr=${(searchPlaces as any)._lastErr || 'none'}` };
-    }
-
-    const name = place.displayName?.text || '';
-    console.log(`[gbp] Found "${name}": ${place.rating}★ (${place.userRatingCount} reviews) — web: ${place.websiteUri || 'none'}`);
-
-    return {
-      found: true,
-      name: name.slice(0, 100),
-      rating: place.rating,
-      reviewCount: place.userRatingCount,
-      address: (place.formattedAddress || '').slice(0, 150),
-      categories: (place.types || []).slice(0, 3),
-    };
+    return { found: false };
   } catch (err: any) {
-    return { found: false, error: err.message?.slice(0, 100), _debug: `exception, key=${API_KEY?.length}ch` };
+    return { found: false, error: err.message?.slice(0, 100) };
   }
 }
