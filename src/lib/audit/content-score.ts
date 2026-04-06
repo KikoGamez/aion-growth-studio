@@ -87,13 +87,34 @@ export function blogScore(data: {
   return Math.min(100, Math.round((freq + bonus) * penalty));
 }
 
+/**
+ * Engagement rate benchmarks by business type:
+ * - B2C: median ~1.5%, good >3%, excellent >5%
+ * - B2B: median ~0.5%, good >1%, excellent >2%
+ * - Local: median ~2%, good >4%, excellent >6%
+ */
+interface EngagementBenchmarks {
+  excellent: number; // → +25 bonus
+  good: number;      // → +15 bonus
+  ok: number;        // → +5 bonus
+  low: number;       // → -10 penalty (below this)
+}
+
+export const ENGAGEMENT_BY_TYPE: Record<string, EngagementBenchmarks> = {
+  b2b:       { excellent: 2.0, good: 1.0, ok: 0.5, low: 0.2 },
+  b2c:       { excellent: 5.0, good: 3.0, ok: 1.5, low: 0.5 },
+  b2c_local: { excellent: 6.0, good: 4.0, ok: 2.0, low: 0.8 },
+  ecommerce: { excellent: 4.0, good: 2.5, ok: 1.2, low: 0.4 },
+  mixed:     { excellent: 3.0, good: 1.5, ok: 0.8, low: 0.3 },
+};
+
 export function instagramScore(data: {
   found?: boolean;
   postsLast90Days?: number;
   lastPostDate?: string;
   engagementRate?: number;
   followers?: number;
-}): number {
+}, businessType?: string): number {
   if (!data.found) return 0;
 
   let score = 0;
@@ -107,11 +128,13 @@ export function instagramScore(data: {
     score = data.followers ? (data.followers > 10000 ? 50 : data.followers > 1000 ? 30 : 15) : 10;
   }
 
-  // Engagement bonus
+  // Engagement bonus/penalty adjusted by business type
   if (data.engagementRate != null) {
-    if (data.engagementRate >= 3) score += 20;
-    else if (data.engagementRate >= 1.5) score += 10;
-    else if (data.engagementRate < 0.5) score -= 10;
+    const bench = ENGAGEMENT_BY_TYPE[businessType || 'mixed'] || ENGAGEMENT_BY_TYPE.mixed;
+    if (data.engagementRate >= bench.excellent) score += 25;
+    else if (data.engagementRate >= bench.good) score += 15;
+    else if (data.engagementRate >= bench.ok) score += 5;
+    else if (data.engagementRate < bench.low) score -= 10;
   }
 
   return Math.max(0, Math.min(100, score));
@@ -167,7 +190,7 @@ export function computeContentScore(
   const weights = getContentWeights(sector, primaryGoal, businessType);
 
   const blog = blogScore(blogData);
-  const ig = instagramScore(igData);
+  const ig = instagramScore(igData, weights.businessType);
   const li = linkedinScore(liData);
 
   // If a channel doesn't exist, redistribute its weight

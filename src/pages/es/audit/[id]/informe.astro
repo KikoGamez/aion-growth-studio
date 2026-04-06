@@ -1890,12 +1890,16 @@ const donutSVG = buildDonutSVG();
               {(instagram?.followers ?? 0) > 0 ? (() => {
                 const er = instagram.engagementRate;
                 const hasER = er != null && er > 0;
-                // Engagement diagnosis
-                const erLevel = hasER ? (er >= 3 ? 'good' : er >= 1 ? 'ok' : 'bad') : null;
-                const erColor = erLevel === 'good' ? '#69FF87' : erLevel === 'ok' ? '#ffb4ab' : erLevel === 'bad' ? '#ffb4ab' : '#8d909b';
-                const erLabel = erLevel === 'good' ? 'Excelente' : erLevel === 'ok' ? 'Aceptable' : erLevel === 'bad' ? 'Bajo' : 'N/D';
-                // Overall Instagram health score (simplified)
-                const igHealth = hasER ? (er >= 3 ? 85 : er >= 1.5 ? 60 : er >= 0.5 ? 35 : 15) : (instagram.followers > 10000 ? 50 : instagram.followers > 1000 ? 30 : 15);
+                // Sector-aware engagement benchmarks
+                const sectorType = r.score?.content?.weights?.businessType || 'mixed';
+                const benchmarks = { b2b: { excellent: 2, good: 1, ok: 0.5 }, b2c: { excellent: 5, good: 3, ok: 1.5 }, b2c_local: { excellent: 6, good: 4, ok: 2 }, ecommerce: { excellent: 4, good: 2.5, ok: 1.2 }, mixed: { excellent: 3, good: 1.5, ok: 0.8 } } as any;
+                const bench = benchmarks[sectorType] || benchmarks.mixed;
+                const erLevel = hasER ? (er >= bench.excellent ? 'excellent' : er >= bench.good ? 'good' : er >= bench.ok ? 'ok' : 'bad') : null;
+                const erColor = (erLevel === 'excellent' || erLevel === 'good') ? '#69FF87' : erLevel === 'ok' ? '#ffb4ab' : erLevel === 'bad' ? '#ffb4ab' : '#8d909b';
+                const erLabel = erLevel === 'excellent' ? 'Excelente' : erLevel === 'good' ? 'Bueno' : erLevel === 'ok' ? 'Aceptable' : erLevel === 'bad' ? 'Bajo' : 'N/D';
+                const sectorLabel = sectorType === 'b2b' ? 'B2B' : sectorType === 'b2c_local' ? 'negocio local' : sectorType === 'ecommerce' ? 'ecommerce' : sectorType === 'b2c' ? 'B2C' : 'tu sector';
+                // Overall Instagram health score (sector-adjusted)
+                const igHealth = hasER ? (erLevel === 'excellent' ? 90 : erLevel === 'good' ? 75 : erLevel === 'ok' ? 50 : 25) : (instagram.followers > 10000 ? 50 : instagram.followers > 1000 ? 30 : 15);
                 const igHealthColor = igHealth >= 60 ? '#69FF87' : igHealth >= 40 ? '#ffb4ab' : '#ffb4ab';
                 return (
                   <div>
@@ -1929,10 +1933,11 @@ const donutSVG = buildDonutSVG();
                             <span style={`font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;background:${erLevel === 'good' ? 'rgba(105,255,135,0.15)' : 'rgba(255,180,171,0.15)'};color:${erColor};`}>{erLabel}</span>
                           </div>
                         </div>
-                        <p style={`font-size:0.68rem;color:${erLevel === 'good' ? '#69FF87' : '#c3c6d2'};margin-top:4px;line-height:1.4;`}>
-                          {erLevel === 'good' ? 'Tu audiencia interactua activamente. Señal de contenido relevante y comunidad comprometida.' :
-                           erLevel === 'ok' ? 'Interaccion moderada. Contenido mas específico para tu audiencia puede mejorar este ratio.' :
-                           'Poca interaccion vs seguidores. Indica contenido generico o audiencia poco cualificada.'}
+                        <p style={`font-size:0.68rem;color:${(erLevel === 'excellent' || erLevel === 'good') ? '#69FF87' : '#c3c6d2'};margin-top:4px;line-height:1.4;`}>
+                          {erLevel === 'excellent' ? `Engagement excepcional para ${sectorLabel}. Tu audiencia interactua muy por encima de la media del sector.` :
+                           erLevel === 'good' ? `Buen engagement para ${sectorLabel}. Tu comunidad es activa y responde a tu contenido.` :
+                           erLevel === 'ok' ? `Engagement aceptable para ${sectorLabel}. Hay margen de mejora con contenido mas relevante.` :
+                           `Engagement bajo para ${sectorLabel}. Revisar estrategia de contenido y calidad de la audiencia.`}
                         </p>
                       </div>
                     )}
