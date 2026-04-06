@@ -1444,16 +1444,19 @@ const donutSVG = buildDonutSVG();
 
               {kwGapItems.length > 0 && (
                 <div class="surface-card" style="margin-bottom:1rem;">
-                  <div style="font-size:0.78rem;font-weight:700;color:#e2e0fc;margin-bottom:4px;">Oportunidades de keywords vs {kg?.competitor || 'competencia'}</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <span class="material-symbols-outlined" style="font-size:18px;color:#aac7ff;">lightbulb</span>
+                    <div style="font-size:0.78rem;font-weight:700;color:#e2e0fc;">Trafico que pierdes frente a {kg?.competitor || 'competencia'}</div>
+                  </div>
                   <p style="font-size:0.72rem;color:#8d909b;margin-bottom:12px;">
-                    Keywords con demanda donde {kg?.competitor || 'tu competidor'} posiciona y tú no apareces.
+                    Estas {kwGapItems.length} busquedas las hacen tus potenciales clientes cada mes. Tu competidor {kg?.competitor || ''} aparece en Google para ellas — tu no. Cada keyword es una oportunidad de captar trafico creando contenido o landing pages optimizadas.
                   </p>
                   <table>
                     <thead>
                       <tr>
-                        <th>Keyword</th>
+                        <th>Lo que buscan tus clientes</th>
                         <th style="text-align:right;">Busquedas/mes</th>
-                        {hasPositions && <th style="text-align:center;">Pos. competidor</th>}
+                        {hasPositions && <th style="text-align:center;">Tu competidor</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -1461,13 +1464,13 @@ const donutSVG = buildDonutSVG();
                         <tr>
                           <td style="font-weight:600;color:#e2e0fc;">{kw.keyword}</td>
                           <td style="text-align:right;">{fmt(kw.volume)}</td>
-                          {hasPositions && <td style="text-align:center;color:#69FF87;">{kw.competitorPosition ? `#${kw.competitorPosition}` : '—'}</td>}
+                          {hasPositions && <td style="text-align:center;color:#69FF87;">posicion #{kw.competitorPosition}</td>}
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <div class="callout callout-info" style="margin-top:12px;">
-                    {kwGapItems.length} keywords que tu competidor capta y tú no. Prioriza las de mayor volumen para contenido o landing pages.
+                  <div class="callout callout-success" style="margin-top:12px;">
+                    <strong>Oportunidad:</strong> Estas busquedas suman ~{fmt(kwGapItems.reduce((s: number, k: any) => s + (k.volume || 0), 0))} visitas potenciales al mes. Crear paginas optimizadas para estas keywords puede captar trafico que hoy va a tu competidor.
                   </div>
                 </div>
               )}
@@ -1880,16 +1883,43 @@ const donutSVG = buildDonutSVG();
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                 <span class="material-symbols-outlined" style="color:#E1306C;">photo_camera</span>
                 <span style="font-size:0.72rem;color:#8d909b;">Instagram</span>
+                {instagram?.handle && (
+                  <a href={`https://instagram.com/${instagram.handle}`} target="_blank" style="font-size:0.68rem;color:#E1306C;text-decoration:none;margin-left:auto;">@{instagram.handle}</a>
+                )}
               </div>
-              <div style="font-size:1.5rem;font-weight:900;color:#e2e0fc;">{(instagram?.followers ?? 0) > 0 ? fmt(instagram?.followers) : '—'}</div>
               {(instagram?.followers ?? 0) > 0 ? (
-                <div style="font-size:0.72rem;color:#8d909b;margin-top:4px;">
-                  {!isB2B ? 'Canal clave para marcas B2C.' : 'Presencia social activa.'}
+                <div>
+                  <div style="display:flex;gap:16px;margin-bottom:8px;">
+                    <div>
+                      <div style="font-size:1.2rem;font-weight:900;color:#e2e0fc;">{fmt(instagram.followers)}</div>
+                      <div style="font-size:0.65rem;color:#8d909b;">seguidores</div>
+                    </div>
+                    {instagram.posts && (
+                      <div>
+                        <div style="font-size:1.2rem;font-weight:900;color:#e2e0fc;">{fmt(instagram.posts)}</div>
+                        <div style="font-size:0.65rem;color:#8d909b;">posts</div>
+                      </div>
+                    )}
+                    {instagram.engagementRate != null && (
+                      <div>
+                        <div style={`font-size:1.2rem;font-weight:900;color:${instagram.engagementRate >= 3 ? '#69FF87' : instagram.engagementRate >= 1 ? '#ffb4ab' : '#ffb4ab'};`}>{instagram.engagementRate}%</div>
+                        <div style="font-size:0.65rem;color:#8d909b;">engagement</div>
+                      </div>
+                    )}
+                  </div>
+                  <div style="font-size:0.72rem;color:#c3c6d2;line-height:1.4;">
+                    {instagram.engagementRate != null ? (
+                      instagram.engagementRate >= 3 ? 'Engagement excelente (>3%). Tu audiencia interactua activamente con tu contenido — señal de comunidad fuerte.' :
+                      instagram.engagementRate >= 1 ? 'Engagement aceptable (1-3%). Hay margen para mejorar la interaccion con contenido mas relevante.' :
+                      'Engagement bajo (<1%). Muchos seguidores pero poca interaccion. Revisar la estrategia de contenido.'
+                    ) : (
+                      `${fmt(instagram.followers)} seguidores — ${instagram.followers > 10000 ? 'comunidad relevante' : instagram.followers > 1000 ? 'presencia establecida' : 'en fase de crecimiento'}.`
+                    )}
+                  </div>
                 </div>
               ) : instagram?.handle ? (
                 <div style="font-size:0.72rem;margin-top:4px;">
-                  <a href={`https://instagram.com/${instagram.handle}`} target="_blank" style="color:#E1306C;text-decoration:none;font-weight:600;">@{instagram.handle}</a>
-                  <span style="color:#8d909b;"> — Perfil detectado (datos no accesibles)</span>
+                  <span style="color:#8d909b;">Perfil detectado — datos de engagement no accesibles desde nuestra plataforma.</span>
                 </div>
               ) : (
                 <div style="font-size:0.72rem;color:#8d909b;margin-top:4px;">No se ha detectado perfil de empresa.</div>

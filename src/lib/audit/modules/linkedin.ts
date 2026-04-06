@@ -135,8 +135,38 @@ export async function runLinkedIn(
 }
 
 async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
-  // Try with Apify residential proxy first (needed on Vercel/cloud)
-  // Fall back to direct request (works on localhost)
+  // Method 1: Apify LinkedIn Company Scraper (most reliable, full data)
+  if (APIFY_TOKEN) {
+    try {
+      const actorRes = await axios.post(
+        `https://api.apify.com/v2/acts/riceman~linkedin-company-data-insights-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=25`,
+        { company_linkedin_urls: [url] },
+        { timeout: 30000, headers: { 'Content-Type': 'application/json' } },
+      );
+      const items = actorRes.data;
+      if (Array.isArray(items) && items.length > 0) {
+        const p = items[0];
+        console.log(`[linkedin] Apify Actor: ${p.company_name} — ${p.follower_count} followers, ${p.employee_count} employees`);
+        return {
+          found: true,
+          url,
+          name: p.company_name || undefined,
+          followers: p.follower_count || undefined,
+          employees: p.employee_count || undefined,
+          description: (p.description || '').slice(0, 300) || undefined,
+          industry: p.industries?.[0] || undefined,
+          specialties: p.specialties || undefined,
+          headquarters: p.hq_full_address || undefined,
+          website: p.website || undefined,
+          yearFounded: p.year_founded || undefined,
+        };
+      }
+    } catch (e) {
+      console.log(`[linkedin] Apify Actor failed: ${(e as Error).message?.slice(0, 80)}`);
+    }
+  }
+
+  // Method 2: HTML scraping with Googlebot UA
   const attempts = [
     ...(APIFY_TOKEN
       ? [{ headers: HEADERS, timeout: 12000, maxRedirects: 3, validateStatus: (s: number) => s < 500, ...apifyProxyConfig() }]
@@ -151,7 +181,6 @@ async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
       const res = await axios.get(url, config);
       const $ = cheerio.load(res.data as string);
 
-      // LinkedIn embeds rich data in og: meta tags for crawlers
       const ogTitle = $('meta[property="og:title"]').attr('content') || '';
       const ogDesc = $('meta[property="og:description"]').attr('content') || '';
       const name = ogTitle.replace(/\s*\|\s*LinkedIn\s*$/i, '').trim();
