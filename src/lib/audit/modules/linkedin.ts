@@ -78,7 +78,7 @@ export async function runLinkedIn(
 ): Promise<LinkedInResult> {
   let linkedinUrl = userLinkedinUrl || crawlData.linkedinUrl;
 
-  // Fallback: try to extract LinkedIn URL from the site directly
+  // ── Strategy 1: Extract LinkedIn URL from website HTML ─────────
   if (!linkedinUrl && crawlData.finalUrl) {
     const extracted = await extractLinkedInFromSite(crawlData.finalUrl);
     if (extracted) {
@@ -86,68 +86,70 @@ export async function runLinkedIn(
     }
   }
 
-  // Fallback 2: try direct LinkedIn URL from domain name (multiple slug variants)
-  if (!linkedinUrl && crawlData.finalUrl) {
-    const domainName = new URL(crawlData.finalUrl).hostname.replace(/^www\./, '').split('.')[0];
-    // Try: frutaseloy, frutas-eloy (split compound words with hyphens)
-    const slugs = [domainName];
-    // Add hyphenated version for compound names (frutaseloy → frutas-eloy)
-    if (domainName.length > 6 && !domainName.includes('-')) {
-      // Try common split points
-      for (let i = 4; i <= domainName.length - 3; i++) {
-        slugs.push(domainName.slice(0, i) + '-' + domainName.slice(i));
+  // ── Strategy 2: Try Apify Actor directly with company name slug ─
+  // This is the most reliable method — the Actor uses authenticated
+  // proxies that bypass LinkedIn's login wall. Skip HTTP validation.
+  if (!linkedinUrl && APIFY_TOKEN) {
+    const slugCandidates: string[] = [];
+
+    // Company name → slug (most likely: "Frutas Eloy" → "frutas-eloy")
+    const companySlug = crawlData.companyName?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (companySlug) slugCandidates.push(companySlug);
+
+    // Domain name as slug
+    const domainName = crawlData.finalUrl
+      ? new URL(crawlData.finalUrl).hostname.replace(/^www\./, '').split('.')[0]
+      : '';
+    if (domainName && !slugCandidates.includes(domainName)) slugCandidates.push(domainName);
+
+    // Domain with hyphens at common word boundaries
+    if (domainName && domainName.length > 6 && !domainName.includes('-') && domainName !== companySlug) {
+      // Only try a few strategic splits, not every position
+      for (let i = 4; i <= Math.min(domainName.length - 3, 8); i++) {
+        const candidate = domainName.slice(0, i) + '-' + domainName.slice(i);
+        if (!slugCandidates.includes(candidate)) slugCandidates.push(candidate);
       }
     }
-    // Also try company name from crawl
-    const companySlug = crawlData.companyName?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    if (companySlug && !slugs.includes(companySlug)) slugs.push(companySlug);
 
-    for (const slug of slugs) {
-      try {
-        const directUrl = `https://www.linkedin.com/company/${slug}`;
-        const testRes = await axios.get(directUrl, {
-          timeout: 5000,
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' },
-          validateStatus: (s) => s < 500,
-          ...apifyProxyConfig(),
-        });
-        if (testRes.status === 200 && String(testRes.data).includes('followers')) {
-          linkedinUrl = directUrl;
-          console.log(`[linkedin] Found via direct URL: ${directUrl} (slug: ${slug})`);
-          break;
-        }
-      } catch { /* try next slug */ }
+    for (const slug of slugCandidates.slice(0, 5)) {
+      const candidateUrl = `https://www.linkedin.com/company/${slug}`;
+      console.log(`[linkedin] Trying Apify Actor with slug: ${slug}`);
+      const profile = await fetchLinkedInProfile(candidateUrl);
+      if (profile.found && profile.followers && profile.followers > 0) {
+        console.log(`[linkedin] Apify Actor success: ${profile.name} — ${profile.followers} followers (slug: ${slug})`);
+        // Fetch competitors before returning
+        const competitorResults = await fetchCompetitorLinkedIn(competitorUrls);
+        return { ...profile, ...(competitorResults.length > 0 && { competitors: competitorResults }) };
+      }
     }
   }
 
-  // Fallback 3: search Google for "site:linkedin.com/company {brand}"
+  // ── Strategy 3: Google search for LinkedIn URL ─────────────────
   if (!linkedinUrl) {
     linkedinUrl = await searchLinkedInUrl(crawlData) || undefined;
   }
 
   if (!linkedinUrl) {
-    return { found: false, reason: 'No LinkedIn page found via website or search' };
+    return { found: false, reason: 'No LinkedIn page found via website, Apify, or search' };
   }
 
   // Normalise to absolute URL
   const url = linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`;
   const profile = await fetchLinkedInProfile(url);
 
-  // Try to find LinkedIn pages for up to 3 competitors
-  const competitorResults: LinkedInCompetitor[] = [];
-  if (competitorUrls.length > 0) {
-    const found = await Promise.all(
-      competitorUrls.slice(0, 3).map(extractLinkedInFromSite),
-    );
-    for (const cp of found) {
-      if (cp) competitorResults.push(cp);
-    }
-  }
-
+  const competitorResults = await fetchCompetitorLinkedIn(competitorUrls);
   return {
     ...profile,
     ...(competitorResults.length > 0 && { competitors: competitorResults }),
   };
+}
+
+async function fetchCompetitorLinkedIn(competitorUrls: string[]): Promise<LinkedInCompetitor[]> {
+  if (competitorUrls.length === 0) return [];
+  const found = await Promise.all(
+    competitorUrls.slice(0, 3).map(extractLinkedInFromSite),
+  );
+  return found.filter(Boolean) as LinkedInCompetitor[];
 }
 
 async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
