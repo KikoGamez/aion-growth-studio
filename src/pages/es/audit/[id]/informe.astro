@@ -1872,8 +1872,15 @@ const donutSVG = buildDonutSVG();
                   <div style="font-size:0.65rem;color:#8d909b;">/5 ponderado</div>
                 </div>
                 <div style="flex:1;min-width:200px;">
-                  <div style="font-size:0.82rem;font-weight:700;color:#e2e0fc;margin-bottom:6px;">Reputacion online ({fmt(repRaw.totalReviews ?? 0)} resenas)</div>
+                  <div style="font-size:0.82rem;font-weight:700;color:#e2e0fc;margin-bottom:6px;">Reputacion online ({fmt((gbp?.reviewCount ?? 0) + (repRaw.totalReviews ?? 0))} resenas)</div>
                   <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    {gbp?.rating && (
+                      <div style="display:flex;align-items:center;gap:6px;background:rgba(51,51,72,0.5);border-radius:8px;padding:5px 12px;">
+                        <span style="font-size:0.75rem;font-weight:700;color:#e2e0fc;">Google</span>
+                        <span style={`font-size:0.75rem;font-weight:800;color:${gbp.rating >= 4.0 ? '#69FF87' : gbp.rating >= 3.0 ? '#ffb4ab' : '#ffb4ab'};`}>{gbp.rating}</span>
+                        <span style="font-size:0.65rem;color:#8d909b;">({fmt(gbp.reviewCount)})</span>
+                      </div>
+                    )}
                     {ratingSources.map((src: any) => (
                       <div style="display:flex;align-items:center;gap:6px;background:rgba(51,51,72,0.5);border-radius:8px;padding:5px 12px;">
                         <span style="font-size:0.75rem;font-weight:700;color:#e2e0fc;">{src.name}</span>
@@ -1885,7 +1892,7 @@ const donutSVG = buildDonutSVG();
                 </div>
               </div>
               <div style="font-size:0.78rem;color:#c3c6d2;line-height:1.5;">
-                {(repRaw.combinedRating ?? 0) >= 4.2 ? 'Excelente reputacion online. Las valoraciones refuerzan la confianza de nuevos clientes.' : (repRaw.combinedRating ?? 0) >= 3.5 ? 'Buena reputacion con margen de mejora.' : 'Reputacion que necesita atencion.'}
+                {(() => { const best = Math.max(gbp?.rating ?? 0, repRaw.combinedRating ?? 0); return best >= 4.2 ? 'Excelente reputacion online. Las valoraciones refuerzan la confianza de nuevos clientes.' : best >= 3.5 ? 'Buena reputacion con margen de mejora.' : 'Reputacion que necesita atencion.'; })()}
               </div>
             </div>
           )}
