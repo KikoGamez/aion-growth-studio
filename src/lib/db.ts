@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import {
   DEMO_CLIENT, DEMO_SNAPSHOTS, DEMO_ALERTS, DEMO_CONTEXT_ENTRIES,
+  DEMO_RECOMMENDATIONS, DEMO_ONBOARDING,
   type Client, type Snapshot, type Alert, type ContextEntry, type Tier,
 } from './demo-data';
 
@@ -263,7 +264,7 @@ export interface ClientOnboarding {
 }
 
 export async function getClientOnboarding(clientId: string): Promise<ClientOnboarding | null> {
-  if (IS_DEMO) return null;
+  if (IS_DEMO) return DEMO_ONBOARDING as ClientOnboarding;
   const sb = getSupabase();
   const { data, error } = await sb
     .from('client_onboarding')
@@ -391,7 +392,7 @@ export async function logRecommendation(rec: Recommendation): Promise<string | n
 }
 
 export async function getActiveRecommendations(clientId: string): Promise<Recommendation[]> {
-  if (IS_DEMO) return [];
+  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => ['pending', 'accepted', 'in_progress'].includes(r.status)) as Recommendation[];
   const sb = getSupabase();
   const { data, error } = await sb
     .from('recommendations_log')
@@ -405,7 +406,7 @@ export async function getActiveRecommendations(clientId: string): Promise<Recomm
 }
 
 export async function getAllRecommendations(clientId: string): Promise<Recommendation[]> {
-  if (IS_DEMO) return [];
+  if (IS_DEMO) return DEMO_RECOMMENDATIONS as Recommendation[];
   const sb = getSupabase();
   const { data, error } = await sb
     .from('recommendations_log')
@@ -449,7 +450,10 @@ export async function logInteraction(
 // ─── Briefing ─────────────────────────────────────────────────────────────────
 
 export async function getActiveBriefing(clientId: string): Promise<Record<string, any> | null> {
-  if (IS_DEMO) return null;
+  if (IS_DEMO) {
+    const latest = DEMO_SNAPSHOTS[DEMO_SNAPSHOTS.length - 1];
+    return latest?.pipeline_output?.briefing || null;
+  }
   // Briefing is stored in the latest snapshot's pipeline_output.briefing
   const snapshot = await getLatestSnapshot(clientId);
   if (snapshot.id === 'empty') return null;

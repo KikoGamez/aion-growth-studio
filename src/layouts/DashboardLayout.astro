@@ -23,9 +23,9 @@ const {
   title = 'AION Dashboard',
   currentPath = '',
   tier = 'señales',
-  clientName = 'Soluciones Verdes',
-  domain = 'solucionesverdes.es',
-  lastReportMonth = 'Mar 2026',
+  clientName = 'TechSolutions Barcelona',
+  domain = 'techsolutions.es',
+  lastReportMonth = 'abril-2026',
 } = Astro.props;
 ---
 
@@ -57,7 +57,7 @@ const {
   <!-- Mobile overlay -->
   <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden" onclick="document.getElementById('sidebar').classList.add('-translate-x-full'); this.classList.add('hidden');"></div>
 
-  <Sidebar currentPath={currentPath} tier={tier} clientName={clientName} />
+  <Sidebar currentPath={currentPath} tier={tier} clientName={clientName} lastReportMonth={lastReportMonth} />
 
   <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;margin-left:256px;">
     <TopBar clientName={clientName} domain={domain} tier={tier} lastReportMonth={lastReportMonth} />

@@ -1,13 +1,8 @@
 ---
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import MetricCard from '../../components/dashboard/MetricCard.astro';
-import AlertCard from '../../components/dashboard/AlertCard.astro';
 import ActionItem from '../../components/dashboard/ActionItem.astro';
-import TierGate from '../../components/dashboard/TierGate.astro';
-import UpsellCallout from '../../components/dashboard/UpsellCallout.astro';
-import GEOProgressBar from '../../components/charts/GEOProgressBar.astro';
-import { getClient, getLatestSnapshot, getAlerts, getContextEntries, getActiveRecommendations, findAuditByEmail, createSnapshotFromAudit } from '../../lib/db';
+import { getClient, getLatestSnapshot, getAllSnapshots, getActiveRecommendations, getAllRecommendations, findAuditByEmail, createSnapshotFromAudit } from '../../lib/db';
 import type { Tier } from '../../lib/demo-data';
 
 const client = Astro.locals.client ?? await getClient();
@@ -29,64 +24,141 @@ if (isEmptySnapshot && user?.email) {
 }
 
 const hasData = snapshot.id !== 'empty';
-const alerts = hasData ? await getAlerts(client.id) : [];
-const contextEntries = hasData ? await getContextEntries(client.id) : [];
 const tier: Tier = client.tier;
 
-const canAccessSeñales = tier === 'señales' || tier === 'palancas';
+// ─── All snapshots for sparklines & deltas ─────────────────────────────────
+const allSnapshots = hasData ? await getAllSnapshots(client.id) : [];
+const latestIdx = allSnapshots.findIndex(s => s.id === snapshot.id);
+const prevSnap = latestIdx > 0 ? allSnapshots[latestIdx - 1] : null;
 
 const r = snapshot.pipeline_output || {};
-const score = snapshot.score || 0;
-const prevScore = 0; // will be calculated from previous snapshot when available
-const geo = r.geo || {};
-const seo = r.seo || {};
-const visits = seo.organicTrafficEstimate || 12400;
-const visits_prev = 10800;
+const pr = prevSnap?.pipeline_output || {};
 
-// Action items: use tracked recommendations (from DB) + fallback to briefing/insights
-const briefing = r.briefing;
-const trackedRecs = hasData ? await getActiveRecommendations(client.id) : [];
-interface ActionEntry { title: string; status: 'done' | 'in_progress' | 'pending'; impact: 'high' | 'medium' | 'low'; description?: string; recommendationId?: string; }
-const actionItems: ActionEntry[] = [
-  // 1. Tracked recommendations from DB (have IDs, can be toggled)
-  ...trackedRecs.map(rec => ({
-    title: rec.title,
-    status: (rec.status as 'done' | 'in_progress' | 'pending') || 'pending',
-    impact: (rec.impact as 'high' | 'medium' | 'low') || 'medium',
-    description: rec.description,
-    recommendationId: rec.id,
-  })),
-  // 2. If no tracked recs, show briefing priorities (not yet seeded to DB)
-  ...(trackedRecs.length === 0 && briefing?.priorities ? briefing.priorities.map((p: any) => ({
-    title: p.title,
-    status: 'pending' as const,
-    impact: (p.impact as 'high' | 'medium' | 'low') || 'high',
-    description: p.description,
-  })) : []),
-  // 3. If no briefing either, show generic insights
-  ...(trackedRecs.length === 0 && !briefing ? (r.insights?.bullets || []).slice(0, 3).map((b: string) => ({
-    title: b,
-    status: 'pending' as const,
-    impact: 'medium' as const,
-  })) : []),
+// ─── Score global ──────────────────────────────────────────────────────────
+const score = snapshot.score || 0;
+const prevScore = prevSnap?.score || 0;
+const scoreDelta = score - prevScore;
+const scoreDir = scoreDelta > 0 ? 'up' : scoreDelta < 0 ? 'down' : 'stable';
+const scoreArrow = scoreDelta > 2 ? '↑' : scoreDelta > 0 ? '↗' : scoreDelta === 0 ? '→' : scoreDelta > -3 ? '↘' : '↓';
+const scoreColor = score >= 70 ? '#1D9E75' : score >= 40 ? '#BA7517' : '#E24B4A';
+const scoreHistory = allSnapshots.map(s => s.score || 0);
+
+// ─── 6 Pillar scores ──────────────────────────────────────────────────────
+interface PillarData {
+  key: string;
+  label: string;
+  icon: string;
+  value: number;
+  prev: number;
+  sparkline: number[];
+}
+
+function extractPillar(snap: Record<string, any>, key: string): number {
+  switch (key) {
+    case 'seo': return Math.min(100, Math.round((snap.seo?.keywordsTop10 || 0) * 2));
+    case 'geo': return Math.round(((snap.geo?.mentions || 0) / Math.max(snap.geo?.totalQueries || 15, 1)) * 100);
+    case 'web': return snap.pagespeed?.mobile?.performance || 0;
+    case 'conversion': return snap.conversion?.funnelScore || 0;
+    case 'content': {
+      const posts = snap.content_cadence?.postsLast90Days || 0;
+      if (posts >= 8) return 90;
+      if (posts >= 4) return 60;
+      if (posts >= 2) return 40;
+      if (posts >= 1) return 20;
+      return 5;
+    }
+    case 'reputation': {
+      const rating = snap.reputation?.gbpRating;
+      const reviews = snap.reputation?.totalReviews || 0;
+      if (!rating) return 0;
+      const ratingScore = Math.round((rating / 5) * 60);
+      const reviewScore = Math.min(40, reviews * 2);
+      return Math.min(100, ratingScore + reviewScore);
+    }
+    default: return 0;
+  }
+}
+
+const pillarDefs = [
+  { key: 'seo', label: 'SEO', icon: 'search' },
+  { key: 'geo', label: 'GEO', icon: 'psychology' },
+  { key: 'web', label: 'Web', icon: 'speed' },
+  { key: 'conversion', label: 'Conversión', icon: 'conversion_path' },
+  { key: 'content', label: 'Contenido', icon: 'article' },
+  { key: 'reputation', label: 'Reputación', icon: 'star' },
 ];
 
-// Quick wins from briefing
-const quickWins: string[] = briefing?.quickWins || [];
+const pillars: PillarData[] = pillarDefs.map(p => ({
+  ...p,
+  value: extractPillar(r, p.key),
+  prev: extractPillar(pr, p.key),
+  sparkline: allSnapshots.map(s => extractPillar(s.pipeline_output || {}, p.key)),
+}));
 
-const doneCount = actionItems.filter(a => a.status === 'done').length;
-const progressPct = actionItems.length > 0 ? Math.round((doneCount / actionItems.length) * 100) : 0;
+// ─── Changes this week ────────────────────────────────────────────────────
+interface Change { text: string; pillar: string; }
+const improvements: Change[] = [];
+const deteriorations: Change[] = [];
 
-// Next review date
-const nextReview = new Date();
-nextReview.setMonth(nextReview.getMonth() + 1);
-nextReview.setDate(12);
-const reviewDay = nextReview.getDate();
-const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase();
+if (prevSnap) {
+  for (const p of pillars) {
+    const delta = p.value - p.prev;
+    if (delta >= 3) improvements.push({ text: `${p.label}: ${p.prev} → ${p.value} (+${delta})`, pillar: p.key });
+    else if (delta <= -3) deteriorations.push({ text: `${p.label}: ${p.prev} → ${p.value} (${delta})`, pillar: p.key });
+  }
+  // Traffic change
+  const trafficNow = r.seo?.organicTrafficEstimate || 0;
+  const trafficPrev = pr.seo?.organicTrafficEstimate || 0;
+  const trafficPct = trafficPrev > 0 ? Math.round(((trafficNow - trafficPrev) / trafficPrev) * 100) : 0;
+  if (trafficPct >= 5) improvements.push({ text: `Tráfico orgánico: +${trafficPct}% (${trafficPrev.toLocaleString()} → ${trafficNow.toLocaleString()})`, pillar: 'seo' });
+  else if (trafficPct <= -5) deteriorations.push({ text: `Tráfico orgánico: ${trafficPct}% (${trafficPrev.toLocaleString()} → ${trafficNow.toLocaleString()})`, pillar: 'seo' });
+  // GBP reviews
+  const reviewsNow = r.reputation?.totalReviews || 0;
+  const reviewsPrev = pr.reputation?.totalReviews || 0;
+  if (reviewsNow > reviewsPrev) improvements.push({ text: `GBP: ${reviewsNow - reviewsPrev} reseñas nuevas (total ${reviewsNow}, ${r.reputation?.gbpRating || '?'}★)`, pillar: 'reputation' });
+}
+
+const briefing = r.briefing;
+const stableMessage = briefing?.summary || 'Tu web se mantiene estable esta semana — sin cambios significativos.';
+
+// ─── Recommendations & Strategic Plan ─────────────────────────────────────
+const allRecs = hasData ? await getAllRecommendations(client.id) : [];
+
+// Plan Estratégico = what the client committed to (accepted + in_progress)
+const planItems = allRecs.filter(r => r.status === 'accepted' || r.status === 'in_progress');
+const planDone = allRecs.filter(r => r.status === 'done');
+const planTotal = planItems.length + planDone.length;
+const planProgressPct = planTotal > 0 ? Math.round((planDone.length / planTotal) * 100) : 0;
+
+// New suggestions from AION (pending = not yet reviewed by client)
+const pendingRecs = allRecs.filter(r => r.status === 'pending');
+const priorityRec = pendingRecs.find(r => r.impact === 'high') || pendingRecs[0];
+
+// ─── Competitor table ─────────────────────────────────────────────────────
+interface CompRow { name: string; score: number; trend: string; vs: 'above' | 'below' | 'tie'; }
+const ctItems = r.competitor_traffic?.items || [];
+const compRows: CompRow[] = ctItems.map((c: any) => {
+  // Rough competitor score based on available data
+  const kwScore = Math.min(100, Math.round((c.keywordsTop10 || 0) * 1.5));
+  const psScore = c.mobilePerformance || 50;
+  const compScore = Math.round((kwScore + psScore) / 2);
+  // Find in prev snapshot for trend
+  const prevComp = pr.competitor_traffic?.items?.find((pc: any) => pc.domain === c.domain);
+  const prevKw = Math.min(100, Math.round((prevComp?.keywordsTop10 || c.keywordsTop10 || 0) * 1.5));
+  const prevPs = prevComp?.mobilePerformance || psScore;
+  const prevCompScore = Math.round((prevKw + prevPs) / 2);
+  const diff = compScore - prevCompScore;
+  return {
+    name: c.domain,
+    score: compScore,
+    trend: diff > 0 ? `+${diff}` : diff < 0 ? String(diff) : '=',
+    vs: compScore > score ? 'above' : compScore < score ? 'below' : 'tie',
+  };
+});
 ---
 
 <DashboardLayout
-  title="Overview"
+  title="Resumen"
   currentPath="/dashboard"
   tier={tier}
   clientName={client.name}
@@ -95,62 +167,34 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
 >
 
 {!hasData ? (
-  <!-- ══ Empty State: First Audit ══ -->
+  <!-- ══ Empty State ══ -->
   <div style="max-width:640px;margin:80px auto;text-align:center;">
     <div style="font-size:48px;margin-bottom:16px;">📊</div>
     <h2 style="font-size:24px;font-weight:700;color:#1A1A2E;margin-bottom:8px;">
       Lanza tu primer diagnóstico
     </h2>
     <p style="color:#666;margin-bottom:32px;line-height:1.6;">
-      Analiza tu presencia digital y la de tus competidores. En menos de 3 minutos tendrás un informe completo con tu score, oportunidades SEO, visibilidad IA y más.
+      Analiza tu presencia digital y la de tus competidores. En menos de 3 minutos tendrás un informe completo.
     </p>
-
     <form id="first-audit-form" style="text-align:left;display:flex;flex-direction:column;gap:20px;">
-      <!-- URL principal -->
       <div>
-        <label for="audit-url" style="display:block;font-weight:600;margin-bottom:6px;color:#1A1A2E;">
-          Tu sitio web
-        </label>
-        <input type="url" id="audit-url" name="url" required
-          placeholder="https://tuempresa.es"
-          style="width:100%;padding:12px 16px;border:1px solid #ddd;border-radius:8px;font-size:15px;"
-        />
+        <label for="audit-url" style="display:block;font-weight:600;margin-bottom:6px;color:#1A1A2E;">Tu sitio web</label>
+        <input type="url" id="audit-url" name="url" required placeholder="https://tuempresa.es"
+          style="width:100%;padding:12px 16px;border:1px solid #ddd;border-radius:8px;font-size:15px;" />
       </div>
-
-      <!-- Competidores -->
       <div>
-        <label style="display:block;font-weight:600;margin-bottom:6px;color:#1A1A2E;">
-          Competidores (hasta 3)
-        </label>
-        <p style="font-size:13px;color:#888;margin-bottom:8px;">
-          Introduce las URLs de empresas con las que compites. Verificaremos que son accesibles.
-        </p>
+        <label style="display:block;font-weight:600;margin-bottom:6px;color:#1A1A2E;">Competidores (hasta 3)</label>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          <input type="url" name="comp1" placeholder="https://competidor1.es"
-            style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
-          <input type="url" name="comp2" placeholder="https://competidor2.es"
-            style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
-          <input type="url" name="comp3" placeholder="https://competidor3.es"
-            style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
+          <input type="url" name="comp1" placeholder="https://competidor1.es" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
+          <input type="url" name="comp2" placeholder="https://competidor2.es" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
+          <input type="url" name="comp3" placeholder="https://competidor3.es" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;" />
         </div>
       </div>
-
-      <!-- Validation status -->
       <div id="validation-status" style="display:none;padding:12px 16px;border-radius:8px;font-size:14px;"></div>
-
-      <!-- Buttons -->
       <div style="display:flex;gap:12px;">
-        <button type="button" id="validate-btn"
-          style="flex:1;padding:12px;background:#F8F9FB;color:#1A4B8C;border:1px solid #1A4B8C;border-radius:8px;font-weight:600;cursor:pointer;">
-          Verificar URLs
-        </button>
-        <button type="submit" id="launch-btn" disabled
-          style="flex:1;padding:12px;background:#1A4B8C;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;opacity:0.5;">
-          Lanzar diagnóstico
-        </button>
+        <button type="button" id="validate-btn" style="flex:1;padding:12px;background:#F8F9FB;color:#1A4B8C;border:1px solid #1A4B8C;border-radius:8px;font-weight:600;cursor:pointer;">Verificar URLs</button>
+        <button type="submit" id="launch-btn" disabled style="flex:1;padding:12px;background:#1A4B8C;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;opacity:0.5;">Lanzar diagnóstico</button>
       </div>
-
-      <!-- Progress -->
       <div id="audit-progress" style="display:none;">
         <div style="background:#f0f0f0;border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px;">
           <div id="progress-bar" style="height:100%;background:#1A4B8C;width:0%;transition:width 0.5s;"></div>
@@ -168,41 +212,32 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
     const progressDiv = document.getElementById('audit-progress') as HTMLDivElement;
     const progressBar = document.getElementById('progress-bar') as HTMLDivElement;
     const progressText = document.getElementById('progress-text') as HTMLParagraphElement;
-
     let validatedUrls: string[] = [];
 
     validateBtn.addEventListener('click', async () => {
       const url = (form.querySelector('[name="url"]') as HTMLInputElement).value.trim();
-      const comps = ['comp1', 'comp2', 'comp3']
-        .map(n => (form.querySelector(`[name="${n}"]`) as HTMLInputElement).value.trim())
-        .filter(Boolean);
-
+      const comps = ['comp1', 'comp2', 'comp3'].map(n => (form.querySelector(`[name="${n}"]`) as HTMLInputElement).value.trim()).filter(Boolean);
       if (!url) { showStatus('Introduce tu URL', 'error'); return; }
-
       validateBtn.textContent = 'Verificando...';
       validateBtn.disabled = true;
       const allUrls = [url, ...comps];
       const results: { url: string; ok: boolean }[] = [];
-
       for (const u of allUrls) {
         try {
           const normalized = u.startsWith('http') ? u : `https://${u}`;
           const res = await fetch(`/api/validate-url?url=${encodeURIComponent(normalized)}`);
           const data = await res.json();
           results.push({ url: normalized, ok: data.reachable });
-        } catch {
-          results.push({ url: u, ok: false });
-        }
+        } catch { results.push({ url: u, ok: false }); }
       }
-
       const failed = results.filter(r => !r.ok);
       if (failed.length > 0) {
-        showStatus(`No se pudo acceder a: ${failed.map(f => f.url).join(', ')}. Verifica que las URLs son correctas.`, 'error');
+        showStatus(`No se pudo acceder a: ${failed.map(f => f.url).join(', ')}`, 'error');
         validateBtn.textContent = 'Verificar URLs';
         validateBtn.disabled = false;
       } else {
         validatedUrls = results.map(r => r.url);
-        showStatus(`${results.length} URL${results.length > 1 ? 's' : ''} verificada${results.length > 1 ? 's' : ''} correctamente`, 'success');
+        showStatus(`${results.length} URL${results.length > 1 ? 's' : ''} verificada${results.length > 1 ? 's' : ''}`, 'success');
         launchBtn.disabled = false;
         launchBtn.style.opacity = '1';
         validateBtn.textContent = 'URLs verificadas';
@@ -212,51 +247,33 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (validatedUrls.length === 0) return;
-
       launchBtn.disabled = true;
       launchBtn.textContent = 'Lanzando...';
       progressDiv.style.display = 'block';
-
-      const mainUrl = validatedUrls[0];
-      const competitors = validatedUrls.slice(1);
-
-      // Start audit
       const startRes = await fetch('/api/audit/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: mainUrl, email: '', selectedCompetitors: competitors }),
+        body: JSON.stringify({ url: validatedUrls[0], email: '', selectedCompetitors: validatedUrls.slice(1) }),
       });
       const { audit_id } = await startRes.json();
       if (!audit_id) { showStatus('Error al iniciar el diagnóstico', 'error'); return; }
-
-      // Poll for completion
       progressText.textContent = 'Analizando tu sitio web...';
       const phases = ['Crawling', 'Analizando SEO', 'Evaluando competidores', 'Generando insights', 'Finalizando'];
       let phase = 0;
-
       const poll = setInterval(async () => {
         const res = await fetch(`/api/audit/${audit_id}/status`);
         const data = await res.json();
         const pct = data.progress || Math.min(95, phase * 20 + 10);
         progressBar.style.width = `${pct}%`;
         progressText.textContent = phases[Math.min(phase, phases.length - 1)] + '...';
-
         if (data.status === 'completed' || data.currentModule === 'done') {
           clearInterval(poll);
           progressBar.style.width = '100%';
           progressText.textContent = 'Vinculando a tu dashboard...';
-
-          // Link audit to client snapshot
-          await fetch('/api/dashboard/link-audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ auditId: audit_id }),
-          });
-
+          await fetch('/api/dashboard/link-audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auditId: audit_id }) });
           progressText.textContent = '¡Listo! Cargando dashboard...';
           setTimeout(() => window.location.reload(), 1000);
         }
-
         phase++;
       }, 10000);
     });
@@ -269,195 +286,300 @@ const reviewMonth = nextReview.toLocaleDateString('es-ES', { month: 'short' }).t
     }
   </script>
 ) : (
-  <div style="display:flex;flex-direction:column;gap:32px;">
+  <div style="display:flex;flex-direction:column;gap:28px;">
 
-    <!-- Metric Cards -->
-    <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
-      <MetricCard
-        label="Score Presencia Digital"
-        value={score}
-        delta={`+${score - prevScore}`}
-        deltaDir="up"
-        badge="Actualizado"
-        badgeBg="#e1f5ee"
-        badgeColor="#085041"
-      >
-        <div style="margin-top:24px;height:48px;display:flex;align-items:flex-end;gap:3px;">
-          {[62,65,68,66,70,72,74].map((v, i) => {
-            const h = Math.round((v / 80) * 48);
-            const op = i === 6 ? 1 : 0.1 + (i / 7) * 0.7;
-            return <div style={`flex:1;background:#00346d;height:${h}px;opacity:${op};border-radius:2px 2px 0 0;`}></div>;
-          })}
+    <!-- ══ BLOQUE 1: Score Global + Tendencia ══ -->
+    <section style="background:white;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;align-items:center;gap:32px;">
+      <!-- Score big number -->
+      <div style="text-align:center;min-width:140px;">
+        <div style={`font-size:64px;font-weight:900;letter-spacing:-0.04em;color:${scoreColor};line-height:1;`}>{score}</div>
+        <div style="font-size:12px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-top:4px;">de 100</div>
+      </div>
+      <!-- Trend -->
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <span style={`font-size:28px;color:${scoreDelta >= 0 ? '#1D9E75' : '#E24B4A'};`}>{scoreArrow}</span>
+          <span style={`font-size:20px;font-weight:800;color:${scoreDelta >= 0 ? '#1D9E75' : '#E24B4A'};`}>
+            {scoreDelta >= 0 ? '+' : ''}{scoreDelta} puntos vs semana pasada
+          </span>
         </div>
-        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
-          <span>Score: {prevScore}</span>
-          <span>Score: {score}</span>
-        </div>
-      </MetricCard>
-
-      <MetricCard
-        label="Visitas Mensuales"
-        value={visits >= 1000 ? `${(visits/1000).toFixed(1)}K` : String(visits)}
-        delta="+18%"
-        deltaDir="up"
-        badge="GA4"
-        note="Incremento sostenido orgánico impulsado por contenido estacional."
-      />
-
-      <MetricCard
-        label="Visibilidad GEO"
-        value={`${geo.mentions || 4}/${geo.totalQueries || 15}`}
-        delta="+1"
-        deltaDir="up"
-        badge="menciones IA"
-        badgeBg="#d6e3ff"
-        badgeColor="#00346d"
-        note="Menciones en Local Pack han crecido un 4% este mes."
-      >
-        <GEOProgressBar current={geo.mentions || 4} total={geo.totalQueries || 15} />
-      </MetricCard>
-    </section>
-
-    <!-- Bento: Alerts + Plan de Acción -->
-    <section style="display:grid;grid-template-columns:4fr 8fr;gap:32px;align-items:start;">
-
-      <!-- Alertas -->
-      <div style="background:#f5f2ff;padding:32px;border-radius:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <h3 style="font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#1a1a2e;">Alertas Activas</h3>
-          <a href="/dashboard/alerts" style="font-size:12px;color:#205db0;font-weight:600;text-decoration:none;">Ver todas →</a>
-        </div>
-
-        {canAccessSeñales ? (
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            {alerts.slice(0, 4).map(alert => (
-              <AlertCard alert={alert} />
-            ))}
-          </div>
-        ) : (
-          <TierGate requiredTier="señales" currentTier={tier} featureName="Alertas">
-            <div slot="preview" style="display:flex;flex-direction:column;gap:12px;">
-              {alerts.slice(0, 2).map(alert => (
-                <AlertCard alert={alert} />
-              ))}
-            </div>
-          </TierGate>
-        )}
-
-        {!canAccessSeñales && (
-          <div style="margin-top:16px;">
-            <UpsellCallout tier="señales" text="Activa Señales para recibir alertas automáticas sobre tu SEO, GEO y competidores." />
-          </div>
+        {briefing?.summary && (
+          <p style="font-size:14px;color:#434750;line-height:1.6;max-width:600px;">{briefing.summary}</p>
         )}
       </div>
+      <!-- Sparkline mini -->
+      <div style="display:flex;align-items:flex-end;gap:3px;height:48px;min-width:120px;">
+        {scoreHistory.map((v, i) => {
+          const max = Math.max(...scoreHistory, 1);
+          const h = Math.round((v / max) * 48);
+          const isLast = i === scoreHistory.length - 1;
+          const color = isLast ? scoreColor : '#cbd5e1';
+          return <div style={`flex:1;background:${color};height:${h}px;border-radius:2px 2px 0 0;min-width:8px;`}></div>;
+        })}
+      </div>
+    </section>
 
-      <!-- Plan de Acción -->
-      <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;">
+    <!-- ══ BLOQUE 2: 6 Pillar Cards ══ -->
+    <section style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;">
+      {pillars.map(p => {
+        const delta = p.value - p.prev;
+        const pColor = p.value >= 70 ? '#1D9E75' : p.value >= 40 ? '#BA7517' : '#E24B4A';
+        const deltaColor = delta > 0 ? '#1D9E75' : delta < 0 ? '#E24B4A' : '#94a3b8';
+        const deltaText = delta > 0 ? `+${delta}` : delta < 0 ? String(delta) : '=';
+        const max = Math.max(...p.sparkline, 1);
+        return (
+          <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="material-symbols-outlined" style={`font-size:16px;color:${pColor};`}>{p.icon}</span>
+              <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">{p.label}</span>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:6px;">
+              <span style={`font-size:28px;font-weight:900;color:${pColor};letter-spacing:-0.03em;`}>{p.value}</span>
+              <span style={`font-size:12px;font-weight:700;color:${deltaColor};`}>{deltaText}</span>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:2px;height:24px;">
+              {p.sparkline.map((v, i) => {
+                const h = Math.max(2, Math.round((v / max) * 24));
+                const isLast = i === p.sparkline.length - 1;
+                return <div style={`flex:1;background:${isLast ? pColor : '#e2e8f0'};height:${h}px;border-radius:1px 1px 0 0;`}></div>;
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </section>
+
+    <!-- ══ BLOQUE 3: Cambios esta semana ══ -->
+    <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1a1a2e;margin-bottom:16px;">
+        Cambios esta semana
+      </h3>
+      {(improvements.length > 0 || deteriorations.length > 0) ? (
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
           <div>
-            <h3 style="font-size:18px;font-weight:900;letter-spacing:-0.03em;color:#1a1a2e;">Plan de Acción Estratégico</h3>
-            <p style="font-size:14px;color:#434750;margin-top:4px;">Próximos pasos validados por tu Advisor</p>
+            <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Lo que ha mejorado</div>
+            {improvements.length > 0 ? (
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                {improvements.map(ch => (
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1a1a2e;">
+                    <span class="material-symbols-outlined" style="font-size:16px;color:#1D9E75;">arrow_upward</span>
+                    {ch.text}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style="font-size:13px;color:#94a3b8;">Sin mejoras significativas esta semana</p>
+            )}
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#E24B4A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Lo que ha empeorado</div>
+            {deteriorations.length > 0 ? (
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                {deteriorations.map(ch => (
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1a1a2e;">
+                    <span class="material-symbols-outlined" style="font-size:16px;color:#E24B4A;">arrow_downward</span>
+                    {ch.text}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style="font-size:13px;color:#94a3b8;">Sin deterioros significativos esta semana</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p style="font-size:14px;color:#434750;line-height:1.6;">{stableMessage}</p>
+      )}
+    </section>
+
+    <!-- ══ BLOQUE 4: Plan Estratégico ══ -->
+    {planItems.length > 0 && (
+      <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <h3 style="font-size:16px;font-weight:900;color:#1a1a2e;letter-spacing:-0.02em;">Tu Plan Estratégico</h3>
+            <p style="font-size:13px;color:#64748b;margin-top:2px;">Acciones que has decidido implementar</p>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;">Progreso: {progressPct}%</span>
-            <div style="width:96px;height:8px;background:#e8e5ff;border-radius:999px;overflow:hidden;">
-              <div style={`background:#00346d;height:100%;width:${progressPct}%;`}></div>
+            <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;">Progreso: {planProgressPct}%</span>
+            <div style="width:96px;height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
+              <div style={`background:#1D9E75;height:100%;width:${planProgressPct}%;transition:width 0.3s;`}></div>
             </div>
           </div>
         </div>
-
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          {actionItems.map(item => (
-            <ActionItem title={item.title} status={item.status} impact={item.impact} recommendationId={item.recommendationId} description={item.description} />
-          ))}
-        </div>
-
-        {quickWins.length > 0 && (
-          <div style="margin-top:24px;padding-top:20px;border-top:1px solid #f0f0f0;">
-            <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1D9E75;margin-bottom:12px;">
-              Quick Wins (esta semana)
-            </h4>
-            <div style="display:flex;flex-direction:column;gap:6px;">
-              {quickWins.map((qw: string) => (
-                <div style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#434750;">
-                  <span style="color:#1D9E75;flex-shrink:0;">→</span>
-                  {qw}
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          {planItems.map(item => {
+            const isInProgress = item.status === 'in_progress';
+            const statusBg = isInProgress ? '#d6e3ff' : '#FAEEDA';
+            const statusColor = isInProgress ? '#1A4B8C' : '#BA7517';
+            const statusLabel = isInProgress ? 'En ejecución' : 'Planificada';
+            return (
+              <div class="plan-item" data-rec-id={item.id} data-status={item.status}
+                style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;background:#f7f9ff;cursor:pointer;transition:background 0.15s;"
+                onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f7f9ff'">
+                <button class="plan-toggle" data-rec-id={item.id} title="Marcar como completada"
+                  style="background:none;border:2px solid #cbd5e1;width:22px;height:22px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">
+                </button>
+                <div style="flex:1;min-width:0;">
+                  <span style="font-size:14px;font-weight:600;color:#1a1a2e;">{item.title}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {briefing?.summary && (
-          <div style="margin-top:20px;padding:16px;background:#f7f9ff;border-radius:8px;font-size:13px;color:#434750;line-height:1.6;">
-            <strong style="color:#1A4B8C;">Resumen personalizado:</strong> {briefing.summary}
-          </div>
-        )}
-      </div>
-    </section>
-
-    <!-- Próxima Revisión -->
-    <section style="display:flex;justify-content:center;">
-      <div style="width:100%;max-width:640px;background:#1a1a2e;color:white;border-radius:16px;padding:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 20px 40px -12px rgba(0,0,0,0.3);">
-        <div style="display:flex;align-items:center;gap:24px;">
-          <div style="background:rgba(255,255,255,0.1);padding:16px;border-radius:12px;text-align:center;">
-            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;">{reviewMonth}</p>
-            <p style="font-size:24px;font-weight:900;">{reviewDay}</p>
-          </div>
-          <div>
-            <h4 style="font-size:14px;font-weight:700;">Sesión de Crecimiento Mensual</h4>
-            <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
-              <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#94a3b8;">
-                <span class="material-symbols-outlined" style="font-size:14px;">schedule</span>
-                30 min
-              </span>
-              <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#94a3b8;">
-                <span class="material-symbols-outlined" style="font-size:14px;">person</span>
-                Tu Advisor AION
-              </span>
-            </div>
-          </div>
+                <span style={`font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${statusBg};color:${statusColor};text-transform:uppercase;flex-shrink:0;`}>{statusLabel}</span>
+                <a href={`/dashboard/recommendations#${item.id}`} title="Te ayudamos"
+                  style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:#1A4B8C;color:white;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;flex-shrink:0;">
+                  <span class="material-symbols-outlined" style="font-size:14px;">help</span>
+                  Te ayudamos
+                </a>
+              </div>
+            );
+          })}
         </div>
-        <a href="/advisor" style="background:#69ff87;color:#000e41;padding:10px 24px;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:8px;">
-          <span class="material-symbols-outlined" style="font-size:16px;">calendar_add_on</span>
-          Añadir al calendario
-        </a>
+        {planDone.length > 0 && (
+          <div style="margin-top:16px;padding-top:12px;border-top:1px solid #f0f0f0;">
+            <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Completadas ({planDone.length})</div>
+            {planDone.slice(0, 3).map(item => (
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+                <span class="material-symbols-outlined filled-icon" style="font-size:18px;color:#1D9E75;">check_circle</span>
+                <span style="font-size:13px;color:#64748b;text-decoration:line-through;">{item.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    )}
+
+    <!-- ══ BLOQUE 5 + 6: Recomendación nueva + Competidores ══ -->
+    <section style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+
+      <!-- Nueva recomendación de AION -->
+      {priorityRec ? (
+        <div style={`background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:4px solid ${priorityRec.impact === 'high' ? '#1A4B8C' : '#BA7517'};`}>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#1A4B8C;">lightbulb</span>
+            <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1A4B8C;">Nueva recomendación</span>
+            {pendingRecs.length > 1 && (
+              <span style="font-size:10px;background:#f0f0f0;color:#64748b;padding:2px 8px;border-radius:4px;font-weight:700;">+{pendingRecs.length - 1} más</span>
+            )}
+          </div>
+          <h4 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:8px;line-height:1.3;">{priorityRec.title}</h4>
+          {priorityRec.description && (
+            <p style="font-size:13px;color:#434750;line-height:1.5;margin-bottom:16px;">{priorityRec.description}</p>
+          )}
+          <div style="display:flex;gap:8px;">
+            <button class="btn-add-plan" data-rec-id={priorityRec.id}
+              style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#1A4B8C;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+              <span class="material-symbols-outlined" style="font-size:16px;">add_task</span>
+              Añadir al Plan
+            </button>
+            <button class="btn-dismiss-rec" data-rec-id={priorityRec.id}
+              style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#f0f0f0;color:#64748b;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+              Descartar
+            </button>
+          </div>
+          <a href="/dashboard/recommendations" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b;text-decoration:none;margin-top:12px;">
+            Ver todas las recomendaciones →
+          </a>
+        </div>
+      ) : (
+        <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
+          <span class="material-symbols-outlined" style="font-size:32px;color:#1D9E75;margin-bottom:8px;">verified</span>
+          <p style="font-size:14px;color:#64748b;">Sin nuevas recomendaciones esta semana.</p>
+          <a href="/dashboard/recommendations" style="font-size:12px;color:#1A4B8C;text-decoration:none;font-weight:600;">Ver historial →</a>
+        </div>
+      )}
+
+      <!-- Tabla competidores -->
+      <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1a1a2e;">Competencia</h3>
+          <a href="/dashboard/competitors" style="font-size:12px;color:#1A4B8C;font-weight:600;text-decoration:none;">Ver análisis completo →</a>
+        </div>
+        {compRows.length > 0 ? (
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="border-bottom:1px solid #f0f0f0;">
+                <th style="text-align:left;padding:8px 0;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;">Competidor</th>
+                <th style="text-align:center;padding:8px 0;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;">Score</th>
+                <th style="text-align:center;padding:8px 0;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;">Tendencia</th>
+                <th style="text-align:center;padding:8px 0;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;">vs Tú</th>
+              </tr>
+            </thead>
+            <tbody>
+              {compRows.map(c => (
+                <tr style="border-bottom:1px solid #f8f8f8;">
+                  <td style="padding:10px 0;font-weight:600;color:#1a1a2e;">{c.name}</td>
+                  <td style="text-align:center;padding:10px 0;">{c.score}</td>
+                  <td style={`text-align:center;padding:10px 0;font-weight:700;color:${c.trend.startsWith('+') ? '#1D9E75' : c.trend.startsWith('-') ? '#E24B4A' : '#94a3b8'};`}>{c.trend}</td>
+                  <td style="text-align:center;padding:10px 0;">
+                    {c.vs === 'above' ? (
+                      <span style="background:#FCEBEB;color:#E24B4A;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">Te supera</span>
+                    ) : c.vs === 'below' ? (
+                      <span style="background:#E1F5EE;color:#1D9E75;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">Por debajo</span>
+                    ) : (
+                      <span style="background:#f0f0f0;color:#64748b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">Empate</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              <tr style="background:#f7f9ff;">
+                <td style="padding:10px 0;font-weight:800;color:#1A4B8C;">Tu web</td>
+                <td style="text-align:center;padding:10px 0;font-weight:800;color:#1A4B8C;">{score}</td>
+                <td style={`text-align:center;padding:10px 0;font-weight:700;color:${scoreDelta >= 0 ? '#1D9E75' : '#E24B4A'};`}>{scoreDelta >= 0 ? '+' : ''}{scoreDelta}</td>
+                <td style="text-align:center;padding:10px 0;">—</td>
+              </tr>
+            </tbody>
+          </table>
+        ) : (
+          <p style="font-size:13px;color:#94a3b8;">No hay datos de competidores disponibles.</p>
+        )}
       </div>
     </section>
 
   </div>
 
-  <!-- Action toggle script -->
+  <!-- Plan & Recommendation interaction scripts -->
   <script>
-    document.querySelectorAll('.action-item[data-rec-id]').forEach(item => {
-      const recId = (item as HTMLElement).dataset.recId;
-      if (!recId) return;
-
-      item.addEventListener('click', async () => {
-        const currentStatus = (item as HTMLElement).dataset.status;
-        const newStatus = currentStatus === 'done' ? 'pending' : 'done';
-
-        // Optimistic UI update
-        (item as HTMLElement).dataset.status = newStatus;
-        const toggle = item.querySelector('.action-toggle');
-        const titleEl = item.querySelector('span[style*="font-size:14px"]') as HTMLElement;
-
-        if (toggle) {
-          toggle.innerHTML = newStatus === 'done'
-            ? '<span class="material-symbols-outlined filled-icon" style="color:#1d9e75;font-size:20px;">check_circle</span>'
-            : '<span class="material-symbols-outlined" style="color:#c3c6d2;font-size:20px;">radio_button_unchecked</span>';
-        }
-        if (titleEl) {
-          titleEl.style.textDecoration = newStatus === 'done' ? 'line-through' : 'none';
-          titleEl.style.opacity = newStatus === 'done' ? '0.5' : '1';
-        }
-
-        // Save to server
+    // Mark plan item as done
+    document.querySelectorAll('.plan-toggle').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const recId = (btn as HTMLElement).dataset.recId;
+        if (!recId) return;
         await fetch('/api/dashboard/update-action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recommendationId: recId, status: newStatus }),
+          body: JSON.stringify({ recommendationId: recId, status: 'done' }),
         });
+        window.location.reload();
+      });
+    });
+
+    // Add recommendation to plan (pending → accepted)
+    document.querySelectorAll('.btn-add-plan').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const recId = (btn as HTMLElement).dataset.recId;
+        if (!recId) return;
+        await fetch('/api/dashboard/update-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recommendationId: recId, status: 'accepted' }),
+        });
+        window.location.reload();
+      });
+    });
+
+    // Dismiss recommendation (pending → rejected)
+    document.querySelectorAll('.btn-dismiss-rec').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const recId = (btn as HTMLElement).dataset.recId;
+        if (!recId) return;
+        const reason = prompt('¿Por qué descartas esta recomendación?', 'No relevante ahora');
+        if (reason === null) return;
+        await fetch('/api/dashboard/update-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recommendationId: recId, status: 'rejected', feedback: reason }),
+        });
+        window.location.reload();
       });
     });
   </script>

@@ -1,0 +1,261 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getClient, getLatestSnapshot, getAllRecommendations } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const tier: Tier = client.tier;
+const snapshot = await getLatestSnapshot(client.id);
+const hasData = snapshot.id !== 'empty';
+
+const allRecs = hasData ? await getAllRecommendations(client.id) : [];
+
+// Group by status
+const pending = allRecs.filter(r => r.status === 'pending');
+const inPlan = allRecs.filter(r => r.status === 'accepted');
+const inProgress = allRecs.filter(r => r.status === 'in_progress');
+const done = allRecs.filter(r => r.status === 'done');
+const discarded = allRecs.filter(r => r.status === 'rejected');
+
+const impactColor: Record<string, { bg: string; fg: string }> = {
+  high: { bg: '#d6e3ff', fg: '#124687' },
+  medium: { bg: '#e8e5ff', fg: '#434750' },
+  low: { bg: '#f0f0f0', fg: '#888' },
+};
+
+const pillarIcons: Record<string, string> = {
+  seo: 'search',
+  geo: 'psychology',
+  web: 'speed',
+  conversion: 'conversion_path',
+  content: 'article',
+  reputation: 'star',
+  'conversión': 'conversion_path',
+  'contenido': 'article',
+  'reputación': 'star',
+};
+
+const statusLabels: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: 'Sugerencia AION', color: '#BA7517', bg: '#FAEEDA' },
+  accepted: { label: 'En tu Plan', color: '#1A4B8C', bg: '#d6e3ff' },
+  in_progress: { label: 'En ejecución', color: '#0e7c5f', bg: '#d1fae5' },
+  done: { label: 'Implementada', color: '#1D9E75', bg: '#E1F5EE' },
+  rejected: { label: 'Descartada', color: '#64748b', bg: '#f0f0f0' },
+};
+---
+
+<DashboardLayout
+  title="Recomendaciones"
+  currentPath="/dashboard/recommendations"
+  tier={tier}
+  clientName={client.name}
+  domain={client.domain}
+  lastReportMonth={hasData ? snapshot.month : ''}
+>
+
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <h1 style="font-size:24px;font-weight:900;color:#1a1a2e;letter-spacing:-0.03em;">Recomendaciones</h1>
+      <p style="font-size:14px;color:#64748b;margin-top:4px;">Acciones priorizadas por el Agente Radar para mejorar tu presencia digital</p>
+    </div>
+    <div style="display:flex;gap:8px;font-size:12px;">
+      <span style="background:#FAEEDA;color:#BA7517;padding:4px 12px;border-radius:6px;font-weight:700;">{pending.length} sugerencias</span>
+      <span style="background:#d6e3ff;color:#1A4B8C;padding:4px 12px;border-radius:6px;font-weight:700;">{inPlan.length + inProgress.length} en plan</span>
+      <span style="background:#E1F5EE;color:#1D9E75;padding:4px 12px;border-radius:6px;font-weight:700;">{done.length} completadas</span>
+    </div>
+  </div>
+
+  <!-- Sugerencias AION (pendientes de revisar) -->
+  {pending.length > 0 && (
+    <section>
+      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#BA7517;margin-bottom:12px;">
+        Sugerencias de AION ({pending.length})
+      </h2>
+      <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Recomendaciones generadas por el Agente Radar esta semana. Decide cuáles añadir a tu Plan Estratégico.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {pending.map(rec => {
+          const impact = impactColor[(rec as any).impact || 'medium'];
+          const pillar = (rec as any).pillar || 'seo';
+          const icon = pillarIcons[pillar] || 'lightbulb';
+          return (
+            <div class="rec-card" id={rec.id} data-rec-id={rec.id}
+              style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:16px;align-items:flex-start;">
+              <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:#FFF8EE;display:flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-outlined" style="font-size:20px;color:#BA7517;">{icon}</span>
+              </div>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>
+                    Impacto {(rec as any).impact === 'high' ? 'Alto' : (rec as any).impact === 'medium' ? 'Medio' : 'Bajo'}
+                  </span>
+                  <span style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">{pillar}</span>
+                </div>
+                <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{rec.title}</h4>
+                {rec.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{rec.description}</p>}
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-self:center;">
+                <button class="btn-add-plan" data-rec-id={rec.id}
+                  style="background:#1A4B8C;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">add_task</span>
+                  Añadir al Plan
+                </button>
+                <button class="btn-dismiss" data-rec-id={rec.id} title="Descartar"
+                  style="background:#f0f0f0;color:#64748b;border:none;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;display:flex;align-items:center;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  <!-- En tu Plan Estratégico (accepted + in_progress) -->
+  {(inPlan.length > 0 || inProgress.length > 0) && (
+    <section>
+      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1A4B8C;margin-bottom:12px;">
+        Tu Plan Estratégico ({inPlan.length + inProgress.length})
+      </h2>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {[...inProgress, ...inPlan].map(rec => {
+          const impact = impactColor[(rec as any).impact || 'medium'];
+          const status = statusLabels[rec.status || 'accepted'];
+          const pillar = (rec as any).pillar || 'seo';
+          const icon = pillarIcons[pillar] || 'lightbulb';
+          return (
+            <div class="rec-card" id={rec.id} data-rec-id={rec.id}
+              style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:3px solid #1A4B8C;display:flex;gap:16px;align-items:flex-start;">
+              <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-outlined" style="font-size:20px;color:#1A4B8C;">{icon}</span>
+              </div>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${status.bg};color:${status.color};`}>{status.label}</span>
+                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>
+                    Impacto {(rec as any).impact === 'high' ? 'Alto' : (rec as any).impact === 'medium' ? 'Medio' : 'Bajo'}
+                  </span>
+                  <span style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">{pillar}</span>
+                </div>
+                <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{rec.title}</h4>
+                {rec.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{rec.description}</p>}
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-self:center;">
+                {rec.status === 'accepted' && (
+                  <button class="btn-start" data-rec-id={rec.id}
+                    style="background:#d1fae5;color:#0e7c5f;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
+                    Empezar
+                  </button>
+                )}
+                <button class="btn-done" data-rec-id={rec.id}
+                  style="background:#E1F5EE;color:#1D9E75;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">check</span>
+                  Completada
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  <!-- Completadas -->
+  {done.length > 0 && (
+    <section>
+      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1D9E75;margin-bottom:12px;">
+        Completadas ({done.length})
+      </h2>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {done.map(rec => {
+          const pillar = (rec as any).pillar || 'seo';
+          const icon = pillarIcons[pillar] || 'lightbulb';
+          return (
+            <div style="background:white;border-radius:12px;padding:16px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:12px;align-items:center;opacity:0.85;">
+              <span class="material-symbols-outlined filled-icon" style="font-size:22px;color:#1D9E75;">check_circle</span>
+              <div style="flex:1;">
+                <h4 style="font-size:14px;font-weight:600;color:#1a1a2e;text-decoration:line-through;opacity:0.7;">{rec.title}</h4>
+                {rec.description && <p style="font-size:12px;color:#94a3b8;margin-top:2px;">{rec.description}</p>}
+              </div>
+              <span style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">{pillar}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  <!-- Descartadas -->
+  {discarded.length > 0 && (
+    <section>
+      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:12px;">
+        Descartadas ({discarded.length})
+      </h2>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {discarded.map(rec => (
+          <div style="background:#fafafa;border-radius:12px;padding:16px 24px;display:flex;gap:12px;align-items:center;opacity:0.6;">
+            <span class="material-symbols-outlined" style="font-size:22px;color:#94a3b8;">block</span>
+            <div style="flex:1;">
+              <h4 style="font-size:14px;font-weight:600;color:#64748b;">{rec.title}</h4>
+              {rec.feedback && <p style="font-size:12px;color:#94a3b8;margin-top:2px;">Razón: {rec.feedback}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+</div>
+
+<script>
+  async function updateRec(recId: string, status: string, feedback?: string) {
+    await fetch('/api/dashboard/update-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendationId: recId, status, ...(feedback ? { feedback } : {}) }),
+    });
+    window.location.reload();
+  }
+
+  // Añadir al Plan (pending → accepted)
+  document.querySelectorAll('.btn-add-plan').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const recId = (btn as HTMLElement).dataset.recId;
+      if (recId) updateRec(recId, 'accepted');
+    });
+  });
+
+  // Empezar (accepted → in_progress)
+  document.querySelectorAll('.btn-start').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const recId = (btn as HTMLElement).dataset.recId;
+      if (recId) updateRec(recId, 'in_progress');
+    });
+  });
+
+  // Completar (any → done)
+  document.querySelectorAll('.btn-done').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const recId = (btn as HTMLElement).dataset.recId;
+      if (recId) updateRec(recId, 'done');
+    });
+  });
+
+  // Descartar (pending → rejected)
+  document.querySelectorAll('.btn-dismiss').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const recId = (btn as HTMLElement).dataset.recId;
+      if (!recId) return;
+      const reason = prompt('¿Por qué descartas esta recomendación?', 'No relevante ahora');
+      if (reason === null) return;
+      updateRec(recId, 'rejected', reason);
+    });
+  });
+</script>
+
+</DashboardLayout>

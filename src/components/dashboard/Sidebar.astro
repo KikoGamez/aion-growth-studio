@@ -5,46 +5,43 @@ export interface Props {
   currentPath?: string;
   tier?: Tier;
   clientName?: string;
+  lastReportMonth?: string;
 }
 
-const { currentPath = '', tier = 'señales', clientName = 'Soluciones Verdes' } = Astro.props;
-
-const canAccessSeñales = tier === 'señales' || tier === 'palancas';
-const canAccessPalancas = tier === 'palancas';
+const { currentPath = '', tier = 'señales', clientName = 'TechSolutions Barcelona', lastReportMonth = 'abril-2026' } = Astro.props;
 
 interface NavItem {
   href: string;
   icon: string;
   label: string;
   locked?: boolean;
-  requiredTier?: 'señales' | 'palancas';
   comingSoon?: boolean;
 }
 
-// Always visible for all tiers
-const coreNav: NavItem[] = [
-  { href: '/dashboard', icon: 'dashboard', label: 'Overview' },
-  { href: '/dashboard/report/marzo-2026', icon: 'analytics', label: 'Informe Mensual' },
+// RADAR — always accessible (the contracted product)
+const radarNav: NavItem[] = [
+  { href: '/dashboard', icon: 'dashboard', label: 'Resumen' },
+  { href: `/dashboard/report/${lastReportMonth}`, icon: 'analytics', label: 'Informe Mensual' },
   { href: '/dashboard/evolution', icon: 'trending_up', label: 'Evolución' },
-  { href: '/dashboard/competitors', icon: 'group', label: 'Competidores' },
+  { href: '/dashboard/competitors', icon: 'group', label: 'Competencia' },
+  { href: '/dashboard/recommendations', icon: 'task_alt', label: 'Recomendaciones' },
 ];
 
-// Señales+ required
+// SEÑALES — coming soon
 const señalesNav: NavItem[] = [
-  { href: '/dashboard/alerts', icon: 'notifications_active', label: 'Alertas', locked: !canAccessSeñales, requiredTier: 'señales' },
-  { href: '/dashboard/seo-opportunities', icon: 'search_check', label: 'SEO Oportunidades', locked: !canAccessSeñales, requiredTier: 'señales' },
-  { href: '/dashboard/paid', icon: 'paid', label: 'Paid Intelligence', locked: !canAccessSeñales, requiredTier: 'señales' },
-  { href: '/dashboard/briefs', icon: 'edit_document', label: 'Briefs de Contenido', locked: !canAccessSeñales, requiredTier: 'señales' },
+  { href: '/dashboard/seo-opportunities', icon: 'search_check', label: 'SEO Oportunidades', locked: true, comingSoon: true },
+  { href: '/dashboard/paid', icon: 'paid', label: 'Paid Intelligence', locked: true, comingSoon: true },
+  { href: '/dashboard/briefs', icon: 'edit_document', label: 'Briefs de Contenido', locked: true, comingSoon: true },
 ];
 
-// Palancas required (coming soon)
+// PALANCAS — coming soon
 const palancasNav: NavItem[] = [
-  { href: '/dashboard/subscription', icon: 'settings_suggest', label: 'Opt. Técnica', locked: !canAccessPalancas, requiredTier: 'palancas', comingSoon: true },
-  { href: '/dashboard/subscription', icon: 'auto_awesome', label: 'Generador Contenido', locked: !canAccessPalancas, requiredTier: 'palancas', comingSoon: true },
-  { href: '/dashboard/subscription', icon: 'code', label: 'Schema Markup', locked: !canAccessPalancas, requiredTier: 'palancas', comingSoon: true },
+  { href: '/dashboard/subscription', icon: 'settings_suggest', label: 'Opt. Técnica', locked: true, comingSoon: true },
+  { href: '/dashboard/subscription', icon: 'auto_awesome', label: 'Generador Contenido', locked: true, comingSoon: true },
+  { href: '/dashboard/subscription', icon: 'code', label: 'Schema Markup', locked: true, comingSoon: true },
 ];
 
-// Always visible at bottom
+// Account nav — always visible at bottom
 const accountNav: NavItem[] = [
   { href: '/advisor', icon: 'support_agent', label: 'Advisor IA' },
   { href: '/dashboard/settings', icon: 'settings', label: 'Ajustes' },
@@ -53,7 +50,7 @@ const accountNav: NavItem[] = [
 
 function isActive(href: string): boolean {
   if (href === '/dashboard') return currentPath === '/dashboard' || currentPath === '/dashboard/';
-  if (href === '/dashboard/report/marzo-2026') return currentPath.startsWith('/dashboard/report');
+  if (href.startsWith('/dashboard/report/')) return currentPath.startsWith('/dashboard/report');
   return currentPath.startsWith(href);
 }
 
@@ -93,40 +90,41 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
   <!-- Navigation (scrollable) -->
   <nav style="flex:1;overflow-y:auto;padding-bottom:8px;">
 
-    <!-- Core: always visible -->
-    {coreNav.map(item => (
+    <!-- RADAR section -->
+    <div style="padding:8px 16px 6px;font-size:10px;color:#69ff87;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;display:flex;align-items:center;gap:6px;">
+      <span class="material-symbols-outlined" style="font-size:14px;color:#69ff87;">radar</span>
+      Radar
+    </div>
+    {radarNav.map(item => (
       <a href={item.href} style={itemStyle(item)}
-        onmouseover={!item.locked && !isActive(item.href) ? "this.style.color='white';this.style.background='rgba(255,255,255,0.05)';" : undefined}
-        onmouseout={!item.locked && !isActive(item.href) ? "this.style.color='#94a3b8';this.style.background='transparent';" : undefined}
+        onmouseover={!isActive(item.href) ? "this.style.color='white';this.style.background='rgba(255,255,255,0.05)';" : undefined}
+        onmouseout={!isActive(item.href) ? "this.style.color='#94a3b8';this.style.background='transparent';" : undefined}
       >
         <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">{item.icon}</span>
         <span style="flex:1;">{item.label}</span>
       </a>
     ))}
 
-    <!-- Señales group -->
+    <!-- SEÑALES section -->
     <div style="padding:24px 16px 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Señales</div>
     {señalesNav.map(item => (
-      <a href={item.locked ? '/dashboard/subscription' : item.href} style={itemStyle(item)}
-        onmouseover={!item.locked && !isActive(item.href) ? "this.style.color='white';this.style.background='rgba(255,255,255,0.05)';" : undefined}
-        onmouseout={!item.locked && !isActive(item.href) ? "this.style.color='#94a3b8';this.style.background='transparent';" : undefined}
-      >
+      <a href={item.locked ? '/dashboard/subscription' : item.href} style={itemStyle(item)}>
         <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">{item.icon}</span>
         <span style="flex:1;">{item.label}</span>
-        {item.locked && (
-          <span style="font-size:9px;background:rgba(255,255,255,0.08);color:#475569;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.05em;">SEÑALES</span>
+        {item.comingSoon && (
+          <span style="font-size:8px;background:rgba(255,255,255,0.08);color:#64748b;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Pronto</span>
         )}
       </a>
     ))}
 
-    <!-- Palancas group -->
+    <!-- PALANCAS section -->
     <div style="padding:24px 16px 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Palancas</div>
     {palancasNav.map(item => (
       <a href={item.locked ? '/dashboard/subscription' : item.href} style={itemStyle(item)}>
         <span class="material-symbols-outlined" style="font-size:20px;flex-shrink:0;">{item.icon}</span>
         <span style="flex:1;">{item.label}</span>
-        {item.locked && (
-          <span style="font-size:9px;background:rgba(255,255,255,0.08);color:#475569;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.05em;">PALANCAS</span>
+        {item.comingSoon && (
+          <span style="font-size:8px;background:rgba(255,255,255,0.08);color:#64748b;padding:2px 6px;border-radius:3px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">Pronto</span>
         )}
       </a>
     ))}
@@ -173,3 +171,21 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
 >
   <span class="material-symbols-outlined" style="font-size:20px;">menu</span>
 </button>
+
+<style>
+  @media (max-width: 1023px) {
+    #sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+    #sidebar.open { transform: translateX(0); }
+    #hamburger-btn { display: block !important; }
+  }
+</style>
+
+<script>
+  const btn = document.getElementById('hamburger-btn');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  btn?.addEventListener('click', () => {
+    sidebar?.classList.toggle('open');
+    overlay?.classList.toggle('hidden');
+  });
+</script>

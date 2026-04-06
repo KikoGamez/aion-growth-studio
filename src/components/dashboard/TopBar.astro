@@ -8,7 +8,7 @@ export interface Props {
   lastReportMonth?: string;
 }
 
-const { clientName = 'Soluciones Verdes', domain = 'solucionesverdes.es', tier = 'señales', lastReportMonth = 'Mar 2026' } = Astro.props;
+const { clientName = 'TechSolutions Barcelona', domain = 'techsolutions.es', tier = 'señales', lastReportMonth = 'abril-2026' } = Astro.props;
 
 const tierConfig: Record<Tier, { label: string; icon: string; bg: string; color: string }> = {
   radar: { label: 'Radar', icon: 'radar', bg: '#e3efff', color: '#000e41' },
