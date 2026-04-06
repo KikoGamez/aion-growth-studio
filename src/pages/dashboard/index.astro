@@ -392,7 +392,7 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
         const deltaText = delta > 0 ? `+${delta}` : delta < 0 ? String(delta) : '=';
         const max = Math.max(...p.sparkline, 1);
         return (
-          <div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:8px;">
+          <a href={`/dashboard/pillar/${p.key}`} style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:8px;text-decoration:none;transition:box-shadow 0.15s,transform 0.15s;cursor:pointer;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';this.style.transform='none'">
             <div style="display:flex;align-items:center;gap:6px;">
               <span class="material-symbols-outlined" style={`font-size:16px;color:${pColor};`}>{p.icon}</span>
               <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">{p.label}</span>
@@ -408,7 +408,7 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
                 return <div style={`flex:1;background:${isLast ? pColor : '#e2e8f0'};height:${h}px;border-radius:1px 1px 0 0;`}></div>;
               })}
             </div>
-          </div>
+          </a>
         );
       })}
     </section>
