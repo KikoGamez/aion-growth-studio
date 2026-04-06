@@ -993,7 +993,7 @@ const donutSVG = buildDonutSVG();
           <span class="material-symbols-outlined">dashboard</span>
           Resumen Ejecutivo
         </a>
-        <a href="#seo" data-section="seo">
+        <a href="#seo" data-section="visibilidad" data-parent="true">
           <span class="material-symbols-outlined">visibility</span>
           Visibilidad Digital
         </a>
@@ -2781,13 +2781,20 @@ const donutSVG = buildDonutSVG();
     const sections = ['hero', 'seo', 'ia', 'autoridad', 'competidores', 'experiencia', 'plan'];
     const sectionEls = sections.map(id => document.getElementById(id)).filter(Boolean);
 
+    // seo, ia, autoridad are children of "visibilidad"
+    const visChildren = new Set(['seo', 'ia', 'autoridad']);
+
     let currentActive = 'hero';
     function setActive(sectionId) {
       if (sectionId === currentActive) return;
       currentActive = sectionId;
+      const isVisChild = visChildren.has(sectionId);
       navLinks.forEach(link => {
         const linkSection = link.getAttribute('data-section');
-        link.classList.toggle('nav-active', linkSection === sectionId);
+        const isMatch = linkSection === sectionId;
+        // "Visibilidad Digital" parent highlights when any child is active
+        const isParentMatch = linkSection === 'visibilidad' && isVisChild;
+        link.classList.toggle('nav-active', isMatch || isParentMatch);
       });
     }
 
