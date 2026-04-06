@@ -409,7 +409,12 @@ export async function runSEO(url: string): Promise<SEOResult> {
                 const stem = w.slice(0, Math.max(5, Math.min(w.length - 1, 8)));
                 return domainBase.includes(stem);
               }).length >= 2;
-            const isBrand = kw.includes(domainBase) || matchCount >= 2 ||
+            // Concatenation check: join keyword words and see if it matches domain
+            // "frutas eloy" → "frutaseloy" === domainBase "frutaseloy"
+            const kwConcatenated = kw.replace(/\s+/g, '');
+            const concatMatch = kwConcatenated === domainBase || domainBase.includes(kwConcatenated) || kwConcatenated.includes(domainBase);
+
+            const isBrand = kw.includes(domainBase) || concatMatch || matchCount >= 2 ||
               (brandTerms.length === 1 && matchCount >= 1) || reverseMatch;
             if (isBrand) {
               brandEtv += itemEtv;
