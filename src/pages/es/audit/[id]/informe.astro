@@ -153,7 +153,7 @@ const expSummaryText = (insights as any)?.experienceSummary || null;
 const chapterScores = {
   seo: visSeoSub,
   ia: visGeoSub,
-  autoridad: health.breakdown?.reputation ?? 0,
+  autoridad: r.score?.breakdown?.reputation ?? 0,
   competidores: benchScore,
   experiencia: expScore,
 };
