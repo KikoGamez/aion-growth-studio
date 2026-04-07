@@ -8,22 +8,48 @@ const DFS_PASSWORD = import.meta.env?.DATAFORSEO_PASSWORD || process.env.DATAFOR
 
 const IG_BLACKLIST_HANDLES = ['explore', 'reels', 'stories', 'p', 'tv', 'share', 'reel', 'accounts', 'about', 'directory'];
 
+// Titles that indicate the crawl was blocked (not real company names)
+const BAD_TITLE_RE = /^(access denied|just a moment|attention required|403|404|blocked|captcha|challenge|verifying|please wait|one moment|checking your browser|cloudflare|ddos protection|forbidden|not found)/i;
+
+/**
+ * Check if a found Instagram handle plausibly matches the brand.
+ * Prevents cases like finding @accessdeniedpod for elcorteingles.
+ */
+function handleMatchesBrand(handle: string, domain: string, companyName?: string): boolean {
+  const h = handle.toLowerCase().replace(/[._]/g, '');
+  const d = domain.split('.')[0].replace(/-/g, '');
+  // Direct match: handle contains domain or domain contains handle
+  if (h.includes(d) || d.includes(h)) return true;
+  // Company name match
+  if (companyName) {
+    const cn = companyName.toLowerCase().replace(/[\s._-]/g, '');
+    if (h.includes(cn) || cn.includes(h)) return true;
+    // Word overlap: at least one significant word matches
+    const words = companyName.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    if (words.some(w => h.includes(w))) return true;
+  }
+  return false;
+}
+
 /** Search Google for "site:instagram.com {brand}" to find IG handle */
 async function searchInstagramHandle(crawl: CrawlResult): Promise<string | null> {
   if (!DFS_LOGIN || !DFS_PASSWORD) return null;
 
-  let brand = crawl.title?.split(/[-|–—·:]/)[0]?.trim();
-  // Fallback: use domain name if no title
-  if (!brand || brand.length < 2) {
-    const url = crawl.finalUrl || '';
-    try { brand = new URL(url).hostname.replace(/^www\./, '').split('.')[0]; } catch {}
-  }
+  const domain = (() => {
+    try { return new URL(crawl.finalUrl || '').hostname.replace(/^www\./, '').split('.')[0]; } catch { return ''; }
+  })();
+
+  // Use companyName first, then title (only if not a bot-block page), then domain
+  const titleClean = crawl.title?.split(/[-|–—·:]/)[0]?.trim();
+  const brand = crawl.companyName
+    || (titleClean && !BAD_TITLE_RE.test(titleClean) && titleClean.length > 2 ? titleClean : null)
+    || domain;
   if (!brand || brand.length < 2) return null;
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const timer = setTimeout(() => controller.abort(), 10000);
     const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
       method: 'POST',
       signal: controller.signal,
@@ -45,8 +71,14 @@ async function searchInstagramHandle(crawl: CrawlResult): Promise<string | null>
       const url = item.url || '';
       const match = url.match(/instagram\.com\/([A-Za-z0-9_.]{3,30})\/?$/);
       if (match && !IG_BLACKLIST_HANDLES.includes(match[1].toLowerCase())) {
-        console.log(`[instagram] Found via Google search: @${match[1]} for "${brand}"`);
-        return match[1];
+        const handle = match[1];
+        // Validate: handle must match brand/domain to prevent false positives
+        if (handleMatchesBrand(handle, domain, crawl.companyName)) {
+          console.log(`[instagram] Found via Google: @${handle} for "${brand}" ✓`);
+          return handle;
+        } else {
+          console.log(`[instagram] Rejected @${handle} — doesn't match "${domain}" or "${crawl.companyName}"`);
+        }
       }
     }
   } catch { /* ignore */ }

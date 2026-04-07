@@ -13,6 +13,10 @@ const GENERIC_TITLES = new Set([
   'admin', 'administrator', 'administrador', 'webmaster', 'editor', 'author',
   'autor', 'root', 'user', 'usuario', 'test', 'wordpress', 'drupal', 'joomla',
   'wix', 'squarespace', 'shopify', 'blogger', 'super admin', 'superadmin',
+  // Bot-block / error pages — must never be used as company name
+  'access denied', 'forbidden', 'not found', 'error', 'captcha', 'blocked',
+  'just a moment', 'attention required', 'please wait', 'one moment',
+  'checking your browser', 'cloudflare', 'ddos protection', 'verifying',
 ]);
 
 /** Hierarchy: Schema Org/LB > Schema WebSite > og:site_name > title (after separator) > domain */
