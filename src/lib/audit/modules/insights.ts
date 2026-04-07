@@ -36,7 +36,7 @@ export async function runInsights(
   const MAX_ATTEMPTS = 2;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 55000);
+    const timer = setTimeout(() => controller.abort(), 80000);
 
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
