@@ -1,0 +1,442 @@
+---
+export const prerender = false;
+/**
+ * Public onboarding — part of the purchase funnel.
+ * No auth required. After completing:
+ * 1. Saves onboarding data
+ * 2. Creates account (email + password)
+ * 3. Redirects to dashboard
+ */
+
+const email = Astro.url.searchParams.get('email') || '';
+const plan = Astro.url.searchParams.get('plan') || 'radar';
+const auditId = Astro.url.searchParams.get('audit') || '';
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configura tu cuenta — AION Radar</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f7f9ff; color: #1a1a2e; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: #1A1A2E; }
+    .hint { font-size: 12px; color: #888; margin-bottom: 8px; line-height: 1.4; }
+    input[type="text"], input[type="url"], input[type="password"], textarea, select {
+      width: 100%; padding: 11px 14px; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 14px; font-family: inherit; transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #1A4B8C; }
+    textarea { resize: vertical; min-height: 72px; }
+    .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .radio-option {
+      padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: all 0.15s; user-select: none;
+    }
+    .radio-option:hover { border-color: #1A4B8C; background: #f0f4ff; }
+    .radio-option.selected { border-color: #1A4B8C; background: #d6e3ff; color: #1A4B8C; font-weight: 700; }
+    .radio-option input { display: none; }
+    .section { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+    /* Steps indicator */
+    .steps { display: flex; gap: 4px; margin-bottom: 32px; }
+    .step { flex: 1; height: 4px; border-radius: 2px; background: #e2e8f0; transition: background 0.3s; }
+    .step.active { background: #1A4B8C; }
+    .step.done { background: #1D9E75; }
+
+    /* Step panels */
+    .step-panel { display: none; flex-direction: column; gap: 24px; }
+    .step-panel.visible { display: flex; }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav style="background:white;border-bottom:1px solid #e2e8f0;padding:0 32px;height:64px;display:flex;align-items:center;">
+    <a href="/es/" style="display:inline-flex;align-items:center;text-decoration:none;height:3rem;overflow:hidden;">
+      <img src="/images/aion-logo-full.png" alt="AION Growth Studio" style="height:6rem;width:auto;" />
+    </a>
+  </nav>
+
+  <main style="max-width:640px;margin:0 auto;padding:48px 24px 96px;">
+
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:8px;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:#000e41;color:#69ff87;padding:6px 16px;border-radius:999px;font-size:12px;font-weight:700;margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">radar</span>
+        RADAR ACTIVADO
+      </div>
+      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1A1A2E;">
+        Cuéntanos sobre tu negocio
+      </h1>
+      <p style="font-size:15px;color:#666;margin-top:8px;line-height:1.5;">
+        Con esta información personalizamos tu diagnóstico y recomendaciones. Solo 2 minutos.
+      </p>
+    </div>
+
+    <!-- Steps indicator -->
+    <div class="steps">
+      <div class="step active" id="step-ind-0"></div>
+      <div class="step" id="step-ind-1"></div>
+      <div class="step" id="step-ind-2"></div>
+      <div class="step" id="step-ind-3"></div>
+    </div>
+
+    <form id="onboarding-form">
+
+      <!-- STEP 0: Tu web -->
+      <div class="step-panel visible" id="panel-0">
+        <div class="section">
+          <label>
+            <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">language</span>
+            Tu sitio web
+          </label>
+          <p class="hint">Confirma la URL de tu web. Si ya hiciste un diagnóstico gratuito, vincularemos esos datos.</p>
+          <div style="display:flex;gap:8px;">
+            <input type="url" id="website_url" name="website_url" required placeholder="https://tuempresa.es" style="flex:1;" />
+            <div id="url-check" style="width:44px;height:44px;border-radius:10px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+          </div>
+          <div id="url-status" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;font-size:13px;"></div>
+        </div>
+
+        <div class="section">
+          <label for="business_description">
+            <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">storefront</span>
+            ¿Qué hace tu empresa?
+          </label>
+          <p class="hint">Describe brevemente qué vendes o qué servicio ofreces y a quién.</p>
+          <textarea id="business_description" name="business_description" placeholder="Ej: Vendemos software de gestión de RRHH para pymes de entre 10 y 200 empleados en España."></textarea>
+        </div>
+
+        <button type="button" class="next-btn" data-step="0"
+          style="width:100%;padding:14px;background:#1A4B8C;color:white;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;">
+          Siguiente →
+        </button>
+      </div>
+
+      <!-- STEP 1: Objetivo + Geo -->
+      <div class="step-panel" id="panel-1">
+        <div class="section">
+          <label>
+            <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">flag</span>
+            ¿Cuál es tu objetivo principal?
+          </label>
+          <div class="radio-group" id="goal-group">
+            {[
+              { value: 'generate_leads', label: 'Generar leads / contactos' },
+              { value: 'sell_online', label: 'Vender online (ecommerce)' },
+              { value: 'brand_positioning', label: 'Posicionar la marca' },
+              { value: 'local_traffic', label: 'Atraer clientes locales' },
+            ].map(opt => (
+              <label class="radio-option">
+                <input type="radio" name="primary_goal" value={opt.value} />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div class="section">
+          <label>
+            <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">public</span>
+            ¿Dónde operas?
+          </label>
+          <div class="radio-group" id="geo-group">
+            {[
+              { value: 'local_city', label: 'Ciudad / zona local' },
+              { value: 'national', label: 'Nacional' },
+              { value: 'multi_country', label: 'Varios países' },
+              { value: 'global', label: 'Global' },
+            ].map(opt => (
+              <label class="radio-option">
+                <input type="radio" name="geo_scope" value={opt.value} />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+          <input type="text" name="geo_detail" placeholder="Ej: Barcelona, Madrid y Valencia" style="margin-top:12px;" />
+        </div>
+
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="prev-btn" data-step="1" style="flex:1;padding:14px;background:#f0f0f0;color:#64748b;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;">← Atrás</button>
+          <button type="button" class="next-btn" data-step="1" style="flex:2;padding:14px;background:#1A4B8C;color:white;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;">Siguiente →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Competidores + Equipo -->
+      <div class="step-panel" id="panel-2">
+        <div class="section">
+          <label>
+            <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">swords</span>
+            Competidores que te preocupan (hasta 3)
+          </label>
+          <p class="hint">Introduce dominios. Verificaremos que son accesibles.</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            {[0, 1, 2].map(i => (
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="url" name={`comp_${i}`} placeholder={`https://competidor${i+1}.es`} style="flex:1;" />
+                <div class="comp-status" id={`comp-status-${i}`} style="width:36px;height:36px;border-radius:8px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="section">
+          <label>
+            <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">payments</span>
+            Presupuesto mensual de marketing
+          </label>
+          <div class="radio-group">
+            {['Sin presupuesto', '< 500€', '500–2.000€', '2.000–5.000€', '> 5.000€'].map((label, i) => {
+              const values = ['0', '<500', '500-2000', '2000-5000', '>5000'];
+              return (
+                <label class="radio-option">
+                  <input type="radio" name="monthly_budget" value={values[i]} />
+                  {label}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div class="section">
+          <label>
+            <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">group</span>
+            ¿Cuántas personas en marketing?
+          </label>
+          <div class="radio-group">
+            {[
+              { value: 'solo', label: 'Solo yo' },
+              { value: '2-5', label: '2–5' },
+              { value: '6-20', label: '6–20' },
+              { value: '>20', label: 'Más de 20' },
+            ].map(opt => (
+              <label class="radio-option">
+                <input type="radio" name="team_size" value={opt.value} />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="prev-btn" data-step="2" style="flex:1;padding:14px;background:#f0f0f0;color:#64748b;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;">← Atrás</button>
+          <button type="button" class="next-btn" data-step="2" style="flex:2;padding:14px;background:#1A4B8C;color:white;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;">Siguiente →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Crear cuenta -->
+      <div class="step-panel" id="panel-3">
+        <div class="section" style="text-align:center;">
+          <div style="width:64px;height:64px;border-radius:50%;background:#E1F5EE;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
+            <span class="material-symbols-outlined" style="font-size:32px;color:#1D9E75;">check_circle</span>
+          </div>
+          <h2 style="font-size:22px;font-weight:900;color:#1a1a2e;margin-bottom:8px;">¡Ya casi está!</h2>
+          <p style="font-size:14px;color:#64748b;line-height:1.5;">Crea tu contraseña para acceder a tu dashboard de AION Radar.</p>
+        </div>
+
+        <div class="section">
+          <label>Email</label>
+          <input type="email" id="account-email" value={email} readonly style="background:#f7f9ff;color:#64748b;" />
+
+          <label style="margin-top:16px;">Contraseña</label>
+          <input type="password" id="account-password" name="password" required placeholder="Mínimo 8 caracteres" minlength="8" />
+
+          <label style="margin-top:12px;">Confirmar contraseña</label>
+          <input type="password" id="account-password-confirm" placeholder="Repite la contraseña" minlength="8" />
+
+          <div id="password-error" style="display:none;margin-top:8px;padding:8px 12px;border-radius:6px;background:#fcebeb;color:#E24B4A;font-size:13px;"></div>
+        </div>
+
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="prev-btn" data-step="3" style="flex:1;padding:14px;background:#f0f0f0;color:#64748b;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;">← Atrás</button>
+          <button type="submit" id="create-btn" style="flex:2;padding:14px;background:#1D9E75;color:white;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <span class="material-symbols-outlined" style="font-size:18px;">rocket_launch</span>
+            Crear cuenta y entrar al dashboard
+          </button>
+        </div>
+      </div>
+
+    </form>
+
+    <div id="global-status" style="display:none;margin-top:16px;padding:12px;border-radius:8px;text-align:center;font-size:14px;"></div>
+  </main>
+
+  <script define:vars={{ email, plan, auditId }}>
+    let currentStep = 0;
+    const totalSteps = 4;
+
+    function showStep(step) {
+      for (let i = 0; i < totalSteps; i++) {
+        document.getElementById(`panel-${i}`).classList.toggle('visible', i === step);
+        const ind = document.getElementById(`step-ind-${i}`);
+        ind.classList.toggle('active', i === step);
+        ind.classList.toggle('done', i < step);
+      }
+      currentStep = step;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Next/Prev buttons
+    document.querySelectorAll('.next-btn').forEach(btn => {
+      btn.addEventListener('click', () => showStep(currentStep + 1));
+    });
+    document.querySelectorAll('.prev-btn').forEach(btn => {
+      btn.addEventListener('click', () => showStep(currentStep - 1));
+    });
+
+    // Radio selection UI
+    document.querySelectorAll('.radio-group').forEach(group => {
+      group.querySelectorAll('.radio-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          const input = opt.querySelector('input');
+          if (input) input.checked = true;
+        });
+      });
+    });
+
+    // URL verification
+    const urlInput = document.getElementById('website_url');
+    const urlCheck = document.getElementById('url-check');
+    urlInput.addEventListener('blur', async () => {
+      const raw = urlInput.value.trim();
+      if (!raw) return;
+      const url = raw.startsWith('http') ? raw : `https://${raw}`;
+      urlInput.value = url;
+      urlCheck.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;color:#888;">hourglass_top</span>';
+      try {
+        const res = await fetch(`/api/validate-url?url=${encodeURIComponent(url)}`);
+        const data = await res.json();
+        urlCheck.innerHTML = data.reachable
+          ? '<span class="material-symbols-outlined" style="font-size:20px;color:#1D9E75;">check_circle</span>'
+          : '<span class="material-symbols-outlined" style="font-size:20px;color:#E24B4A;">close</span>';
+      } catch {
+        urlCheck.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;color:#E24B4A;">error</span>';
+      }
+    });
+
+    // Competitor validation
+    [0, 1, 2].forEach(i => {
+      const input = document.querySelector(`[name="comp_${i}"]`);
+      const status = document.getElementById(`comp-status-${i}`);
+      input.addEventListener('blur', async () => {
+        const raw = input.value.trim();
+        if (!raw) { status.innerHTML = ''; return; }
+        const url = raw.startsWith('http') ? raw : `https://${raw}`;
+        status.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;color:#888;">hourglass_top</span>';
+        try {
+          const res = await fetch(`/api/validate-url?url=${encodeURIComponent(url)}`);
+          const data = await res.json();
+          if (data.reachable) {
+            input.value = url;
+            status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#1D9E75;">check_circle</span>';
+            status.style.background = '#e1f5ee';
+          } else {
+            status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#E24B4A;">close</span>';
+            status.style.background = '#fcebeb';
+          }
+        } catch {
+          status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;color:#E24B4A;">error</span>';
+        }
+      });
+    });
+
+    // Form submit — create account
+    const form = document.getElementById('onboarding-form');
+    const createBtn = document.getElementById('create-btn');
+    const pwError = document.getElementById('password-error');
+    const globalStatus = document.getElementById('global-status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const pw = document.getElementById('account-password').value;
+      const pwConfirm = document.getElementById('account-password-confirm').value;
+      const accountEmail = document.getElementById('account-email').value;
+
+      if (pw.length < 8) {
+        pwError.style.display = 'block';
+        pwError.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+        return;
+      }
+      if (pw !== pwConfirm) {
+        pwError.style.display = 'block';
+        pwError.textContent = 'Las contraseñas no coinciden.';
+        return;
+      }
+      pwError.style.display = 'none';
+
+      createBtn.disabled = true;
+      createBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;">hourglass_top</span> Creando cuenta...';
+
+      const fd = new FormData(form);
+      const competitors = [0, 1, 2]
+        .map(i => fd.get(`comp_${i}`))
+        .filter(Boolean)
+        .map(url => {
+          try { return { url, name: new URL(url).hostname.replace(/^www\./, '') }; }
+          catch { return { url, name: url }; }
+        });
+
+      try {
+        // 1. Save onboarding data
+        await fetch('/api/dashboard/save-onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            website_url: fd.get('website_url'),
+            business_description: fd.get('business_description'),
+            primary_goal: fd.get('primary_goal'),
+            geo_scope: fd.get('geo_scope'),
+            geo_detail: fd.get('geo_detail') || null,
+            monthly_budget: fd.get('monthly_budget'),
+            team_size: fd.get('team_size'),
+            competitors,
+          }),
+        });
+
+        // 2. Create account (mock — sets demo cookies for now)
+        // When Supabase auth is real: POST /api/auth/signup { email, password }
+        await fetch('/api/dashboard/set-tier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier: plan }),
+        });
+
+        // 3. Link audit if available
+        if (auditId) {
+          await fetch('/api/dashboard/link-audit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auditId }),
+          });
+        }
+
+        // 4. Success → redirect to dashboard
+        globalStatus.style.display = 'block';
+        globalStatus.style.background = '#e1f5ee';
+        globalStatus.style.color = '#1D9E75';
+        globalStatus.textContent = '¡Cuenta creada! Redirigiendo a tu dashboard...';
+        setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+
+      } catch (err) {
+        globalStatus.style.display = 'block';
+        globalStatus.style.background = '#fcebeb';
+        globalStatus.style.color = '#E24B4A';
+        globalStatus.textContent = 'Error al crear la cuenta. Inténtalo de nuevo.';
+        createBtn.disabled = false;
+        createBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;">rocket_launch</span> Crear cuenta y entrar al dashboard';
+      }
+    });
+  </script>
+
+</body>
+</html>

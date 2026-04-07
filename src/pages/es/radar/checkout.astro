@@ -131,8 +131,8 @@ const info = planInfo[plan] || planInfo.radar;
           });
         }
 
-        // 3. Redirect to onboarding
-        window.location.href = '/dashboard/onboarding';
+        // 3. Redirect to public onboarding funnel (no auth required)
+        window.location.href = `/es/radar/onboarding?email=${encodeURIComponent(email)}&plan=${plan}${auditId ? `&audit=${auditId}` : ''}`;
       } catch (err) {
         console.error('[checkout] Error:', err);
         btn.disabled = false;
