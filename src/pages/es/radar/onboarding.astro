@@ -411,21 +411,71 @@ const auditId = Astro.url.searchParams.get('audit') || '';
           body: JSON.stringify({ tier: plan }),
         });
 
-        // 3. Link audit if available
-        if (auditId) {
-          await fetch('/api/dashboard/link-audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ auditId }),
-          });
-        }
+        // 3. First analysis — reuse recent audit or start new one
+        const websiteUrl = fd.get('website_url') || '';
+        const domain = websiteUrl.toString().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
 
-        // 4. Success → redirect to dashboard
+        createBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px;">radar</span> Preparando tu dashboard...';
         globalStatus.style.display = 'block';
-        globalStatus.style.background = '#e1f5ee';
-        globalStatus.style.color = '#1D9E75';
-        globalStatus.textContent = '¡Cuenta creada! Redirigiendo a tu dashboard...';
-        setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+        globalStatus.style.background = '#f0f4ff';
+        globalStatus.style.color = '#1A4B8C';
+
+        const firstRunRes = await fetch('/api/radar/first-run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain, clientId: 'current', email: accountEmail }),
+        });
+        const firstRunData = await firstRunRes.json();
+
+        if (firstRunData.status === 'linked') {
+          // Recent audit found — dashboard ready instantly
+          globalStatus.style.background = '#e1f5ee';
+          globalStatus.style.color = '#1D9E75';
+          globalStatus.textContent = '¡Perfecto! Ya teníamos un análisis reciente de tu web. Tu dashboard está listo.';
+          setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+
+        } else if (firstRunData.status === 'started') {
+          // New audit started — poll for progress
+          globalStatus.textContent = 'Analizando tu web por primera vez...';
+          const newAuditId = firstRunData.auditId;
+          const phases = ['Crawling tu web', 'Analizando SEO', 'Evaluando competidores', 'Midiendo rendimiento', 'Generando recomendaciones'];
+          let phase = 0;
+
+          const poll = setInterval(async () => {
+            try {
+              const statusRes = await fetch(`/api/audit/${newAuditId}/status`);
+              const statusData = await statusRes.json();
+
+              globalStatus.textContent = phases[Math.min(phase, phases.length - 1)] + '...';
+
+              if (statusData.status === 'completed' || statusData.currentModule === 'done') {
+                clearInterval(poll);
+
+                // Link as snapshot
+                await fetch('/api/dashboard/link-audit', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ auditId: newAuditId }),
+                });
+
+                globalStatus.style.background = '#e1f5ee';
+                globalStatus.style.color = '#1D9E75';
+                globalStatus.textContent = '¡Análisis completado! Entrando a tu dashboard...';
+                setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+              }
+              phase++;
+            } catch {
+              // Keep polling
+            }
+          }, 8000);
+
+        } else {
+          // Fallback — just go to dashboard
+          globalStatus.style.background = '#e1f5ee';
+          globalStatus.style.color = '#1D9E75';
+          globalStatus.textContent = '¡Cuenta creada! Redirigiendo a tu dashboard...';
+          setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+        }
 
       } catch (err) {
         globalStatus.style.display = 'block';

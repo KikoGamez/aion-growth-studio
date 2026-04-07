@@ -145,6 +145,23 @@ export async function createSnapshotFromAudit(auditId: string, clientId: string)
  * Find a completed audit by email (for linking after registration).
  * Returns the most recent completed audit for that email.
  */
+export async function findRecentAuditByDomain(domain: string, maxAgeHours: number = 12): Promise<{ id: string; url: string; score: number } | null> {
+  if (IS_DEMO) return null;
+  const sb = getSupabase();
+  const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).toISOString();
+  const { data, error } = await sb
+    .from('audits')
+    .select('id, url, score')
+    .ilike('url', `%${domain}%`)
+    .eq('status', 'completed')
+    .gte('completed_at', cutoff)
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
 export async function findAuditByEmail(email: string): Promise<{ id: string; url: string; score: number } | null> {
   if (IS_DEMO) return null;
   const sb = getSupabase();
