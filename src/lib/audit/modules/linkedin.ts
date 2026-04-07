@@ -6,11 +6,14 @@ const APIFY_TOKEN = import.meta.env?.APIFY_TOKEN || process.env.APIFY_TOKEN;
 const DFS_LOGIN = import.meta.env?.DATAFORSEO_LOGIN || process.env.DATAFORSEO_LOGIN;
 const DFS_PASSWORD = import.meta.env?.DATAFORSEO_PASSWORD || process.env.DATAFORSEO_PASSWORD;
 
-/** Fetch recent posts from LinkedIn company page via Apify */
-async function fetchLinkedInPosts(companyUrl: string, followers: number): Promise<{
+interface PostMetrics {
   postsLast90Days: number; avgLikes: number; avgComments: number;
   engagementRate: number; lastPostDate?: string;
-} | null> {
+  _totalLikes: number; _totalComments: number; // raw totals for ER recalc
+}
+
+/** Fetch recent posts from LinkedIn company page via Apify */
+async function fetchLinkedInPosts(companyUrl: string, followers: number): Promise<PostMetrics | null> {
   if (!APIFY_TOKEN) return null;
   try {
     const res = await axios.post(
@@ -44,11 +47,9 @@ async function fetchLinkedInPosts(companyUrl: string, followers: number): Promis
 
     console.log(`[linkedin] Posts: ${count90}/90d, avg ${avgLikes} likes, ER ${engRate}%`);
     return {
-      postsLast90Days: count90,
-      avgLikes,
-      avgComments,
-      engagementRate: engRate,
+      postsLast90Days: count90, avgLikes, avgComments, engagementRate: engRate,
       lastPostDate: latestTs > 0 ? new Date(latestTs).toISOString() : undefined,
+      _totalLikes: totalLikes, _totalComments: totalComments,
     };
   } catch (e) {
     console.log(`[linkedin] Posts Actor failed: ${(e as Error).message?.slice(0, 80)}`);
@@ -203,40 +204,55 @@ async function fetchCompetitorLinkedIn(competitorUrls: string[]): Promise<Linked
 }
 
 async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
-  // Method 1: Apify LinkedIn Company Scraper (most reliable, full data)
+  // Method 1: Apify — run profile + posts Actors in PARALLEL
   if (APIFY_TOKEN) {
     try {
-      const actorRes = await axios.post(
-        `https://api.apify.com/v2/acts/riceman~linkedin-company-data-insights-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=25`,
-        { company_linkedin_urls: [url] },
-        { timeout: 30000, headers: { 'Content-Type': 'application/json' } },
-      );
-      const items = actorRes.data;
-      if (Array.isArray(items) && items.length > 0) {
-        const p = items[0];
-        const followers = p.follower_count || 0;
-        console.log(`[linkedin] Apify Actor: ${p.company_name} — ${followers} followers, ${p.employee_count} employees`);
+      const [actorRes, postsRes] = await Promise.allSettled([
+        axios.post(
+          `https://api.apify.com/v2/acts/riceman~linkedin-company-data-insights-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=30`,
+          { company_linkedin_urls: [url] },
+          { timeout: 35000, headers: { 'Content-Type': 'application/json' } },
+        ),
+        // Posts Actor runs in parallel — doesn't add latency
+        fetchLinkedInPosts(url, 0), // followers=0 placeholder, recalc ER below
+      ]);
 
-        // Fetch posts in parallel-ish (non-blocking if it fails)
-        const postData = await fetchLinkedInPosts(url, followers);
+      if (actorRes.status === 'fulfilled') {
+        const items = actorRes.value.data;
+        if (Array.isArray(items) && items.length > 0) {
+          const p = items[0];
+          const followers = p.follower_count || 0;
+          console.log(`[linkedin] Profile: ${p.company_name} — ${followers} followers, ${p.employee_count} employees`);
 
-        return {
-          found: true,
-          url,
-          name: p.company_name || undefined,
-          followers: followers || undefined,
-          employees: p.employee_count || undefined,
-          description: (p.description || '').slice(0, 300) || undefined,
-          industry: p.industries?.[0] || undefined,
-          specialties: p.specialties || undefined,
-          headquarters: p.hq_full_address || undefined,
-          website: p.website || undefined,
-          yearFounded: p.year_founded || undefined,
-          ...postData,
-        };
+          // Recalculate engagement rate with actual follower count
+          let postData = postsRes.status === 'fulfilled' ? postsRes.value : null;
+          if (postData && followers > 0 && postData.postsLast90Days > 0) {
+            const er = Math.round(((postData._totalLikes + postData._totalComments) / (postData.postsLast90Days * followers)) * 10000) / 100;
+            postData = { ...postData, engagementRate: er };
+            console.log(`[linkedin] ER recalc with ${followers} followers: ${er}%`);
+          }
+
+          return {
+            found: true,
+            url,
+            name: p.company_name || undefined,
+            followers: followers || undefined,
+            employees: p.employee_count || undefined,
+            description: (p.description || '').slice(0, 300) || undefined,
+            industry: p.industries?.[0] || undefined,
+            specialties: p.specialties || undefined,
+            headquarters: p.hq_full_address || undefined,
+            website: p.website || undefined,
+            yearFounded: p.year_founded || undefined,
+            ...postData,
+          };
+        }
+      }
+      if (actorRes.status === 'rejected') {
+        console.log(`[linkedin] Profile Actor failed: ${actorRes.reason?.message?.slice(0, 80)}`);
       }
     } catch (e) {
-      console.log(`[linkedin] Apify Actor failed: ${(e as Error).message?.slice(0, 80)}`);
+      console.log(`[linkedin] Apify failed: ${(e as Error).message?.slice(0, 80)}`);
     }
   }
 
