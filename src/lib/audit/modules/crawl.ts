@@ -5,6 +5,89 @@ import type { BusinessType, CrawlResult, HreflangAlternate } from '../types';
 const ANTHROPIC_API_KEY =
   (typeof import.meta !== 'undefined' ? import.meta.env?.ANTHROPIC_API_KEY : undefined)
   || process.env.ANTHROPIC_API_KEY;
+const DFS_LOGIN = (typeof import.meta !== 'undefined' ? import.meta.env?.DATAFORSEO_LOGIN : undefined) || process.env.DATAFORSEO_LOGIN;
+const DFS_PASSWORD = (typeof import.meta !== 'undefined' ? import.meta.env?.DATAFORSEO_PASSWORD : undefined) || process.env.DATAFORSEO_PASSWORD;
+
+/** Titles that indicate the crawl was blocked — need Google SERP fallback */
+const BLOCKED_TITLE_RE = /^(access denied|just a moment|attention required|403 forbidden|forbidden|blocked|captcha|challenge|verifying|please wait|one moment|checking your browser|cloudflare|ddos protection|security check|pardon our interruption)/i;
+
+/**
+ * When a site blocks our crawler, use Google's index to get real company info.
+ * Google has already crawled and indexed the site — we just read their cache.
+ */
+async function enrichFromGoogle(domain: string, result: CrawlResult): Promise<CrawlResult> {
+  if (!DFS_LOGIN || !DFS_PASSWORD) return result;
+  const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
+
+  try {
+    // Search for the domain — Google returns the real title, description, sitelinks
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+      body: JSON.stringify([{ keyword: domain, location_code: 2724, language_code: 'es', depth: 5 }]),
+    });
+    clearTimeout(timer);
+    if (!res.ok) return result;
+
+    const data = await res.json();
+    const items = data?.tasks?.[0]?.result?.[0]?.items || [];
+    const organic = items.find((i: any) => i.type === 'organic' && i.url?.includes(domain));
+
+    if (organic) {
+      // Extract real title: "El Corte Inglés: Comprar moda, electrónica..." → "El Corte Inglés"
+      const googleTitle = organic.title || '';
+      const cleanTitle = googleTitle.split(/[:|-]/)[0]?.trim();
+      if (cleanTitle && cleanTitle.length > 2 && !BLOCKED_TITLE_RE.test(cleanTitle)) {
+        result.title = googleTitle;
+        result.companyName = cleanTitle;
+        result.companyNameConfidence = 'medium';
+        result.companyNameSource = 'google-serp';
+        console.log(`[crawl] Google fallback: title="${cleanTitle}", desc="${(organic.description || '').slice(0, 60)}"`);
+      }
+      if (organic.description && !result.description) {
+        result.description = organic.description.slice(0, 200);
+      }
+
+      // Detect Instagram/LinkedIn from Google results
+      for (const item of items) {
+        const itemUrl = item.url || '';
+        if (!result.instagramHandle && itemUrl.includes('instagram.com/')) {
+          const m = itemUrl.match(/instagram\.com\/([A-Za-z0-9_.]{3,30})\/?/);
+          if (m) { result.instagramHandle = m[1]; console.log(`[crawl] Google → IG: @${m[1]}`); }
+        }
+        if (!result.linkedinUrl && itemUrl.includes('linkedin.com/company/')) {
+          result.linkedinUrl = itemUrl.split('?')[0];
+          console.log(`[crawl] Google → LI: ${result.linkedinUrl}`);
+        }
+      }
+    }
+
+    // Check for blog via separate search
+    const blogRes = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+      body: JSON.stringify([{ keyword: `site:${domain} blog`, location_code: 2724, language_code: 'es', depth: 3 }]),
+    });
+    if (blogRes.ok) {
+      const blogData = await blogRes.json();
+      const blogItems = blogData?.tasks?.[0]?.result?.[0]?.items || [];
+      const blogPage = blogItems.find((i: any) => i.type === 'organic' && /\/(blog|noticias|news|articulos|actualidad|insights)/i.test(i.url || ''));
+      if (blogPage) {
+        result.hasBlog = true;
+        result.blogUrl = blogPage.url?.split('?')[0];
+        console.log(`[crawl] Google → blog found: ${result.blogUrl}`);
+      }
+    }
+
+    result._crawlBlocked = true;
+  } catch (e) {
+    console.log(`[crawl] Google fallback failed: ${(e as Error).message?.slice(0, 80)}`);
+  }
+  return result;
+}
 
 const GENERIC_TITLES = new Set([
   'inicio', 'home', 'index', 'bienvenido', 'bienvenida', 'welcome', 'homepage',
@@ -333,7 +416,7 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       if (m) blogUrl = `${siteOrigin}/${m[1]}`;
     }
 
-    return {
+    let result: CrawlResult = {
       title,
       description,
       h1s,
@@ -363,6 +446,14 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       ...(hasBlog && { hasBlog }),
       ...(blogUrl && { blogUrl }),
     };
+
+    // If the site blocked our crawler, enrich from Google's index
+    if (BLOCKED_TITLE_RE.test(title) || (wordCount < 50 && !description)) {
+      console.log(`[crawl] Site appears blocked (title="${title.slice(0, 30)}", words=${wordCount}). Using Google fallback.`);
+      result = await enrichFromGoogle(domain, result);
+    }
+
+    return result;
   } catch (err: any) {
     return {
       loadedOk: false,
