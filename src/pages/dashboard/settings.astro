@@ -2,6 +2,7 @@
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { getClient, IS_DEMO, listClientUsers } from '../../lib/db';
+import { getIntegration, isConfigured as isGoogleConfigured } from '../../lib/integrations';
 import type { Tier } from '../../lib/demo-data';
 
 const client = Astro.locals.client ?? await getClient();
@@ -10,9 +11,15 @@ const users = await listClientUsers(client.id);
 const currentUserRole = Astro.locals.user?.role ?? 'viewer';
 const canManageTeam = currentUserRole === 'admin' || currentUserRole === 'superuser';
 
-// GA4 connection status — will come from integrations table when real
-const ga4Connected = false;
-const ga4QualityScore: number | null = null; // 0-100 when connected
+// GA4 connection status from integrations table
+const ga4Integration = await getIntegration(client.id, 'google_analytics');
+const ga4Connected = !!ga4Integration;
+const ga4QualityScore: number | null = ga4Integration?.data_quality_score ?? null;
+const ga4Email = ga4Integration?.account_email || '';
+const ga4Property = ga4Integration?.property_name || '';
+const ga4NeedsPropertySelection = Astro.url.searchParams.get('ga4') === 'select_property';
+const ga4Properties: Array<{name: string; displayName: string}> = (ga4Integration?.metadata as any)?.available_properties || [];
+const googleConfigured = isGoogleConfigured();
 
 const futureConnections = [
   { name: 'Google Ads', icon: 'ads_click' },
@@ -147,6 +154,8 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
                 <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
                   <div style="width:8px;height:8px;border-radius:50%;background:#1D9E75;"></div>
                   <span style="font-size:12px;font-weight:600;color:#1D9E75;">Conectado</span>
+                  {ga4Email && <span style="font-size:11px;color:#64748b;">({ga4Email})</span>}
+                  {ga4Property && <span style="font-size:11px;color:#64748b;">— {ga4Property}</span>}
                   {ga4QualityScore !== null && (
                     <span style={`font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;${ga4QualityScore >= 70 ? 'background:#d1fae5;color:#065f46;' : 'background:#FAEEDA;color:#92400e;'}`}>
                       Calidad: {ga4QualityScore}/100
@@ -155,7 +164,7 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
                 </div>
               </div>
             </div>
-            <button style="background:#FCEBEB;color:#E24B4A;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">
+            <button id="btn-disconnect-ga4" style="background:#FCEBEB;color:#E24B4A;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">
               Desconectar
             </button>
           </div>
@@ -173,11 +182,33 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
                 Datos reales de tráfico, conversiones y comportamiento de usuario. Tu diagnóstico será mucho más preciso con datos reales vs estimaciones.
               </p>
             </div>
-            <button onclick="alert('OAuth GA4 — requiere P5-S1 implementado')"
-              style="background:#1A4B8C;color:white;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Conectar con Google
-            </button>
+            {googleConfigured ? (
+              <a href="/api/integrations/google-connect"
+                style="background:#1A4B8C;color:white;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;flex-shrink:0;white-space:nowrap;text-decoration:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Conectar con Google
+              </a>
+            ) : (
+              <div style="text-align:center;padding:8px 16px;background:#FAEEDA;border-radius:8px;font-size:12px;color:#92400e;flex-shrink:0;">
+                Requiere configurar GOOGLE_CLIENT_ID
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Property selection modal */}
+      {ga4NeedsPropertySelection && ga4Properties.length > 1 && (
+        <div style="margin-top:16px;padding:20px;background:#f7f9ff;border:1px solid #d6e3ff;border-radius:12px;">
+          <p style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:12px;">Selecciona tu propiedad de GA4:</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            {ga4Properties.map(p => (
+              <button class="btn-select-property" data-name={p.name} data-display={p.displayName}
+                style="text-align:left;padding:12px 16px;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:#1a1a2e;transition:border-color 0.15s;"
+                onmouseover="this.style.borderColor='#1A4B8C'" onmouseout="this.style.borderColor='#e2e8f0'">
+                {p.displayName} <span style="color:#94a3b8;font-weight:400;">({p.name})</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -202,4 +233,31 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
     </div>
 
   </div>
+
+  <script define:vars={{ clientId: client.id }}>
+    // Disconnect GA4
+    document.getElementById('btn-disconnect-ga4')?.addEventListener('click', async () => {
+      if (!confirm('¿Desconectar Google Analytics? Volverás a datos estimados.')) return;
+      await fetch('/api/integrations/google-disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      });
+      window.location.reload();
+    });
+
+    // Select GA4 property
+    document.querySelectorAll('.btn-select-property').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        const display = btn.dataset.display;
+        await fetch('/api/integrations/google-select-property', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, propertyName: name, propertyDisplayName: display }),
+        });
+        window.location.href = '/dashboard/settings?ga4=connected';
+      });
+    });
+  </script>
 </DashboardLayout>
