@@ -13,11 +13,19 @@ interface ClientProfile {
   teamSize?: string;
   monthlyBudget?: string;
   geoScope?: string;
+  // Visibility metrics (from audit) — used to detect low-visibility sites
+  keywordsTop10?: number;
+  organicTraffic?: number;
+  domainRank?: number;
 }
 
 /** Build a context block tailored to this client's profile */
 export function buildPlaybookContext(profile: ClientProfile): string {
   const blocks: string[] = [];
+
+  // ── Low visibility detection (before anything else) ────────────
+  const lowVis = buildLowVisibilityContext(profile);
+  if (lowVis) blocks.push(lowVis);
 
   // ── Business type playbook ─────────────────────────────────────
   const bt = detectBusinessType(profile);
@@ -196,3 +204,81 @@ function buildGeoContext(geoScope?: string): string | null {
       return null;
   }
 }
+
+// ── Low visibility / new site detection ──────────────────────────
+
+function buildLowVisibilityContext(profile: ClientProfile): string | null {
+  const kw = profile.keywordsTop10 ?? -1;
+  const traffic = profile.organicTraffic ?? -1;
+  const dr = profile.domainRank ?? -1;
+
+  // No data at all — probably no audit yet
+  if (kw < 0 && traffic < 0) return null;
+
+  // Thresholds for "very low visibility"
+  const isVeryLow = kw <= 10 && traffic <= 200;
+  const isLow = kw <= 30 && traffic <= 1000;
+
+  if (!isVeryLow && !isLow) return null;
+
+  if (isVeryLow) {
+    return `### ⚡ WEB CON VISIBILIDAD MUY BAJA — MODO CRECIMIENTO DESDE CERO
+
+IMPORTANTE PARA EL ADVISOR: Esta web tiene ${kw >= 0 ? kw : 'casi cero'} keywords en top 10 y ~${traffic >= 0 ? traffic : '0'} visitas orgánicas al mes${dr >= 0 ? ` (DR: ${dr})` : ''}. Los datos de análisis competitivo y benchmarks tienen valor limitado porque la web está partiendo prácticamente de cero.
+
+**Tu tono debe ser:**
+Honesto pero motivador. "Tus métricas actuales son bajas, pero eso significa que cada acción que tomes tendrá un impacto visible rápidamente. Solo puedes crecer."
+
+**Prioridades para webs nuevas/sin visibilidad:**
+
+1. **SEO técnico básico** (semana 1-2):
+   - Verificar Google Search Console y enviar sitemap
+   - Schema markup básico (Organization, LocalBusiness o Product según tipo)
+   - Canonical tags, robots.txt correcto, SSL
+   - Velocidad: LCP <2.5s en mobile
+   - Meta titles y descriptions en TODAS las páginas principales
+
+2. **Contenido fundacional** (mes 1-2):
+   - Identificar 5-10 keywords "long tail" de baja competencia y alta relevancia
+   - Crear 1 pieza de contenido por semana (guías, FAQs, comparativas)
+   - Cada contenido >1.500 palabras con estructura clara (H2s, listas, datos)
+   - Optimizar para GEO: responde preguntas que la gente haría a ChatGPT/Perplexity
+
+3. **Autoridad inicial** (mes 2-3):
+   - Reclamar perfiles en Google Business Profile, Trustpilot, directorios del sector
+   - Publicar en LinkedIn (B2B) o Instagram (B2C) 2-3 veces por semana
+   - Buscar 3-5 menciones en medios/blogs del sector (guest posting, entrevistas)
+
+4. **Conversión básica** (paralelo):
+   - Al menos 1 CTA claro por página
+   - Formulario de contacto o lead magnet funcional
+   - Página "Sobre nosotros" que genere confianza
+
+**NO recomendar en esta fase:**
+- Campañas paid agresivas (no hay landing pages que conviertan)
+- Análisis competitivo detallado (los competidores están a años luz, no es útil comparar)
+- Estrategias de link building agresivas (primero necesita contenido que valga la pena enlazar)
+- Herramientas caras de SEO (no hay datos suficientes para justificarlas)
+
+**Expectativas realistas:**
+- Mes 1-3: sentar las bases técnicas y de contenido
+- Mes 3-6: empezar a ver tráfico orgánico creciente (50→500 visitas/mes)
+- Mes 6-12: con consistencia, alcanzar 1.000-5.000 visitas/mes según sector`;
+  }
+
+  // isLow but not very low
+  return `### WEB CON VISIBILIDAD BAJA — MODO ACELERACIÓN
+
+Esta web tiene ${kw} keywords en top 10 y ~${traffic} visitas orgánicas/mes${dr >= 0 ? ` (DR: ${dr})` : ''}. Tiene algo de presencia pero está lejos de su potencial.
+
+**Prioridades para acelerar crecimiento:**
+
+1. **Quick wins SEO**: identificar keywords en posiciones 11-20 (casi en top 10) y optimizar esas páginas
+2. **Content gap**: comparar con competidores para encontrar temas que aún no cubre
+3. **SEO técnico**: resolver errores de Search Console, mejorar Core Web Vitals
+4. **GEO/IA**: crear contenido que responda preguntas del sector para aparecer en respuestas de IA
+5. **Autoridad**: conseguir menciones y backlinks de calidad del sector
+
+**Expectativas:** con acción consistente, puede duplicar tráfico en 3-4 meses.`;
+}
+

@@ -45,6 +45,7 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
 
   // ── 1b. Business-type playbook ──────────────────────────────────
   const r = (latestSnap && latestSnap.id !== 'empty') ? latestSnap.pipeline_output : null;
+  const seoData = r?.seo as any;
   const playbook = buildPlaybookContext({
     primaryGoal: onboarding?.primary_goal,
     businessType: (r?.sector as any)?.businessType,
@@ -52,6 +53,9 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
     teamSize: onboarding?.team_size,
     monthlyBudget: onboarding?.monthly_budget,
     geoScope: onboarding?.geo_scope,
+    keywordsTop10: seoData?.keywordsTop10,
+    organicTraffic: seoData?.organicTraffic,
+    domainRank: seoData?.domainRank,
   });
   if (playbook) sections.push(playbook);
 
