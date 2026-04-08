@@ -1,5 +1,6 @@
 import { getClientOnboarding, getLatestSnapshot, getAllSnapshots, getAllRecommendations } from '../db';
 import { getRecentMessages, getLearnings, getDocuments, type AdvisorMessage } from './db';
+import { buildPlaybookContext } from '../ai/playbooks';
 
 /**
  * Build the full client context for the advisor prompt.
@@ -42,8 +43,19 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
     if (onboarding.linkedin_url) sections.push(`LinkedIn: ${onboarding.linkedin_url}`);
   }
 
-  // ── 2. Current KPIs (latest snapshot) ──────────────────────────
+  // ── 1b. Business-type playbook ──────────────────────────────────
   const r = (latestSnap && latestSnap.id !== 'empty') ? latestSnap.pipeline_output : null;
+  const playbook = buildPlaybookContext({
+    primaryGoal: onboarding?.primary_goal,
+    businessType: (r?.sector as any)?.businessType,
+    sector: onboarding?.sector || (r?.sector as any)?.sector,
+    teamSize: onboarding?.team_size,
+    monthlyBudget: onboarding?.monthly_budget,
+    geoScope: onboarding?.geo_scope,
+  });
+  if (playbook) sections.push(playbook);
+
+  // ── 2. Current KPIs (latest snapshot) ──────────────────────────
   if (r) {
     sections.push('\n## KPIS ACTUALES (último análisis)');
     const score = r.score as any;
