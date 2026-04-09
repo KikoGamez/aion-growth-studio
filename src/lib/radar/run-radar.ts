@@ -104,6 +104,35 @@ export async function runRadarForClient(client: RadarClient): Promise<RadarRunRe
     const diff = analyzeEvolution(snapshots, allRecs);
     result.correlationsFound = diff.correlations.length;
 
+    // 4b. Save meaningful correlations as learnings (closes the feedback loop)
+    const meaningfulCorrelations = diff.correlations.filter(
+      c => c.correlationType === 'probable_cause' || c.correlationType === 'possible_cause',
+    );
+    if (meaningfulCorrelations.length > 0) {
+      const { saveLearnings } = await import('../advisor/db');
+      await saveLearnings(
+        client.id,
+        meaningfulCorrelations.map(c => ({
+          type: 'action_result' as const,
+          content: c.explanation,
+          metadata: {
+            recommendation_title: c.actionTitle,
+            action_date: c.actionDate,
+            kpi_key: c.kpiKey,
+            kpi_label: c.kpiLabel,
+            delta_before: c.deltaBefore,
+            delta_after: c.deltaAfter,
+            delta_pct: c.deltaAfter && c.deltaBefore
+              ? Math.round(((c.deltaAfter - c.deltaBefore) / Math.max(c.deltaBefore, 1)) * 100)
+              : 0,
+            correlation_type: c.correlationType,
+          },
+        })),
+        'radar',
+      ).catch(err => console.error('[radar] Failed to save correlation learnings:', err.message));
+      console.log(`[radar] Saved ${meaningfulCorrelations.length} action→KPI correlations as learnings`);
+    }
+
     // 5. Build full client context and generate new recommendations
     const ctx = await buildClientContext(client.id, client.name, client.domain);
     const onboarding = ctx.onboarding;

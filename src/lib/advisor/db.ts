@@ -202,7 +202,7 @@ export async function recordUsage(clientId: string, costCents: number, messagesC
 
 export async function saveLearnings(
   clientId: string,
-  learnings: Array<{ type: string; content: string }>,
+  learnings: Array<{ type: string; content: string; metadata?: Record<string, any> }>,
   source = 'advisor',
 ) {
   if (!learnings.length) return;
@@ -213,6 +213,7 @@ export async function saveLearnings(
       type: l.type,
       content: l.content,
       source,
+      ...(l.metadata && { metadata: l.metadata }),
     })),
   );
 }

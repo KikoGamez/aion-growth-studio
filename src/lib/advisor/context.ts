@@ -170,9 +170,25 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
 
   // ── 5. Learnings (accumulated memory) ──────────────────────────
   if (learnings.length) {
-    sections.push('\n## APRENDIZAJES ACUMULADOS');
-    for (const l of learnings.slice(0, 30)) {
-      sections.push(`- [${l.type}] ${l.content}`);
+    // Separate action results (what worked/didn't) from other learnings
+    const actionResults = learnings.filter((l: any) => l.type === 'action_result');
+    const otherLearnings = learnings.filter((l: any) => l.type !== 'action_result');
+
+    if (actionResults.length) {
+      sections.push('\n## QUÉ HA FUNCIONADO Y QUÉ NO (correlaciones acción → KPI)');
+      sections.push('IMPORTANTE: Usa estos datos para priorizar recomendaciones futuras. Recomienda más de lo que funcionó, menos de lo que no.');
+      for (const l of actionResults.slice(0, 20)) {
+        const m = (l as any).metadata || {};
+        const sign = (m.delta_pct ?? 0) >= 0 ? '+' : '';
+        sections.push(`- ${l.content}${m.delta_pct ? ` (${sign}${m.delta_pct}% en ${m.kpi_label || m.kpi_key})` : ''} [${m.correlation_type || '?'}]`);
+      }
+    }
+
+    if (otherLearnings.length) {
+      sections.push('\n## OTROS APRENDIZAJES');
+      for (const l of otherLearnings.slice(0, 20)) {
+        sections.push(`- [${l.type}] ${l.content}`);
+      }
     }
   }
 
