@@ -122,9 +122,13 @@ export async function runCompetitors(
   }
 
   // DataForSEO organic competitors — guaranteed to have SEO data.
-  // Use them as base, then fill with Haiku if needed (up to 3-4 total).
+  // Skip for very low-visibility sites: DFS organic competitors for a site with 3 keywords
+  // will be giant domains (HubSpot, Forbes) that aren't real competitors.
+  const seoKeywords = (extraContext as any)?.seoKeywordsTop10 ?? 999;
+  const skipDfsOrganic = seoKeywords <= 15;
+
   const dfsCompetitors: Array<{ name: string; url: string; snippet: string }> = [];
-  if (dfsOrganicCompetitors && dfsOrganicCompetitors.length > 0) {
+  if (!skipDfsOrganic && dfsOrganicCompetitors && dfsOrganicCompetitors.length > 0) {
     const resolved = await Promise.all(
       dfsOrganicCompetitors.slice(0, 5).map(async (comp) => {
         const normalized = `https://${comp.domain}`;
@@ -179,12 +183,20 @@ export async function runCompetitors(
   const gbpCats = extraContext?.gbpCategories?.join(', ') || '';
 
   // Build business profile for the LLM
+  const seoTraffic = (extraContext as any)?.seoTraffic ?? 0;
+  const seoDR = (extraContext as any)?.seoDomainRank ?? 0;
+  const sizeHint = seoKeywords <= 10 ? 'very small (freelance/startup level, almost no organic presence)'
+    : seoKeywords <= 50 ? 'small (small business, early online presence)'
+    : seoKeywords <= 200 ? 'medium (established SME)'
+    : 'large (significant online presence)';
+
   const businessProfile = [
     `Domain: ${domain}`,
     `Brand: ${brandName}`,
     `Sector: ${sector}`,
     description && `Description: ${description}`,
     bt && `Business type: ${bt}`,
+    `Online size: ${sizeHint} (${seoKeywords} keywords, ~${seoTraffic} monthly organic visits, DR ${seoDR})`,
     igBio && `Instagram bio: ${igBio}`,
     gbpCats && `Google Business categories: ${gbpCats}`,
     locationHint && `Location: ${locationHint}`,
@@ -207,7 +219,17 @@ THEN find competitors that match ALL 4 dimensions:
 - Same distribution model (wholesale ≠ retail ≠ e-commerce)
 - Same geographic market (local Madrid ≠ national chain)
 
+SIZE MATCHING (critical):
+- Match the business SIZE. A freelance consultant is NOT competing with McKinsey or BCG.
+- A personal trainer is NOT competing with a gym chain.
+- A small local shop is NOT competing with Amazon.
+- Find competitors of SIMILAR scale: similar traffic, similar team size, similar market scope.
+- Max 1 "aspirational" competitor (slightly bigger, not 1000x bigger).
+
 EXAMPLES OF WRONG vs RIGHT:
+- Freelance advisor → WRONG: McKinsey, BCG, Deloitte → RIGHT: other independent advisors/consultants
+- Personal trainer → WRONG: Basic-Fit, McFit → RIGHT: other personal trainers in same city
+- Small SaaS → WRONG: Salesforce, HubSpot → RIGHT: other small SaaS tools in same niche
 - Fruit wholesaler → WRONG: Mercadona (supermarket), Campofrío (manufacturer) → RIGHT: other fruit wholesalers in same city
 - Boutique law firm → WRONG: Garrigues (Big4) → RIGHT: other boutique firms of similar size
 - Local restaurant → WRONG: McDonald's → RIGHT: other restaurants in same neighborhood/cuisine

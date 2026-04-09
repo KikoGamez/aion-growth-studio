@@ -183,6 +183,9 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
         businessType: (results.sector as any)?.businessType,
         instagramBio: (results.instagram as any)?.bio,
         gbpCategories: (results.gbp as any)?.categories,
+        seoKeywordsTop10: (results.seo as any)?.keywordsTop10,
+        seoTraffic: (results.seo as any)?.organicTraffic,
+        seoDomainRank: (results.seo as any)?.domainRank,
       });
     }
 
