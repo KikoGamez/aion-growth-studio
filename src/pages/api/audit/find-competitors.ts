@@ -97,7 +97,7 @@ export const POST: APIRoute = async ({ request }) => {
       } catch {}
     }
 
-    // Validate: HEAD-check all candidates in parallel, filter out dead domains
+    // Validate: HEAD-check all candidates in parallel, mark dead/unreachable
     const validated = await Promise.all(
       candidates.map(async (c) => {
         try {
@@ -109,13 +109,18 @@ export const POST: APIRoute = async ({ request }) => {
             redirect: 'follow',
           });
           clearTimeout(timer);
-          return (res.ok || res.status === 403 || res.status === 405) ? c : null;
+          const alive = res.ok || res.status === 403 || res.status === 405;
+          return { ...c, status: alive ? 'ok' : 'unreachable' };
         } catch {
-          return null;
+          return { ...c, status: 'unreachable' };
         }
       }),
     );
-    const merged = validated.filter(Boolean).slice(0, 6);
+    // Verified first, unreachable at the end, max 6
+    const merged = [
+      ...validated.filter(c => c.status === 'ok'),
+      ...validated.filter(c => c.status !== 'ok'),
+    ].slice(0, 6);
 
     return json({ sector, businessScope, location, competitors: merged });
   } catch (err: any) {
