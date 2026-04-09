@@ -2204,10 +2204,14 @@ const donutSVG = buildDonutSVG();
                           </div>
                         </div>
                         <p style={`font-size:0.68rem;color:${(erLevel === 'excellent' || erLevel === 'good') ? '#69FF87' : '#c3c6d2'};margin-top:4px;line-height:1.4;`}>
-                          {erLevel === 'excellent' ? `Engagement excepcional para ${sectorLabel}. Tu audiencia interactua muy por encima de la media del sector.` :
-                           erLevel === 'good' ? `Buen engagement para ${sectorLabel}. Tu comunidad es activa y responde a tu contenido.` :
-                           erLevel === 'ok' ? `Engagement aceptable para ${sectorLabel}. Hay margen de mejora con contenido mas relevante.` :
-                           `Engagement bajo para ${sectorLabel}. Revisar estrategia de contenido y calidad de la audiencia.`}
+                          {instagram.followers < 200
+                            ? (erLevel === 'excellent' || erLevel === 'good')
+                              ? `Buen engagement pero con solo ${fmt(instagram.followers)} seguidores — la base es demasiado pequena para que el dato sea significativo. Prioridad: crecer la audiencia manteniendo esta calidad de interaccion.`
+                              : `Comunidad muy pequena (${fmt(instagram.followers)} seguidores). El engagement rate no es representativo con esta base. Prioridad: crecer la audiencia con contenido constante y relevante.`
+                            : erLevel === 'excellent' ? `Engagement excepcional para ${sectorLabel}. Tu audiencia interactua muy por encima de la media del sector.`
+                            : erLevel === 'good' ? `Buen engagement para ${sectorLabel}. Tu comunidad es activa y responde a tu contenido.`
+                            : erLevel === 'ok' ? `Engagement aceptable para ${sectorLabel}. Hay margen de mejora con contenido mas relevante.`
+                            : `Engagement bajo para ${sectorLabel}. Revisar estrategia de contenido y calidad de la audiencia.`}
                         </p>
                       </div>
                     )}
