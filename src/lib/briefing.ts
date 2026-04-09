@@ -68,16 +68,17 @@ REGLAS:
 3. Prioriza según el objetivo principal del cliente.
 4. Usa datos concretos de la auditoría (números, no generalidades).
 5. Si la zona es local, enfatiza SEO local y GBP. Si es multi-country, enfatiza hreflang y arquitectura.
-6. Máximo 3 prioridades, 3 quick wins, 2 warnings.${historyRules}
+6. Genera entre 2 y 5 recomendaciones (priorities), SIEMPRE ordenadas de mayor a menor impacto. No menos de 2, no más de 5.
+7. Máximo 3 quick wins, máximo 2 warnings.${historyRules}
 
 RESPONDE EN JSON VÁLIDO:
 {
   "summary": "2-3 frases de resumen ejecutivo personalizado con datos concretos",
   "priorities": [
-    {"title": "Acción concreta", "description": "2 frases: problema + solución con dato", "impact": "high|medium|low"}
+    {"title": "Acción concreta", "description": "2 frases: problema + solución con dato", "impact": "high|medium|low", "pillar": "seo|geo|web|conversion|content|reputation"}
   ],
-  "quickWins": ["Acción rápida 1 (< 1 semana)", "Acción rápida 2", "Acción rápida 3"],
-  "warnings": ["Riesgo o problema urgente 1", "Riesgo 2"]
+  "quickWins": ["Acción rápida 1 (< 1 semana)", "Acción rápida 2"],
+  "warnings": ["Riesgo o problema urgente 1"]
 }`;
 
   try {
@@ -112,9 +113,13 @@ RESPONDE EN JSON VÁLIDO:
     if (!jsonMatch) return fallbackBriefing(input);
 
     const parsed = JSON.parse(jsonMatch[0]);
+    // Ensure 2-5 priorities, ordered by impact (high first)
+    const impactOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    let priorities = (parsed.priorities || []).slice(0, 5);
+    priorities.sort((a: any, b: any) => (impactOrder[a.impact] ?? 1) - (impactOrder[b.impact] ?? 1));
     return {
       summary: parsed.summary || '',
-      priorities: (parsed.priorities || []).slice(0, 3),
+      priorities,
       quickWins: (parsed.quickWins || parsed.quick_wins || []).slice(0, 3),
       warnings: (parsed.warnings || []).slice(0, 2),
       generatedAt: new Date().toISOString(),
@@ -128,10 +133,12 @@ RESPONDE EN JSON VÁLIDO:
 function fallbackBriefing(input: BriefingInput): Briefing {
   const r = input.auditResults;
   const score = r.score?.total ?? 0;
+  const mobilePS = r.pagespeed?.mobile?.performance;
   return {
     summary: `${input.clientName} tiene un score de presencia digital de ${score}/100. Se recomienda completar el análisis para obtener un briefing personalizado.`,
     priorities: [
-      { title: 'Completar perfil de empresa', description: 'Añade más contexto sobre tu negocio para recibir recomendaciones personalizadas.', impact: 'high' },
+      { title: 'Completar perfil de empresa', description: 'Añade más contexto sobre tu negocio para recibir recomendaciones personalizadas.', impact: 'high' as const },
+      { title: mobilePS && mobilePS < 60 ? `Mejorar PageSpeed mobile (${mobilePS}/100)` : 'Revisar velocidad de carga mobile', description: 'La velocidad de carga afecta al SEO y a la tasa de conversión.', impact: 'high' as const },
     ],
     quickWins: ['Verificar que SSL está activo', 'Comprobar velocidad de carga mobile'],
     warnings: score < 40 ? ['Score de presencia digital por debajo del umbral crítico'] : [],
