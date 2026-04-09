@@ -92,7 +92,7 @@ export interface StepExecution {
   nextStep: AuditStepOrDone;
 }
 
-/** Run a single step with a per-module timeout. Returns {skipped} on timeout. */
+/** Run a single step with a per-module timeout. Retries once on timeout/error. */
 export async function executeStepWithTimeout(
   step: AuditStep,
   audit: AuditPageData,
@@ -100,7 +100,7 @@ export async function executeStepWithTimeout(
   const timeoutMs = STEP_TIMEOUTS[step] ?? DEFAULT_TIMEOUT;
   const t0 = Date.now();
 
-  const result = await Promise.race([
+  const attempt = () => Promise.race([
     runStep(step, audit),
     new Promise<ModuleResult>((_, reject) =>
       setTimeout(
@@ -108,10 +108,37 @@ export async function executeStepWithTimeout(
         timeoutMs,
       ),
     ),
-  ]).catch((err: Error) => ({
+  ]);
+
+  let result = await attempt().catch((err: Error) => ({
     skipped: true,
     reason: err.message.slice(0, 120),
+    _retryable: true,
   }));
+
+  // Retry once on timeout or error — many modules fail intermittently
+  if ((result.skipped || (result as any).error) && (result as any)._retryable) {
+    const elapsed = Date.now() - t0;
+    const remaining = (timeoutMs * 2) - elapsed; // allow up to 2x original timeout for retry
+    if (remaining > 5000) {
+      console.log(`[audit:${step}] RETRY after ${elapsed}ms — ${(result as any).reason || (result as any).error}`);
+      const retryResult = await Promise.race([
+        runStep(step, audit),
+        new Promise<ModuleResult>((_, reject) =>
+          setTimeout(() => reject(new Error(`${step} retry timed out`)), remaining),
+        ),
+      ]).catch((err: Error) => ({
+        skipped: true,
+        reason: `retry failed: ${err.message.slice(0, 80)}`,
+      }));
+      // Use retry result only if it succeeded
+      if (!retryResult.skipped && !(retryResult as any).error) {
+        result = retryResult;
+        console.log(`[audit:${step}] RETRY SUCCESS after ${Date.now() - t0}ms`);
+      }
+    }
+  }
+  delete (result as any)._retryable;
 
   const ms = Date.now() - t0;
   const status = result.skipped ? 'SKIP' : (result as any).error ? 'ERR' : 'OK';
