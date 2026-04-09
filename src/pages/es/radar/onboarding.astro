@@ -440,7 +440,7 @@ const auditId = Astro.url.searchParams.get('audit') || '';
         });
 
       try {
-        // 1. Create real Supabase auth account + client + link
+        // 1. Create account + save onboarding in one call
         const websiteUrl = fd.get('website_url') || '';
         const signupRes = await fetch('/api/auth/signup', {
           method: 'POST',
@@ -450,20 +450,7 @@ const auditId = Astro.url.searchParams.get('audit') || '';
             password: pw,
             domain: websiteUrl,
             plan: plan,
-          }),
-        });
-        const signupData = await signupRes.json();
-        if (!signupRes.ok) {
-          throw new Error(signupData.error || 'Error al crear la cuenta');
-        }
-
-        // 2. Save onboarding data (now we have a real session)
-        try {
-          await fetch('/api/dashboard/save-onboarding', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              website_url: websiteUrl,
+            onboarding: {
               business_description: fd.get('business_description'),
               primary_goal: fd.get('primary_goal'),
               geo_scope: fd.get('geo_scope'),
@@ -471,9 +458,16 @@ const auditId = Astro.url.searchParams.get('audit') || '';
               monthly_budget: fd.get('monthly_budget'),
               team_size: fd.get('team_size'),
               competitors,
-            }),
-          });
-        } catch { /* Non-fatal — onboarding saved if session works */ }
+              sector: fd.get('sector') || null,
+              instagram_handle: (fd.get('instagram_handle') || '').replace(/^@/, '') || null,
+              linkedin_url: fd.get('linkedin_url') || null,
+            },
+          }),
+        });
+        const signupData = await signupRes.json();
+        if (!signupRes.ok) {
+          throw new Error(signupData.error || 'Error al crear la cuenta');
+        }
 
         // 3. First analysis — reuse recent audit or start new one
         const domain = websiteUrl.toString().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');

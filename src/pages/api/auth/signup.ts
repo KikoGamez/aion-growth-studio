@@ -21,7 +21,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   try {
-    const { email, password, domain, plan } = await request.json();
+    const body = await request.json();
+    const { email, password, domain, plan, onboarding } = body;
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: 'Email and password required' }), { status: 400 });
@@ -98,7 +99,31 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       email,
     }, { onConflict: 'user_id,client_id' });
 
-    // 4. Sign in to get session tokens
+    // 4. Save onboarding data directly (using service key, no session needed)
+    if (onboarding && clientId) {
+      try {
+        await sbAdmin.from('client_onboarding').upsert({
+          client_id: clientId,
+          business_description: onboarding.business_description || null,
+          primary_goal: onboarding.primary_goal || null,
+          goal_detail: onboarding.goal_detail || null,
+          geo_scope: onboarding.geo_scope || null,
+          geo_detail: onboarding.geo_detail || null,
+          monthly_budget: onboarding.monthly_budget || null,
+          team_size: onboarding.team_size || null,
+          competitors: onboarding.competitors || [],
+          sector: onboarding.sector || null,
+          instagram_handle: onboarding.instagram_handle || null,
+          linkedin_url: onboarding.linkedin_url || null,
+          completed_at: new Date().toISOString(),
+        }, { onConflict: 'client_id' });
+        console.log(`[signup] Onboarding saved for ${clientId}`);
+      } catch (e) {
+        console.error(`[signup] Onboarding save failed:`, (e as Error).message);
+      }
+    }
+
+    // 5. Sign in to get session tokens
     const { data: session, error: sessionError } = await sbAnon.auth.signInWithPassword({ email, password });
     if (session?.session) {
       cookies.set('sb-access-token', session.session.access_token, { path: '/', httpOnly: true, maxAge: 3600, sameSite: 'lax' });
