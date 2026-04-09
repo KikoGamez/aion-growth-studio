@@ -509,100 +509,113 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
       )}
     </section>
 
-    <!-- ══ BLOQUE 4: Plan Estratégico ══ -->
-    {planItems.length > 0 && (
-      <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <!-- ══ BLOQUE 4: Plan de Acción ══ -->
+    <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="font-size:22px;color:#1A4B8C;">checklist</span>
           <div>
-            <h3 style="font-size:16px;font-weight:900;color:#1a1a2e;letter-spacing:-0.02em;">Tu Plan Estratégico</h3>
-            <p style="font-size:13px;color:#64748b;margin-top:2px;">Acciones que has decidido implementar</p>
+            <h3 style="font-size:16px;font-weight:900;color:#1a1a2e;letter-spacing:-0.02em;">Plan de Acción</h3>
           </div>
+        </div>
+        {planItems.length > 0 && (
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;">Progreso: {planProgressPct}%</span>
             <div style="width:96px;height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
               <div style={`background:#1D9E75;height:100%;width:${planProgressPct}%;transition:width 0.3s;`}></div>
             </div>
           </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          {planItems.map(item => {
-            const isInProgress = item.status === 'in_progress';
-            const statusBg = isInProgress ? '#d6e3ff' : '#FAEEDA';
-            const statusColor = isInProgress ? '#1A4B8C' : '#BA7517';
-            const statusLabel = isInProgress ? 'En ejecución' : 'Planificada';
-            return (
-              <div class="plan-item" data-rec-id={item.id} data-status={item.status}
-                style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;background:#f7f9ff;cursor:pointer;transition:background 0.15s;"
-                onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f7f9ff'">
-                <button class="plan-toggle" data-rec-id={item.id} title="Marcar como completada"
-                  style="background:none;border:2px solid #cbd5e1;width:22px;height:22px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">
-                </button>
-                <div style="flex:1;min-width:0;">
-                  <span style="font-size:14px;font-weight:600;color:#1a1a2e;">{item.title}</span>
-                </div>
-                <span style={`font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${statusBg};color:${statusColor};text-transform:uppercase;flex-shrink:0;`}>{statusLabel}</span>
-                <a href={`/dashboard/recommendations#${item.id}`} title="Te ayudamos"
-                  style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:#1A4B8C;color:white;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;flex-shrink:0;">
-                  <span class="material-symbols-outlined" style="font-size:14px;">help</span>
-                  Te ayudamos
-                </a>
-              </div>
-            );
-          })}
-        </div>
-        {planDone.length > 0 && (
-          <div style="margin-top:16px;padding-top:12px;border-top:1px solid #f0f0f0;">
-            <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Completadas ({planDone.length})</div>
-            {planDone.slice(0, 3).map(item => (
-              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
-                <span class="material-symbols-outlined filled-icon" style="font-size:18px;color:#1D9E75;">check_circle</span>
-                <span style="font-size:13px;color:#64748b;text-decoration:line-through;">{item.title}</span>
-              </div>
-            ))}
-          </div>
         )}
-      </section>
-    )}
+      </div>
 
-    <!-- ══ BLOQUE 5 + 6: Recomendación nueva + Competidores ══ -->
-    <section style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
-
-      <!-- Nueva recomendación de AION -->
-      {priorityRec ? (
-        <div style={`background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:4px solid ${priorityRec.impact === 'high' ? '#1A4B8C' : '#BA7517'};`}>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <span class="material-symbols-outlined" style="font-size:18px;color:#1A4B8C;">lightbulb</span>
-            <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1A4B8C;">Nueva recomendación</span>
-            {pendingRecs.length > 1 && (
-              <span style="font-size:10px;background:#f0f0f0;color:#64748b;padding:2px 8px;border-radius:4px;font-weight:700;">+{pendingRecs.length - 1} más</span>
-            )}
+      {planItems.length > 0 ? (
+        <Fragment>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            {planItems.slice(0, 4).map(item => {
+              const isInProgress = item.status === 'in_progress';
+              const statusBg = isInProgress ? '#d6e3ff' : '#FAEEDA';
+              const statusColor = isInProgress ? '#1A4B8C' : '#BA7517';
+              const statusLabel = isInProgress ? 'En ejecución' : 'Planificada';
+              return (
+                <div class="plan-item" data-rec-id={item.id}
+                  style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;background:#f7f9ff;">
+                  <button class="plan-toggle" data-rec-id={item.id} title="Marcar como completada"
+                    style="background:none;border:2px solid #cbd5e1;width:22px;height:22px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">
+                  </button>
+                  <span style="flex:1;font-size:14px;font-weight:600;color:#1a1a2e;">{item.title}</span>
+                  <span style={`font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${statusBg};color:${statusColor};text-transform:uppercase;flex-shrink:0;`}>{statusLabel}</span>
+                </div>
+              );
+            })}
           </div>
-          <h4 style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:8px;line-height:1.3;">{priorityRec.title}</h4>
-          {priorityRec.description && (
-            <p style="font-size:13px;color:#434750;line-height:1.5;margin-bottom:16px;">{priorityRec.description}</p>
+          {planDone.length > 0 && (
+            <div style="margin-top:12px;font-size:12px;color:#1D9E75;font-weight:600;">{planDone.length} completada{planDone.length > 1 ? 's' : ''}</div>
           )}
-          <div style="display:flex;gap:8px;">
-            <button class="btn-add-plan" data-rec-id={priorityRec.id}
-              style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#1A4B8C;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
-              <span class="material-symbols-outlined" style="font-size:16px;">add_task</span>
-              Añadir al Plan
-            </button>
-            <button class="btn-dismiss-rec" data-rec-id={priorityRec.id}
-              style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#f0f0f0;color:#64748b;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
-              Descartar
-            </button>
-          </div>
-          <a href="/dashboard/recommendations" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748b;text-decoration:none;margin-top:12px;">
-            Ver todas las recomendaciones →
+          <a href="/dashboard/plan" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#1A4B8C;text-decoration:none;margin-top:12px;">
+            Ver plan completo →
+          </a>
+        </Fragment>
+      ) : (
+        <div style="text-align:center;padding:20px 0;">
+          <span class="material-symbols-outlined" style="font-size:36px;color:#cbd5e1;margin-bottom:8px;">assignment</span>
+          <p style="font-size:14px;color:#1a1a2e;font-weight:600;margin-bottom:4px;">Tu plan de acción está vacío</p>
+          <p style="font-size:13px;color:#64748b;line-height:1.5;max-width:400px;margin:0 auto;">
+            Revisa las recomendaciones de AION y añade al plan las que quieras ejecutar. También puedes crear acciones propias.
+          </p>
+          <a href="/dashboard/recommendations" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:8px 16px;background:#1A4B8C;color:white;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">
+            <span class="material-symbols-outlined" style="font-size:16px;">lightbulb</span>
+            Ver recomendaciones
           </a>
         </div>
-      ) : (
-        <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
-          <span class="material-symbols-outlined" style="font-size:32px;color:#1D9E75;margin-bottom:8px;">verified</span>
-          <p style="font-size:14px;color:#64748b;">Sin nuevas recomendaciones esta semana.</p>
-          <a href="/dashboard/recommendations" style="font-size:12px;color:#1A4B8C;text-decoration:none;font-weight:600;">Ver historial →</a>
-        </div>
       )}
+    </section>
+
+    <!-- ══ BLOQUE 5 + 6: Recomendaciones + Competidores ══ -->
+    <section style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+
+      <!-- Recomendaciones de AION -->
+      <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <span class="material-symbols-outlined" style="font-size:20px;color:#BA7517;">lightbulb</span>
+          <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1a1a2e;">Recomendaciones</h3>
+          {pendingRecs.length > 0 && (
+            <span style="font-size:10px;background:#FAEEDA;color:#BA7517;padding:2px 8px;border-radius:4px;font-weight:700;">{pendingRecs.length}</span>
+          )}
+        </div>
+        {pendingRecs.length > 0 ? (
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            {pendingRecs.slice(0, 3).map(rec => (
+              <div style="padding:12px;border-radius:10px;background:#f7f9ff;border-left:3px solid #BA7517;">
+                <h4 style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px;line-height:1.3;">{rec.title}</h4>
+                {rec.description && (
+                  <p style="font-size:12px;color:#64748b;line-height:1.4;margin-bottom:8px;">{rec.description?.slice(0, 120)}...</p>
+                )}
+                <div style="display:flex;gap:6px;">
+                  <button class="btn-add-plan" data-rec-id={rec.id}
+                    style="padding:5px 12px;background:#1A4B8C;color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">add_task</span>
+                    Al plan
+                  </button>
+                  <button class="btn-dismiss-rec" data-rec-id={rec.id}
+                    style="padding:5px 10px;background:#f0f0f0;color:#64748b;border:none;border-radius:6px;font-size:11px;cursor:pointer;">
+                    Descartar
+                  </button>
+                </div>
+              </div>
+            ))}
+            {pendingRecs.length > 3 && (
+              <a href="/dashboard/recommendations" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#1A4B8C;text-decoration:none;">
+                Ver {pendingRecs.length - 3} recomendaciones más →
+              </a>
+            )}
+          </div>
+        ) : (
+          <div style="text-align:center;padding:12px 0;">
+            <span class="material-symbols-outlined" style="font-size:28px;color:#1D9E75;">verified</span>
+            <p style="font-size:13px;color:#64748b;margin-top:4px;">Sin nuevas recomendaciones esta semana.</p>
+          </div>
+        )}
+      </div>
 
       <!-- Tabla competidores -->
       <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">

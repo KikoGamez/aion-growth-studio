@@ -1,0 +1,207 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getClient, getLatestSnapshot, getActionPlan, getCompletedActions, listClientUsers } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const tier: Tier = client.tier;
+const snapshot = await getLatestSnapshot(client.id);
+const hasData = snapshot.id !== 'empty';
+
+const [actionPlan, completed, users] = hasData ? await Promise.all([
+  getActionPlan(client.id),
+  getCompletedActions(client.id),
+  listClientUsers(client.id),
+]) : [[], [], []];
+
+const inProgress = actionPlan.filter(a => a.status === 'in_progress');
+const pending = actionPlan.filter(a => a.status === 'pending' || a.status === 'accepted');
+
+const impactLabels: Record<string, { label: string; bg: string; fg: string }> = {
+  high: { label: 'Alto', bg: '#d6e3ff', fg: '#124687' },
+  medium: { label: 'Medio', bg: '#e8e5ff', fg: '#434750' },
+  low: { label: 'Bajo', bg: '#f0f0f0', fg: '#888' },
+};
+---
+
+<DashboardLayout
+  title="Plan de Acción"
+  currentPath="/dashboard/plan"
+  tier={tier}
+  clientName={client.name}
+  domain={client.domain}
+  lastReportMonth={hasData ? snapshot.month : ''}
+  lastReportDate={hasData ? snapshot.date : ''}
+>
+
+<div style="display:flex;flex-direction:column;gap:28px;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <h1 style="font-size:24px;font-weight:900;color:#1a1a2e;letter-spacing:-0.03em;">Plan de Acción</h1>
+      <p style="font-size:14px;color:#64748b;margin-top:4px;">Gestiona las acciones que quieres ejecutar para mejorar tu presencia digital</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <a href="/dashboard/recommendations" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;background:#FAEEDA;color:#BA7517;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">
+        <span class="material-symbols-outlined" style="font-size:16px;">lightbulb</span>
+        Ver recomendaciones
+      </a>
+    </div>
+  </div>
+
+  {(pending.length === 0 && inProgress.length === 0 && completed.length === 0) && (
+    <div style="text-align:center;padding:60px 24px;background:white;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <span class="material-symbols-outlined" style="font-size:48px;color:#cbd5e1;margin-bottom:12px;">assignment</span>
+      <h3 style="font-size:18px;font-weight:800;color:#1a1a2e;margin-bottom:8px;">Tu plan está vacío</h3>
+      <p style="font-size:14px;color:#64748b;line-height:1.5;max-width:480px;margin:0 auto 20px;">
+        Revisa las recomendaciones de AION y selecciona las que quieras ejecutar. Cada acción tiene un impacto estimado en tus KPIs. También puedes añadir acciones propias.
+      </p>
+      <a href="/dashboard/recommendations" style="display:inline-flex;align-items:center;gap:6px;padding:12px 24px;background:#1A4B8C;color:white;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;">
+        <span class="material-symbols-outlined" style="font-size:18px;">lightbulb</span>
+        Ver recomendaciones de AION
+      </a>
+    </div>
+  )}
+
+  <!-- En ejecución -->
+  {inProgress.length > 0 && (
+    <section>
+      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1A4B8C;margin-bottom:12px;">
+        En ejecución ({inProgress.length})
+      </h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        {inProgress.map(item => {
+          const impact = impactLabels[(item as any).impact || 'medium'];
+          return (
+            <div class="plan-action" data-id={item.id} style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:3px solid #1A4B8C;">
+              <div style="display:flex;align-items:flex-start;gap:14px;">
+                <button class="btn-complete" data-rec-id={item.id} title="Completar"
+                  style="width:24px;height:24px;border-radius:6px;border:2px solid #1A4B8C;background:none;cursor:pointer;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;padding:0;">
+                </button>
+                <div style="flex:1;">
+                  <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{item.title}</h4>
+                  {(item as any).description && <p style="font-size:13px;color:#434750;line-height:1.5;">{(item as any).description}</p>}
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">
+                  <span style={`font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${impact.bg};color:${impact.fg};`}>Impacto {impact.label}</span>
+                  <select class="assignee-select" data-rec-id={item.id}
+                    style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#64748b;background:white;cursor:pointer;">
+                    <option value="">Sin asignar</option>
+                    {users.map(u => (
+                      <option value={u.id} selected={(item as any).data?.assignee === u.id}>{u.name || u.email}</option>
+                    ))}
+                  </select>
+                  <input type="date" class="due-date" data-rec-id={item.id}
+                    value={(item as any).data?.due_date || ''}
+                    style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#64748b;" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  <!-- Planificadas -->
+  {pending.length > 0 && (
+    <section>
+      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#BA7517;margin-bottom:12px;">
+        Planificadas ({pending.length})
+      </h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        {pending.map(item => {
+          const impact = impactLabels[(item as any).impact || 'medium'];
+          return (
+            <div class="plan-action" data-id={item.id} style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+              <div style="display:flex;align-items:flex-start;gap:14px;">
+                <button class="btn-start" data-rec-id={item.id} title="Empezar"
+                  style="width:24px;height:24px;border-radius:6px;border:2px solid #cbd5e1;background:none;cursor:pointer;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;padding:0;">
+                </button>
+                <div style="flex:1;">
+                  <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{item.title}</h4>
+                  {(item as any).description && <p style="font-size:13px;color:#434750;line-height:1.5;">{(item as any).description}</p>}
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">
+                  <span style={`font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:${impact.bg};color:${impact.fg};`}>Impacto {impact.label}</span>
+                  <select class="assignee-select" data-rec-id={item.id}
+                    style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#64748b;background:white;cursor:pointer;">
+                    <option value="">Sin asignar</option>
+                    {users.map(u => (
+                      <option value={u.id} selected={(item as any).data?.assignee === u.id}>{u.name || u.email}</option>
+                    ))}
+                  </select>
+                  <input type="date" class="due-date" data-rec-id={item.id}
+                    value={(item as any).data?.due_date || ''}
+                    style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#64748b;" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  <!-- Completadas -->
+  {completed.length > 0 && (
+    <section>
+      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1D9E75;margin-bottom:12px;">
+        Completadas ({completed.length})
+      </h2>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        {completed.map(item => (
+          <div style="background:white;border-radius:12px;padding:14px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;align-items:center;gap:12px;opacity:0.7;">
+            <span class="material-symbols-outlined filled-icon" style="font-size:20px;color:#1D9E75;">check_circle</span>
+            <span style="flex:1;font-size:14px;color:#1a1a2e;text-decoration:line-through;">{item.title}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+</div>
+
+<script>
+  async function updateAction(recId, updates) {
+    await fetch('/api/dashboard/update-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendationId: recId, ...updates }),
+    });
+  }
+
+  // Complete action
+  document.querySelectorAll('.btn-complete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await updateAction(btn.dataset.recId, { status: 'done' });
+      window.location.reload();
+    });
+  });
+
+  // Start action (pending → in_progress)
+  document.querySelectorAll('.btn-start').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await updateAction(btn.dataset.recId, { status: 'in_progress' });
+      window.location.reload();
+    });
+  });
+
+  // Assignee change
+  document.querySelectorAll('.assignee-select').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      await updateAction(sel.dataset.recId, { data: { assignee: sel.value } });
+    });
+  });
+
+  // Due date change
+  document.querySelectorAll('.due-date').forEach(input => {
+    input.addEventListener('change', async () => {
+      await updateAction(input.dataset.recId, { data: { due_date: input.value } });
+    });
+  });
+</script>
+
+</DashboardLayout>
