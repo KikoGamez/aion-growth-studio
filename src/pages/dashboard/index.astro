@@ -451,7 +451,16 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
       })}
     </section>
 
-    {/* ══ Analytics KPIs (if GA4/GSC connected) ══ */}
+    {/* ══ Analytics KPIs or pending message ══ */}
+    {ga4Connected && !hasAnalytics && (
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:#E1F5EE;border:1px solid #b8e6d4;border-radius:10px;">
+        <span class="material-symbols-outlined" style="font-size:20px;color:#1D9E75;">analytics</span>
+        <span style="font-size:13px;color:#065f46;flex:1;">
+          <strong>Google Analytics conectado.</strong> En la próxima revisión semanal actualizaremos los datos de tu GA4 y Search Console.
+        </span>
+        <span class="material-symbols-outlined" style="font-size:18px;color:#1D9E75;">check_circle</span>
+      </div>
+    )}
     {hasAnalytics && (
       <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
