@@ -286,6 +286,14 @@ export interface LinkedInResult extends ModuleResult {
   avgComments?: number;
   engagementRate?: number; // (likes+comments) / (posts * followers)
   lastPostDate?: string;
+  // Personal profile fields (from harvestapi~linkedin-profile-scraper)
+  isPersonal?: boolean;
+  isVerified?: boolean;
+  isPremium?: boolean;
+  experienceCount?: number;
+  educationHighlight?: string;
+  skillsCount?: number;
+  publicationsCount?: number;
   competitors?: LinkedInCompetitor[];
 }
 

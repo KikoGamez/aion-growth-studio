@@ -204,7 +204,48 @@ async function fetchCompetitorLinkedIn(competitorUrls: string[]): Promise<Linked
 }
 
 async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
-  // Method 1: Apify — run profile + posts Actors in PARALLEL
+  const isPersonalProfile = url.includes('/in/');
+
+  // ── Personal profiles (/in/username) — use harvestapi profile scraper ──
+  if (isPersonalProfile && APIFY_TOKEN) {
+    try {
+      const actorRes = await axios.post(
+        `https://api.apify.com/v2/acts/harvestapi~linkedin-profile-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=30`,
+        { urls: [url] },
+        { timeout: 40000, headers: { 'Content-Type': 'application/json' } },
+      );
+      const items = actorRes.data;
+      if (Array.isArray(items) && items.length > 0) {
+        const p = items[0];
+        const fullName = [p.firstName, p.lastName].filter(Boolean).join(' ');
+        const followers = p.followerCount ?? 0;
+        const connections = p.connectionsCount ?? 0;
+        console.log(`[linkedin] Personal profile: ${fullName} — ${followers} followers, ${connections} connections`);
+        return {
+          found: true,
+          url,
+          name: fullName || undefined,
+          followers: followers || undefined,
+          employees: connections || undefined, // repurpose: connections as "network size"
+          description: (p.about || '').slice(0, 300) || undefined,
+          industry: p.headline || undefined,
+          headquarters: typeof p.location === 'object' ? p.location?.parsed?.text : p.location,
+          isPersonal: true,
+          isVerified: p.verified || false,
+          isPremium: p.premium || false,
+          experienceCount: p.experience?.length ?? 0,
+          educationHighlight: p.education?.[0]?.schoolName || p.profileTopEducation?.[0]?.schoolName,
+          skillsCount: p.skills?.length ?? 0,
+          publicationsCount: p.publications?.length ?? 0,
+        };
+      }
+    } catch (e) {
+      console.log(`[linkedin] Personal profile Actor failed: ${(e as Error).message?.slice(0, 80)}`);
+    }
+    // Fall through to HTML scraping
+  }
+
+  // ── Company pages (/company/slug) — use company data insights scraper ──
   if (APIFY_TOKEN) {
     try {
       const [actorRes, postsRes] = await Promise.allSettled([
