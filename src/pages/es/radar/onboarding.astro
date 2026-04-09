@@ -338,9 +338,9 @@ const auditId = Astro.url.searchParams.get('audit') || '';
     async function prefillCompetitors() {
       if (!auditId) return;
       try {
-        const res = await fetch(`/api/audit/${auditId}/status`);
+        const res = await fetch(`/api/audit/${auditId}/competitors`);
         const data = await res.json();
-        const competitors = data.results?.competitors?.competitors || data.results?.competitor_traffic?.items || [];
+        const competitors = data.competitors || [];
         competitors.slice(0, 3).forEach((c, i) => {
           const input = document.getElementById(`comp_${i}`);
           const status = document.getElementById(`comp-status-${i}`);
