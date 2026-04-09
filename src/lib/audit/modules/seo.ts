@@ -421,12 +421,13 @@ export async function runSEO(url: string): Promise<SEOResult> {
               brandKwCount++;
             }
           });
-          // Use sampled total (from same dataset) instead of global total to avoid
-          // comparing partial brand ETV against full domain traffic
-          const comparableEtv = totalSampledEtv > 0 ? totalSampledEtv : (baseResult.organicTrafficEstimate || 0);
+          // Compare brand ETV against TOTAL organic traffic (not sampled subset).
+          // The sampled dataset is pre-filtered by brand name so comparing against it
+          // always yields ~100% — a nonsensical result.
+          const totalOrganic = baseResult.organicTrafficEstimate || 0;
           baseResult.brandTrafficEtv = Math.round(brandEtv);
-          baseResult.nonBrandTrafficEtv = Math.max(0, (baseResult.organicTrafficEstimate || 0) - Math.round(brandEtv));
-          baseResult.brandTrafficPct = comparableEtv > 0 ? Math.round((brandEtv / comparableEtv) * 100) : 0;
+          baseResult.nonBrandTrafficEtv = Math.max(0, totalOrganic - Math.round(brandEtv));
+          baseResult.brandTrafficPct = totalOrganic > 0 ? Math.min(100, Math.round((brandEtv / totalOrganic) * 100)) : 0;
           baseResult.brandKeywords = brandKwCount;
           _logParts.push(`brand:${baseResult.brandTrafficPct}%(${brandKwCount}kw,sampled:${Math.round(totalSampledEtv)})`);
         }

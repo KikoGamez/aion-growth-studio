@@ -115,6 +115,9 @@ Revisa que no haya contradicciones entre secciones:
 - Si keyword_gap_count es 0 → elimina recomendaciones de "atacar gaps"
 - Si funnelScore > 60 pero dice "sin conversión" → corrige
 - Si domainRank es null pero hay >50 keywords → no decir "sin autoridad"
+- Si brandTrafficPct dice X% pero nonBrandTrafficEtv muestra tráfico no-branded significativo → corrige la narrativa para reflejar el mix real (brandEtv vs organicTrafficEstimate)
+- Si topKeywords muestra keywords no-branded con tráfico alto pero se dice "100% branded" → eso es incorrecto, corrige
+- Si una keyword top está posicionada #1 con miles de visitas y no es la marca → eso demuestra captación nueva, menciónalo
 
 FASE 2 — CALIDAD DEL VEREDICTO EJECUTIVO (CRÍTICO)
 El "summary" y los primeros 3 bullets son lo que lee un CEO. DEBEN:
