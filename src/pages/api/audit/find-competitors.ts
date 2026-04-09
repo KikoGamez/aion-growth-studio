@@ -134,9 +134,21 @@ Contenido parcial: ${body || 'N/A'}
 Determina:
 1. El sector/industria de la empresa
 2. Si es LOCAL (ciudad/región), NACIONAL (país) o GLOBAL/SAAS
-3. 4-5 competidores directos REALES con sus URLs
+3. El TAMAÑO aparente del negocio (freelance/autónomo, pyme, mediana, grande)
+4. 4-5 competidores directos REALES con sus URLs
 
-REGLAS:
+REGLAS CRÍTICAS DE TAMAÑO:
+- Si parece una web PERSONAL o de FREELANCE → busca otros freelances o profesionales independientes del mismo nicho. NUNCA propongas consultoras grandes (Deloitte, McKinsey, Accenture, BCG) ni empresas de >500 empleados.
+- Si parece una PYME → busca otras pymes del mismo sector y tamaño, no líderes del mercado.
+- Si parece una EMPRESA GRANDE → entonces sí, compara con otras grandes del sector.
+- Máximo 1 competidor "aspiracional" (algo más grande, no 100x más grande).
+
+EJEMPLOS:
+- Freelance consultor digital → CORRECTO: otros consultores independientes → INCORRECTO: Accenture, Deloitte
+- Personal trainer → CORRECTO: otros entrenadores de su ciudad → INCORRECTO: McFit, Basic-Fit
+- Pequeño SaaS → CORRECTO: otros SaaS pequeños del nicho → INCORRECTO: Salesforce, SAP
+
+OTRAS REGLAS:
 - Para negocios locales: competidores de la misma ciudad/región
 - Para nacionales (España/Latinoamérica): competidores del mismo país
 - Para SaaS/global: competidores internacionales del mismo espacio
@@ -146,9 +158,10 @@ Responde ÚNICAMENTE con JSON válido:
 {
   "sector": "nombre del sector en español",
   "businessScope": "local" | "national" | "global",
+  "businessSize": "freelance" | "pyme" | "mediana" | "grande",
   "location": "ciudad/región si es local, null si no",
   "competitors": [
-    {"name": "Nombre Empresa", "url": "https://...", "why": "Por qué es competidor (1 frase)"}
+    {"name": "Nombre Empresa", "url": "https://...", "why": "Por qué es competidor directo de tamaño similar (1 frase)"}
   ]
 }`;
 }
@@ -161,11 +174,11 @@ ${title ? `Nombre: ${title}` : ''}
 ${description ? `Descripción: ${description}` : ''}
 
 Busca en tu conocimiento empresas que operan en el mismo espacio de mercado.
-Incluye tanto competidores locales/nacionales como internacionales relevantes.
 
-REGLAS:
+REGLAS CRÍTICAS:
+- AJUSTA AL TAMAÑO: si parece un freelance o profesional independiente, sugiere otros freelances o profesionales similares. NO sugiereas multinacionales o grandes consultoras.
 - Solo empresas reales con URLs verificables · No incluyas ${domain}
-- Si no conoces competidores directos para algún nicho muy específico, usa los más cercanos del sector
+- Si no conoces competidores directos para algún nicho muy específico, usa los más cercanos del sector Y del mismo tamaño
 
 Responde ÚNICAMENTE con JSON array (sin texto adicional):
 [{"name": "Nombre", "url": "https://...", "why": "Por qué compite (1 frase)"}]`;
