@@ -25,10 +25,24 @@ export async function runPageSpeed(url: string): Promise<PageSpeedResult> {
     }
   };
 
+  // Retry wrapper — Lighthouse sometimes fails intermittently for slow sites
+  const fetchWithRetry = async (url: string) => {
+    try {
+      return await fetchWithTimeout(url, 40000);
+    } catch (err: any) {
+      // Retry once if it wasn't a timeout (intermittent Google API error)
+      if (err.name !== 'AbortError') {
+        console.log(`[pagespeed] Retrying after error: ${err.message?.slice(0, 60)}`);
+        return await fetchWithTimeout(url, 40000);
+      }
+      throw err;
+    }
+  };
+
   try {
     const [mobileData, desktopData] = await Promise.all([
-      fetchWithTimeout(`${base}&strategy=mobile`),
-      fetchWithTimeout(`${base}&strategy=desktop`),
+      fetchWithRetry(`${base}&strategy=mobile`),
+      fetchWithRetry(`${base}&strategy=desktop`),
     ]);
 
     return {
