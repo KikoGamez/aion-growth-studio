@@ -385,7 +385,7 @@ export async function updateLeadStatus(email: string, url: string, status: strin
   await sb.from('leads').update(update).eq('email', email).eq('url', url);
 }
 
-// ─── Recommendations ──────────────────────────────────────────────────────────
+// ─── Recommendations (proposals from the system) ─────────────────────────────
 
 export interface Recommendation {
   id?: string;
@@ -394,60 +394,173 @@ export interface Recommendation {
   title: string;
   description?: string;
   impact?: 'high' | 'medium' | 'low';
-  status?: string;
-  feedback?: string;
+  status?: string;       // 'proposed' | 'accepted' | 'rejected'
+  rejected_reason?: string;
+  month_proposed?: string;
+  times_proposed?: number;
   data?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export async function logRecommendation(rec: Recommendation): Promise<string | null> {
+/** Create a new recommendation proposal */
+export async function logRecommendation(rec: Omit<Recommendation, 'status'>): Promise<string | null> {
   if (IS_DEMO) return null;
   const sb = getSupabase();
   const { data, error } = await sb
-    .from('recommendations_log')
-    .insert(rec)
+    .from('recommendations')
+    .insert({
+      ...rec,
+      status: 'proposed',
+      month_proposed: new Date().toISOString().slice(0, 7),
+    })
     .select('id')
     .single();
   if (error) { console.error('[recommendations] Insert failed:', error.message); return null; }
   return data?.id ?? null;
 }
 
-export async function getActiveRecommendations(clientId: string): Promise<Recommendation[]> {
-  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => ['pending', 'accepted', 'in_progress'].includes(r.status)) as Recommendation[];
+/** Get proposed recommendations (not yet accepted/rejected) */
+export async function getProposedRecommendations(clientId: string): Promise<Recommendation[]> {
+  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => r.status === 'pending') as Recommendation[];
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from('recommendations_log')
+  const { data } = await sb
+    .from('recommendations')
     .select('*')
     .eq('client_id', clientId)
-    .in('status', ['pending', 'accepted', 'in_progress'])
-    .order('created_at', { ascending: false })
-    .limit(20);
-  if (error || !data) return [];
-  return data as Recommendation[];
+    .eq('status', 'proposed')
+    .order('created_at', { ascending: false });
+  return (data || []) as Recommendation[];
 }
 
+/** Get rejected recommendations (for potential re-proposal) */
+export async function getRejectedRecommendations(clientId: string): Promise<Recommendation[]> {
+  if (IS_DEMO) return [];
+  const sb = getSupabase();
+  const { data } = await sb
+    .from('recommendations')
+    .select('*')
+    .eq('client_id', clientId)
+    .eq('status', 'rejected')
+    .order('created_at', { ascending: false });
+  return (data || []) as Recommendation[];
+}
+
+/** Get ALL recommendations (for context building / diff-engine) */
 export async function getAllRecommendations(clientId: string): Promise<Recommendation[]> {
   if (IS_DEMO) return DEMO_RECOMMENDATIONS as Recommendation[];
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from('recommendations_log')
+  const { data } = await sb
+    .from('recommendations')
     .select('*')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return data as Recommendation[];
+  return (data || []) as Recommendation[];
 }
 
-export async function updateRecommendationStatus(
-  recId: string,
-  status: string,
+/** Accept recommendation → creates action_plan entry */
+export async function acceptRecommendation(recId: string, clientId: string): Promise<string | null> {
+  if (IS_DEMO) return null;
+  const sb = getSupabase();
+
+  // 1. Get the recommendation
+  const { data: rec } = await sb.from('recommendations').select('*').eq('id', recId).single();
+  if (!rec) return null;
+
+  // 2. Mark as accepted
+  await sb.from('recommendations')
+    .update({ status: 'accepted', updated_at: new Date().toISOString() })
+    .eq('id', recId);
+
+  // 3. Create action_plan entry
+  const { data: action, error } = await sb.from('action_plan').insert({
+    client_id: clientId,
+    recommendation_id: recId,
+    title: rec.title,
+    description: rec.description,
+    impact: rec.impact,
+    source: rec.source,
+    status: 'pending',
+  }).select('id').single();
+
+  if (error) { console.error('[action_plan] Insert failed:', error.message); return null; }
+  return action?.id ?? null;
+}
+
+/** Reject recommendation */
+export async function rejectRecommendation(recId: string, reason?: string): Promise<void> {
+  if (IS_DEMO) return;
+  const sb = getSupabase();
+  await sb.from('recommendations').update({
+    status: 'rejected',
+    rejected_reason: reason || null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', recId);
+}
+
+// ─── Action Plan (accepted actions the client commits to) ────────────────────
+
+export interface ActionPlanItem {
+  id: string;
+  client_id: string;
+  recommendation_id?: string;
+  title: string;
+  description?: string;
+  impact?: 'high' | 'medium' | 'low';
+  status: 'pending' | 'in_progress' | 'done';
+  source?: string;
+  started_at?: string;
+  completed_at?: string;
+  feedback?: string;
+  data?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Get active action plan items */
+export async function getActionPlan(clientId: string): Promise<ActionPlanItem[]> {
+  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => ['accepted', 'in_progress'].includes(r.status)).map(r => ({ ...r, status: r.status === 'accepted' ? 'pending' : r.status })) as unknown as ActionPlanItem[];
+  const sb = getSupabase();
+  const { data } = await sb
+    .from('action_plan')
+    .select('*')
+    .eq('client_id', clientId)
+    .in('status', ['pending', 'in_progress'])
+    .order('created_at', { ascending: false });
+  return (data || []) as ActionPlanItem[];
+}
+
+/** Get completed actions (for correlation tracking) */
+export async function getCompletedActions(clientId: string): Promise<ActionPlanItem[]> {
+  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => r.status === 'done') as unknown as ActionPlanItem[];
+  const sb = getSupabase();
+  const { data } = await sb
+    .from('action_plan')
+    .select('*')
+    .eq('client_id', clientId)
+    .eq('status', 'done')
+    .order('completed_at', { ascending: false });
+  return (data || []) as ActionPlanItem[];
+}
+
+/** Update action plan item status */
+export async function updateActionStatus(
+  actionId: string,
+  status: 'pending' | 'in_progress' | 'done',
   feedback?: string,
 ): Promise<void> {
   if (IS_DEMO) return;
   const sb = getSupabase();
   const update: Record<string, any> = { status, updated_at: new Date().toISOString() };
+  if (status === 'in_progress') update.started_at = new Date().toISOString();
+  if (status === 'done') update.completed_at = new Date().toISOString();
   if (feedback) update.feedback = feedback;
-  await sb.from('recommendations_log').update(update).eq('id', recId);
+  await sb.from('action_plan').update(update).eq('id', actionId);
 }
+
+// Legacy compatibility — used by old code paths
+export const updateRecommendationStatus = updateActionStatus;
+export const getActiveRecommendations = getActionPlan;
 
 // ─── Interaction Log ──────────────────────────────────────────────────────────
 

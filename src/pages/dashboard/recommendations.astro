@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getClient, getLatestSnapshot, getAllRecommendations } from '../../lib/db';
+import { getClient, getLatestSnapshot, getProposedRecommendations, getRejectedRecommendations, getActionPlan, getCompletedActions } from '../../lib/db';
 import type { Tier } from '../../lib/demo-data';
 
 const client = Astro.locals.client ?? await getClient();
@@ -9,44 +9,25 @@ const tier: Tier = client.tier;
 const snapshot = await getLatestSnapshot(client.id);
 const hasData = snapshot.id !== 'empty';
 
-const allRecs = hasData ? await getAllRecommendations(client.id) : [];
+const [proposed, rejected, actionPlan, completed] = hasData ? await Promise.all([
+  getProposedRecommendations(client.id),
+  getRejectedRecommendations(client.id),
+  getActionPlan(client.id),
+  getCompletedActions(client.id),
+]) : [[], [], [], []];
 
-// Group by status
-const pending = allRecs.filter(r => r.status === 'pending');
-const inPlan = allRecs.filter(r => r.status === 'accepted');
-const inProgress = allRecs.filter(r => r.status === 'in_progress');
-const done = allRecs.filter(r => r.status === 'done');
-const discarded = allRecs.filter(r => r.status === 'rejected');
+const inProgress = actionPlan.filter(a => a.status === 'in_progress');
+const pending = actionPlan.filter(a => a.status === 'pending');
 
-const impactColor: Record<string, { bg: string; fg: string }> = {
-  high: { bg: '#d6e3ff', fg: '#124687' },
-  medium: { bg: '#e8e5ff', fg: '#434750' },
-  low: { bg: '#f0f0f0', fg: '#888' },
-};
-
-const pillarIcons: Record<string, string> = {
-  seo: 'search',
-  geo: 'psychology',
-  web: 'speed',
-  conversion: 'conversion_path',
-  content: 'article',
-  reputation: 'star',
-  'conversión': 'conversion_path',
-  'contenido': 'article',
-  'reputación': 'star',
-};
-
-const statusLabels: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: 'Sugerencia AION', color: '#BA7517', bg: '#FAEEDA' },
-  accepted: { label: 'En tu Plan', color: '#1A4B8C', bg: '#d6e3ff' },
-  in_progress: { label: 'En ejecución', color: '#0e7c5f', bg: '#d1fae5' },
-  done: { label: 'Implementada', color: '#1D9E75', bg: '#E1F5EE' },
-  rejected: { label: 'Descartada', color: '#64748b', bg: '#f0f0f0' },
+const impactColor: Record<string, { bg: string; fg: string; label: string }> = {
+  high: { bg: '#d6e3ff', fg: '#124687', label: 'Alto' },
+  medium: { bg: '#e8e5ff', fg: '#434750', label: 'Medio' },
+  low: { bg: '#f0f0f0', fg: '#888', label: 'Bajo' },
 };
 ---
 
 <DashboardLayout
-  title="Recomendaciones"
+  title="Recomendaciones y Plan"
   currentPath="/dashboard/recommendations"
   tier={tier}
   clientName={client.name}
@@ -54,58 +35,65 @@ const statusLabels: Record<string, { label: string; color: string; bg: string }>
   lastReportMonth={hasData ? snapshot.month : ''} lastReportDate={hasData ? snapshot.date : ''}
 >
 
-<div style="display:flex;flex-direction:column;gap:24px;">
+<div style="display:flex;flex-direction:column;gap:32px;">
 
   <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;">
-    <div>
-      <h1 style="font-size:24px;font-weight:900;color:#1a1a2e;letter-spacing:-0.03em;">Recomendaciones</h1>
-      <p style="font-size:14px;color:#64748b;margin-top:4px;">Acciones priorizadas por el Agente Radar para mejorar tu presencia digital</p>
-    </div>
-    <div style="display:flex;gap:8px;font-size:12px;">
-      <span style="background:#FAEEDA;color:#BA7517;padding:4px 12px;border-radius:6px;font-weight:700;">{pending.length} sugerencias</span>
-      <span style="background:#d6e3ff;color:#1A4B8C;padding:4px 12px;border-radius:6px;font-weight:700;">{inPlan.length + inProgress.length} en plan</span>
-      <span style="background:#E1F5EE;color:#1D9E75;padding:4px 12px;border-radius:6px;font-weight:700;">{done.length} completadas</span>
+  <div>
+    <h1 style="font-size:24px;font-weight:900;color:#1a1a2e;letter-spacing:-0.03em;">Recomendaciones y Plan de Accion</h1>
+    <p style="font-size:14px;color:#64748b;margin-top:4px;">AION analiza tus datos y propone acciones. Tu decides cuales ejecutar.</p>
+    <div style="display:flex;gap:8px;margin-top:12px;font-size:12px;">
+      <span style="background:#FAEEDA;color:#BA7517;padding:4px 12px;border-radius:6px;font-weight:700;">{proposed.length} propuestas</span>
+      <span style="background:#d6e3ff;color:#1A4B8C;padding:4px 12px;border-radius:6px;font-weight:700;">{pending.length + inProgress.length} en plan</span>
+      <span style="background:#E1F5EE;color:#1D9E75;padding:4px 12px;border-radius:6px;font-weight:700;">{completed.length} completadas</span>
     </div>
   </div>
 
-  <!-- Sugerencias AION (pendientes de revisar) -->
-  {pending.length > 0 && (
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SECTION 1: PROPOSED RECOMMENDATIONS                        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  {proposed.length > 0 && (
     <section>
-      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#BA7517;margin-bottom:12px;">
-        Sugerencias de AION ({pending.length})
-      </h2>
-      <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Recomendaciones generadas por el Agente Radar esta semana. Decide cuáles añadir a tu Plan Estratégico.</p>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span class="material-symbols-outlined" style="font-size:20px;color:#BA7517;">lightbulb</span>
+        <h2 style="font-size:15px;font-weight:800;color:#BA7517;">Recomendaciones de AION</h2>
+      </div>
+      <div style="background:#FFF8EE;border-radius:10px;padding:14px 18px;margin-bottom:16px;border-left:3px solid #BA7517;">
+        <p style="font-size:13px;color:#7a5a1a;line-height:1.5;">
+          Estas son acciones que nuestro sistema ha identificado como oportunidades para tu negocio, basandose en tus datos actuales y la evolucion de tus KPIs.
+          <strong>Revisalas y decide cuales incluir en tu Plan de Accion.</strong> Las que descartes podemos volver a proponerlas mas adelante si siguen siendo relevantes.
+        </p>
+      </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        {pending.map(rec => {
+        {proposed.map(rec => {
           const impact = impactColor[(rec as any).impact || 'medium'];
-          const pillar = (rec as any).pillar || 'seo';
-          const icon = pillarIcons[pillar] || 'lightbulb';
           return (
-            <div class="rec-card" id={rec.id} data-rec-id={rec.id}
-              style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:16px;align-items:flex-start;">
+            <div class="rec-card" style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:16px;align-items:flex-start;">
               <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:#FFF8EE;display:flex;align-items:center;justify-content:center;">
-                <span class="material-symbols-outlined" style="font-size:20px;color:#BA7517;">{icon}</span>
+                <span class="material-symbols-outlined" style="font-size:20px;color:#BA7517;">auto_awesome</span>
               </div>
               <div style="flex:1;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                   <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>
-                    Impacto {(rec as any).impact === 'high' ? 'Alto' : (rec as any).impact === 'medium' ? 'Medio' : 'Bajo'}
+                    Impacto {impact.label}
                   </span>
-                  <span style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">{pillar}</span>
+                  <span style="font-size:10px;color:#94a3b8;font-weight:600;">{rec.source}</span>
+                  {(rec.times_proposed ?? 1) > 1 && (
+                    <span style="font-size:10px;color:#BA7517;font-weight:600;">Propuesta {rec.times_proposed}x</span>
+                  )}
                 </div>
                 <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{rec.title}</h4>
                 {rec.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{rec.description}</p>}
               </div>
               <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-self:center;">
-                <button class="btn-add-plan" data-rec-id={rec.id}
-                  style="background:#1A4B8C;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                <button class="btn-accept" data-rec-id={rec.id}
+                  style="background:#1A4B8C;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;">
                   <span class="material-symbols-outlined" style="font-size:16px;">add_task</span>
-                  Añadir al Plan
+                  Incluir en Plan
                 </button>
-                <button class="btn-dismiss" data-rec-id={rec.id} title="Descartar"
-                  style="background:#f0f0f0;color:#64748b;border:none;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;display:flex;align-items:center;">
+                <button class="btn-reject" data-rec-id={rec.id}
+                  style="background:#f0f0f0;color:#64748b;border:none;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;">
                   <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+                  Descartar
                 </button>
               </div>
             </div>
@@ -115,44 +103,64 @@ const statusLabels: Record<string, { label: string; color: string; bg: string }>
     </section>
   )}
 
-  <!-- En tu Plan Estratégico (accepted + in_progress) -->
-  {(inPlan.length > 0 || inProgress.length > 0) && (
+  {proposed.length === 0 && actionPlan.length === 0 && completed.length === 0 && (
+    <div style="text-align:center;padding:48px;color:#94a3b8;">
+      <span class="material-symbols-outlined" style="font-size:48px;margin-bottom:12px;">inbox</span>
+      <p style="font-size:15px;font-weight:600;">Aun no hay recomendaciones</p>
+      <p style="font-size:13px;margin-top:4px;">Cuando AION Radar analice tus datos, aparecerán aqui propuestas de mejora.</p>
+    </div>
+  )}
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SECTION 2: ACTION PLAN (accepted by client)                -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  {(pending.length > 0 || inProgress.length > 0) && (
     <section>
-      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1A4B8C;margin-bottom:12px;">
-        Tu Plan Estratégico ({inPlan.length + inProgress.length})
-      </h2>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span class="material-symbols-outlined" style="font-size:20px;color:#1A4B8C;">checklist</span>
+        <h2 style="font-size:15px;font-weight:800;color:#1A4B8C;">Tu Plan de Accion</h2>
+      </div>
+      <div style="background:#f0f4ff;border-radius:10px;padding:14px 18px;margin-bottom:16px;border-left:3px solid #1A4B8C;">
+        <p style="font-size:13px;color:#2a4a7a;line-height:1.5;">
+          Estas son las acciones a las que te has comprometido. Marcalas como <strong>"En marcha"</strong> cuando empieces a trabajar en ellas
+          y como <strong>"Completada"</strong> cuando termines. AION medira el impacto real en tus KPIs automaticamente.
+        </p>
+      </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        {[...inProgress, ...inPlan].map(rec => {
-          const impact = impactColor[(rec as any).impact || 'medium'];
-          const status = statusLabels[rec.status || 'accepted'];
-          const pillar = (rec as any).pillar || 'seo';
-          const icon = pillarIcons[pillar] || 'lightbulb';
+        {[...inProgress, ...pending].map(action => {
+          const impact = impactColor[action.impact || 'medium'];
+          const isActive = action.status === 'in_progress';
           return (
-            <div class="rec-card" id={rec.id} data-rec-id={rec.id}
-              style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:3px solid #1A4B8C;display:flex;gap:16px;align-items:flex-start;">
-              <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;">
-                <span class="material-symbols-outlined" style="font-size:20px;color:#1A4B8C;">{icon}</span>
+            <div style={`background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:3px solid ${isActive ? '#0e7c5f' : '#1A4B8C'};display:flex;gap:16px;align-items:flex-start;`}>
+              <div style={`flex-shrink:0;width:40px;height:40px;border-radius:10px;background:${isActive ? '#d1fae5' : '#f0f4ff'};display:flex;align-items:center;justify-content:center;`}>
+                <span class="material-symbols-outlined" style={`font-size:20px;color:${isActive ? '#0e7c5f' : '#1A4B8C'};`}>
+                  {isActive ? 'pending' : 'task_alt'}
+                </span>
               </div>
               <div style="flex:1;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${status.bg};color:${status.color};`}>{status.label}</span>
-                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>
-                    Impacto {(rec as any).impact === 'high' ? 'Alto' : (rec as any).impact === 'medium' ? 'Medio' : 'Bajo'}
+                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;${isActive ? 'background:#d1fae5;color:#0e7c5f;' : 'background:#d6e3ff;color:#1A4B8C;'}`}>
+                    {isActive ? 'En marcha' : 'Pendiente'}
                   </span>
-                  <span style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">{pillar}</span>
+                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>
+                    Impacto {impact.label}
+                  </span>
                 </div>
-                <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{rec.title}</h4>
-                {rec.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{rec.description}</p>}
+                <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{action.title}</h4>
+                {action.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{action.description}</p>}
+                {action.started_at && (
+                  <p style="font-size:11px;color:#94a3b8;margin-top:4px;">Iniciada: {new Date(action.started_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+                )}
               </div>
               <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-self:center;">
-                {rec.status === 'accepted' && (
-                  <button class="btn-start" data-rec-id={rec.id}
+                {!isActive && (
+                  <button class="btn-start" data-action-id={action.id}
                     style="background:#d1fae5;color:#0e7c5f;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
                     <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
-                    Empezar
+                    En marcha
                   </button>
                 )}
-                <button class="btn-done" data-rec-id={rec.id}
+                <button class="btn-done" data-action-id={action.id}
                   style="background:#E1F5EE;color:#1D9E75;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
                   <span class="material-symbols-outlined" style="font-size:16px;">check</span>
                   Completada
@@ -165,95 +173,106 @@ const statusLabels: Record<string, { label: string; color: string; bg: string }>
     </section>
   )}
 
-  <!-- Completadas -->
-  {done.length > 0 && (
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SECTION 3: COMPLETED (with correlation note)               -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  {completed.length > 0 && (
     <section>
-      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1D9E75;margin-bottom:12px;">
-        Completadas ({done.length})
-      </h2>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        {done.map(rec => {
-          const pillar = (rec as any).pillar || 'seo';
-          const icon = pillarIcons[pillar] || 'lightbulb';
-          return (
-            <div style="background:white;border-radius:12px;padding:16px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:12px;align-items:center;opacity:0.85;">
-              <span class="material-symbols-outlined filled-icon" style="font-size:22px;color:#1D9E75;">check_circle</span>
-              <div style="flex:1;">
-                <h4 style="font-size:14px;font-weight:600;color:#1a1a2e;text-decoration:line-through;opacity:0.7;">{rec.title}</h4>
-                {rec.description && <p style="font-size:12px;color:#94a3b8;margin-top:2px;">{rec.description}</p>}
-              </div>
-              <span style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;">{pillar}</span>
-            </div>
-          );
-        })}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span class="material-symbols-outlined" style="font-size:20px;color:#1D9E75;">verified</span>
+        <h2 style="font-size:15px;font-weight:800;color:#1D9E75;">Completadas ({completed.length})</h2>
       </div>
-    </section>
-  )}
-
-  <!-- Descartadas -->
-  {discarded.length > 0 && (
-    <section>
-      <h2 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:12px;">
-        Descartadas ({discarded.length})
-      </h2>
+      <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">AION analiza automaticamente si estas acciones han tenido impacto en tus KPIs.</p>
       <div style="display:flex;flex-direction:column;gap:8px;">
-        {discarded.map(rec => (
-          <div style="background:#fafafa;border-radius:12px;padding:16px 24px;display:flex;gap:12px;align-items:center;opacity:0.6;">
-            <span class="material-symbols-outlined" style="font-size:22px;color:#94a3b8;">block</span>
+        {completed.slice(0, 10).map(action => (
+          <div style="background:white;border-radius:12px;padding:16px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;gap:12px;align-items:center;">
+            <span class="material-symbols-outlined" style="font-size:22px;color:#1D9E75;">check_circle</span>
             <div style="flex:1;">
-              <h4 style="font-size:14px;font-weight:600;color:#64748b;">{rec.title}</h4>
-              {rec.feedback && <p style="font-size:12px;color:#94a3b8;margin-top:2px;">Razón: {rec.feedback}</p>}
+              <h4 style="font-size:14px;font-weight:600;color:#434750;">{action.title}</h4>
+              {action.completed_at && (
+                <p style="font-size:11px;color:#94a3b8;margin-top:2px;">
+                  Completada el {new Date(action.completed_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
+                </p>
+              )}
             </div>
+            <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impactColor[action.impact || 'medium'].bg};color:${impactColor[action.impact || 'medium'].fg};`}>
+              {impactColor[action.impact || 'medium'].label}
+            </span>
           </div>
         ))}
       </div>
     </section>
   )}
 
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SECTION 4: REJECTED (collapsed)                            -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  {rejected.length > 0 && (
+    <section>
+      <details>
+        <summary style="font-size:13px;font-weight:700;color:#94a3b8;cursor:pointer;user-select:none;">
+          Descartadas ({rejected.length}) — click para ver
+        </summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+          {rejected.map(rec => (
+            <div style="background:#fafafa;border-radius:12px;padding:14px 20px;display:flex;gap:12px;align-items:center;opacity:0.7;">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#94a3b8;">block</span>
+              <div style="flex:1;">
+                <h4 style="font-size:13px;font-weight:600;color:#64748b;">{rec.title}</h4>
+                {rec.rejected_reason && <p style="font-size:11px;color:#94a3b8;margin-top:2px;">{rec.rejected_reason}</p>}
+              </div>
+              <span style="font-size:10px;color:#94a3b8;">{rec.month_proposed}</span>
+            </div>
+          ))}
+        </div>
+      </details>
+    </section>
+  )}
+
 </div>
 
 <script>
-  async function updateRec(recId: string, status: string, feedback?: string) {
+  async function callAPI(body: Record<string, any>) {
     await fetch('/api/dashboard/update-action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recommendationId: recId, status, ...(feedback ? { feedback } : {}) }),
+      body: JSON.stringify(body),
     });
     window.location.reload();
   }
 
-  // Añadir al Plan (pending → accepted)
-  document.querySelectorAll('.btn-add-plan').forEach(btn => {
+  // Accept recommendation → add to plan
+  document.querySelectorAll('.btn-accept').forEach(btn => {
     btn.addEventListener('click', () => {
       const recId = (btn as HTMLElement).dataset.recId;
-      if (recId) updateRec(recId, 'accepted');
+      if (recId) callAPI({ recommendationId: recId, status: 'accepted' });
     });
   });
 
-  // Empezar (accepted → in_progress)
-  document.querySelectorAll('.btn-start').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const recId = (btn as HTMLElement).dataset.recId;
-      if (recId) updateRec(recId, 'in_progress');
-    });
-  });
-
-  // Completar (any → done)
-  document.querySelectorAll('.btn-done').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const recId = (btn as HTMLElement).dataset.recId;
-      if (recId) updateRec(recId, 'done');
-    });
-  });
-
-  // Descartar (pending → rejected)
-  document.querySelectorAll('.btn-dismiss').forEach(btn => {
+  // Reject recommendation
+  document.querySelectorAll('.btn-reject').forEach(btn => {
     btn.addEventListener('click', () => {
       const recId = (btn as HTMLElement).dataset.recId;
       if (!recId) return;
-      const reason = prompt('¿Por qué descartas esta recomendación?', 'No relevante ahora');
-      if (reason === null) return;
-      updateRec(recId, 'rejected', reason);
+      const reason = prompt('¿Por que descartas esta recomendacion? (opcional)', '');
+      if (reason === null) return; // cancelled
+      callAPI({ recommendationId: recId, status: 'rejected', feedback: reason });
+    });
+  });
+
+  // Start action (pending → in_progress)
+  document.querySelectorAll('.btn-start').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = (btn as HTMLElement).dataset.actionId;
+      if (id) callAPI({ actionId: id, status: 'in_progress' });
+    });
+  });
+
+  // Complete action (→ done)
+  document.querySelectorAll('.btn-done').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = (btn as HTMLElement).dataset.actionId;
+      if (id) callAPI({ actionId: id, status: 'done' });
     });
   });
 </script>

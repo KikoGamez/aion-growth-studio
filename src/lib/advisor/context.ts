@@ -1,4 +1,4 @@
-import { getClientOnboarding, getLatestSnapshot, getAllSnapshots, getAllRecommendations } from '../db';
+import { getClientOnboarding, getLatestSnapshot, getAllSnapshots, getProposedRecommendations, getActionPlan, getCompletedActions } from '../db';
 import { getRecentMessages, getLearnings, getDocuments, type AdvisorMessage } from './db';
 import { buildPlaybookContext } from '../ai/playbooks';
 
@@ -13,12 +13,14 @@ import { buildPlaybookContext } from '../ai/playbooks';
  * - Older: only client_learnings (auto-summarized)
  */
 export async function buildAdvisorContext(clientId: string, domain: string): Promise<string> {
-  const [onboarding, latestSnap, allSnaps, recommendations, recentMsgs, learnings, documents] =
+  const [onboarding, latestSnap, allSnaps, proposedRecs, actionPlan, completedActions, recentMsgs, learnings, documents] =
     await Promise.all([
       getClientOnboarding(clientId),
       getLatestSnapshot(clientId),
       getAllSnapshots(clientId),
-      getAllRecommendations(clientId),
+      getProposedRecommendations(clientId),
+      getActionPlan(clientId),
+      getCompletedActions(clientId),
       getRecentMessages(clientId, 60),
       getLearnings(clientId, 50),
       getDocuments(clientId),
@@ -140,30 +142,34 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
     sections.push(`Total snapshots: ${allSnaps.length} (desde ${allSnaps[0]?.date || '?'})`);
   }
 
-  // ── 4. Plan de acción (recommendations) ────────────────────────
-  if (recommendations.length) {
-    sections.push('\n## PLAN DE ACCIÓN');
-    const byStatus = { pending: [] as any[], in_progress: [] as any[], done: [] as any[] };
-    for (const rec of recommendations) {
-      const bucket = byStatus[rec.status as keyof typeof byStatus] || byStatus.pending;
-      bucket.push(rec);
+  // ── 4. Recommendations + Action Plan ────────────────────────────
+  if (proposedRecs.length) {
+    sections.push('\n## RECOMENDACIONES PENDIENTES DE DECISIÓN');
+    for (const r of proposedRecs.slice(0, 5)) {
+      sections.push(`  - [${r.impact}] ${r.title} (fuente: ${r.source})`);
     }
-    if (byStatus.pending.length) {
-      sections.push('Pendientes:');
-      for (const r of byStatus.pending.slice(0, 5)) {
-        sections.push(`  - [${r.impact}] ${r.title}`);
+  }
+
+  if (actionPlan.length || completedActions.length) {
+    sections.push('\n## PLAN DE ACCIÓN DEL CLIENTE');
+    const active = actionPlan.filter(a => a.status === 'in_progress');
+    const pending = actionPlan.filter(a => a.status === 'pending');
+    if (active.length) {
+      sections.push('En marcha:');
+      for (const a of active) {
+        sections.push(`  - ${a.title} (desde ${a.started_at?.slice(0, 10) || '?'})`);
       }
     }
-    if (byStatus.in_progress.length) {
-      sections.push('En progreso:');
-      for (const r of byStatus.in_progress) {
-        sections.push(`  - ${r.title}`);
+    if (pending.length) {
+      sections.push('Pendientes de empezar:');
+      for (const a of pending.slice(0, 5)) {
+        sections.push(`  - [${a.impact}] ${a.title}`);
       }
     }
-    if (byStatus.done.length) {
-      sections.push(`Completadas: ${byStatus.done.length} acciones`);
-      for (const r of byStatus.done.slice(0, 3)) {
-        sections.push(`  - ${r.title} (${r.updated_at?.slice(0, 10) || '?'})`);
+    if (completedActions.length) {
+      sections.push(`Completadas: ${completedActions.length} acciones`);
+      for (const a of completedActions.slice(0, 5)) {
+        sections.push(`  - ${a.title} (completada ${a.completed_at?.slice(0, 10) || '?'})`);
       }
     }
   }

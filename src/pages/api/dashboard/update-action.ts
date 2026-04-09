@@ -1,12 +1,17 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { updateRecommendationStatus, logInteraction } from '../../../lib/db';
+import {
+  acceptRecommendation, rejectRecommendation,
+  updateActionStatus, logInteraction,
+} from '../../../lib/db';
 
 /**
  * POST /api/dashboard/update-action
- * Marks a recommendation/action as done, in_progress, or pending.
- * Records timestamp for correlation with KPI changes.
+ *
+ * Handles two flows:
+ * 1. Recommendation decisions: accept (→ creates action_plan) or reject
+ * 2. Action plan updates: pending → in_progress → done
  */
 export const POST: APIRoute = async ({ request, locals }) => {
   const client = (locals as any).client;
@@ -14,48 +19,63 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   if (!client?.id) {
     return new Response(JSON.stringify({ error: 'Authentication required' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      status: 401, headers: { 'Content-Type': 'application/json' },
     });
   }
 
   try {
     const body = await request.json();
-    const { recommendationId, status, feedback } = body;
+    const { recommendationId, actionId, status, feedback } = body;
 
-    if (!recommendationId || !status) {
-      return new Response(JSON.stringify({ error: 'recommendationId and status required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+    // Flow 1: Recommendation decision (accept/reject)
+    if (recommendationId && (status === 'accepted' || status === 'rejected')) {
+      if (status === 'accepted') {
+        const newActionId = await acceptRecommendation(recommendationId, client.id);
+        logInteraction(client.id, 'recommendation_accepted', {
+          recommendationId, actionId: newActionId,
+        }, user?.id).catch(() => {});
+        return new Response(JSON.stringify({ ok: true, actionId: newActionId }), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } else {
+        await rejectRecommendation(recommendationId, feedback);
+        logInteraction(client.id, 'recommendation_rejected', {
+          recommendationId, reason: feedback,
+        }, user?.id).catch(() => {});
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Flow 2: Action plan status update
+    const targetId = actionId || recommendationId;
+    if (!targetId || !status) {
+      return new Response(JSON.stringify({ error: 'actionId and status required' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const validStatuses = ['pending', 'accepted', 'in_progress', 'done', 'rejected'];
+    const validStatuses = ['pending', 'in_progress', 'done'];
     if (!validStatuses.includes(status)) {
-      return new Response(JSON.stringify({ error: 'Invalid status' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({ error: 'Invalid status. Use: pending, in_progress, done' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    await updateRecommendationStatus(recommendationId, status, feedback);
+    await updateActionStatus(targetId, status, feedback);
 
-    // Log the action change for correlation tracking
-    logInteraction(client.id, 'recommendation_status_changed', {
-      recommendationId,
-      newStatus: status,
-      feedback: feedback || null,
+    logInteraction(client.id, 'action_status_changed', {
+      actionId: targetId, newStatus: status, feedback: feedback || null,
     }, user?.id).catch(() => {});
 
     return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
     console.error('[update-action] Error:', err.message);
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }
 };
