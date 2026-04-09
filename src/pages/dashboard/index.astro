@@ -584,30 +584,39 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
         </div>
         {pendingRecs.length > 0 ? (
           <div style="display:flex;flex-direction:column;gap:12px;">
-            {pendingRecs.slice(0, 3).map(rec => (
-              <div style="padding:12px;border-radius:10px;background:#f7f9ff;border-left:3px solid #BA7517;">
-                <h4 style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px;line-height:1.3;">{rec.title}</h4>
-                {rec.description && (
-                  <p style="font-size:12px;color:#64748b;line-height:1.4;margin-bottom:8px;">{rec.description?.slice(0, 120)}...</p>
-                )}
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                  <button class="btn-add-plan" data-rec-id={rec.id}
-                    style="padding:5px 12px;background:#1A4B8C;color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
-                    <span class="material-symbols-outlined" style="font-size:14px;">add_task</span>
-                    Al plan
-                  </button>
-                  <button class="btn-detail" data-rec-id={rec.id}
-                    style="padding:5px 12px;background:#FAEEDA;color:#BA7517;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
-                    <span class="material-symbols-outlined" style="font-size:14px;">info</span>
-                    Saber más
-                  </button>
-                  <button class="btn-dismiss-rec" data-rec-id={rec.id}
-                    style="padding:5px 10px;background:#f0f0f0;color:#64748b;border:none;border-radius:6px;font-size:11px;cursor:pointer;">
-                    Descartar
-                  </button>
+            {pendingRecs.slice(0, 3).map(rec => {
+              const detail = (rec as any).data?.detail || '';
+              return (
+                <div style="padding:12px;border-radius:10px;background:#f7f9ff;border-left:3px solid #BA7517;">
+                  <h4 style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px;line-height:1.3;">{rec.title}</h4>
+                  {rec.description && (
+                    <p style="font-size:12px;color:#64748b;line-height:1.4;margin-bottom:8px;">{rec.description}</p>
+                  )}
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn-add-plan" data-rec-id={rec.id}
+                      style="padding:5px 12px;background:#1A4B8C;color:white;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                      <span class="material-symbols-outlined" style="font-size:14px;">add_task</span>
+                      Al plan
+                    </button>
+                    <button class="btn-dismiss-rec" data-rec-id={rec.id}
+                      style="padding:5px 10px;background:#f0f0f0;color:#64748b;border:none;border-radius:6px;font-size:11px;cursor:pointer;">
+                      Descartar
+                    </button>
+                  </div>
+                  {detail && (
+                    <details style="margin-top:10px;">
+                      <summary style="font-size:12px;font-weight:700;color:#1A4B8C;cursor:pointer;display:flex;align-items:center;gap:4px;list-style:none;">
+                        <span class="material-symbols-outlined" style="font-size:16px;">help</span>
+                        Saber más — cómo hacerlo paso a paso
+                      </summary>
+                      <div style="margin-top:10px;padding:14px;background:white;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;color:#434750;line-height:1.7;white-space:pre-line;">
+                        {detail.replace(/\*\*(.*?)\*\*/g, '$1')}
+                      </div>
+                    </details>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {pendingRecs.length > 3 && (
               <a href="/dashboard/recommendations" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#1A4B8C;text-decoration:none;">
                 Ver {pendingRecs.length - 3} recomendaciones más →
@@ -699,14 +708,6 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
           body: JSON.stringify({ recommendationId: recId, status: 'accepted' }),
         });
         window.location.reload();
-      });
-    });
-
-    // Show recommendation detail
-    document.querySelectorAll('.btn-detail').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const recId = (btn as HTMLElement).dataset.recId;
-        if (recId) window.location.href = `/dashboard/recommendations#detail-${recId}`;
       });
     });
 
