@@ -3,12 +3,10 @@
  * Handles OAuth token management, property listing, and data fetching.
  */
 
-import { IS_DEMO } from './db';
+import { IS_DEMO, getSupabase } from './db';
 
 const GOOGLE_CLIENT_ID = import.meta.env?.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = import.meta.env?.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-const SUPABASE_URL = import.meta.env?.SUPABASE_URL || process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = import.meta.env?.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 // Scopes for GA4 + GSC read access
 export const GOOGLE_SCOPES = [
@@ -37,8 +35,7 @@ export interface Integration {
 // ─── Supabase helpers ─────────────────────────────────────────────────────
 
 function getServiceClient() {
-  const { createClient } = require('@supabase/supabase-js');
-  return createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+  return getSupabase();
 }
 
 export async function getIntegration(clientId: string, provider: string): Promise<Integration | null> {
