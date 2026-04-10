@@ -264,6 +264,25 @@ export async function deleteClientUser(clientId: string, userId: string): Promis
 
 // ─── Client Onboarding Context ────────────────────────────────────────────────
 
+export interface PriorityKeyword {
+  keyword: string;
+  volume?: number;
+  currentPosition?: number;
+  difficulty?: number;
+  feasibility?: 'high' | 'medium' | 'low';
+  intent?: 'transactional' | 'commercial' | 'informational';
+  rationale?: string;
+  source?: 'current' | 'gap' | 'generated' | 'manual';
+  opportunityScore?: number;
+}
+
+export interface KeywordStrategy {
+  demandType?: 'existing' | 'create' | 'both';    // captar demanda vs crear demanda
+  focus?: 'volume' | 'quality';                   // volumen vs cualificación
+  growthService?: string;                         // servicio a hacer crecer los próximos 3 meses
+  updatedAt?: string;
+}
+
 export interface ClientOnboarding {
   id?: string;
   client_id: string;
@@ -281,6 +300,8 @@ export interface ClientOnboarding {
   instagram_handle?: string;
   linkedin_url?: string;
   primary_kpis?: Array<{ key: string; label: string; target?: number }>;
+  priority_keywords?: PriorityKeyword[];
+  keyword_strategy?: KeywordStrategy;
   completed_at?: string;
 }
 
@@ -297,7 +318,12 @@ export async function getClientOnboarding(clientId: string): Promise<ClientOnboa
 }
 
 export async function saveClientOnboarding(onboarding: ClientOnboarding): Promise<void> {
-  if (IS_DEMO) return;
+  if (IS_DEMO) {
+    // Mutate demo object in place so subsequent reads reflect the save.
+    // Persists across same warm serverless instance; lost on cold start — good enough for demos.
+    Object.assign(DEMO_ONBOARDING, onboarding);
+    return;
+  }
   const sb = getSupabase();
   const { error } = await sb
     .from('client_onboarding')

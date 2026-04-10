@@ -1,17 +1,34 @@
 ---
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getClient, IS_DEMO, listClientUsers, getClientOnboarding } from '../../lib/db';
+import { getClient, IS_DEMO, listClientUsers, getClientOnboarding, getLatestSnapshot } from '../../lib/db';
 import { getIntegration, isConfigured as isGoogleConfigured } from '../../lib/integrations';
 import type { Tier } from '../../lib/demo-data';
+import { computeKeywordOpportunities, autoSelectPriorities } from '../../lib/seo/keyword-opportunities';
+import KeywordConfigurator from '../../components/dashboard/KeywordConfigurator.astro';
 
 const client = Astro.locals.client ?? await getClient();
 const tier: Tier = client.tier;
-const [users, onboarding] = await Promise.all([
+const [users, onboarding, snapshot] = await Promise.all([
   listClientUsers(client.id),
   getClientOnboarding(client.id),
+  getLatestSnapshot(client.id),
 ]);
 const savedKpis = onboarding?.primary_kpis || [];
+const priorityKeywords = onboarding?.priority_keywords || [];
+const keywordStrategy = onboarding?.keyword_strategy || {};
+
+// Keyword opportunities (only computed if we have audit data)
+const hasSnapshotData = snapshot.id !== 'empty';
+const keywordOpportunities = hasSnapshotData
+  ? computeKeywordOpportunities({
+      pipelineOutput: snapshot.pipeline_output || {},
+      onboarding,
+      strategy: keywordStrategy,
+      limit: 15,
+    })
+  : [];
+const autoSelectedKeywords = hasSnapshotData ? autoSelectPriorities(keywordOpportunities, 8) : [];
 
 const ALL_KPIS = [
   { key: 'seo.keywordsTop10', label: 'Keywords Top 10', icon: 'search' },
@@ -133,6 +150,77 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
       </button>
       <p id="kpi-save-status" style="display:none;font-size:12px;margin-top:8px;"></p>
     </div>
+
+    <!-- Keywords prioritarias -->
+    <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px;">
+        <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin:0;">Keywords prioritarias</h2>
+        <button id="open-keyword-modal" style="background:#1A4B8C;color:white;border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">{priorityKeywords.length > 0 ? 'edit' : 'auto_awesome'}</span>
+          {priorityKeywords.length > 0 ? 'Modificar' : 'Configurar'}
+        </button>
+      </div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:20px;">
+        Las keywords que has elegido como foco estratégico para tu SEO. Se usan para generar recomendaciones y medir progreso.
+      </p>
+
+      {priorityKeywords.length === 0 ? (
+        <div style="background:#f7f9ff;border:1px dashed #cbd5e1;border-radius:10px;padding:24px;text-align:center;">
+          <span class="material-symbols-outlined" style="font-size:32px;color:#94a3b8;margin-bottom:8px;display:block;">target</span>
+          <p style="font-size:13px;color:#64748b;margin-bottom:4px;">Aún no has configurado tus keywords prioritarias.</p>
+          <p style="font-size:12px;color:#94a3b8;">{hasSnapshotData ? 'Te sugerimos las mejores candidatas basándonos en tu análisis SEO.' : 'Completa el onboarding primero para poder analizar tu web.'}</p>
+        </div>
+      ) : (
+        <>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            {priorityKeywords.map((pk) => {
+              const feasColor = pk.feasibility === 'high' ? '#1D9E75' : pk.feasibility === 'medium' ? '#BA7517' : '#E24B4A';
+              const feasBg = pk.feasibility === 'high' ? '#d1fae5' : pk.feasibility === 'medium' ? '#fef3c7' : '#fee2e2';
+              return (
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f8f9fb;border-radius:10px;border:1px solid #e2e8f0;">
+                  <span class="material-symbols-outlined" style="font-size:18px;color:#1A4B8C;">check_circle</span>
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-size:14px;font-weight:700;color:#1a1a2e;">{pk.keyword}</p>
+                    <div style="display:flex;gap:10px;margin-top:2px;font-size:11px;color:#64748b;flex-wrap:wrap;">
+                      {pk.volume != null && <span>{pk.volume.toLocaleString()} búsquedas/mes</span>}
+                      {pk.currentPosition != null && <span>· posición {pk.currentPosition}</span>}
+                      {pk.difficulty != null && <span>· dificultad {pk.difficulty}/100</span>}
+                      {pk.source === 'manual' && <span style="color:#6b21a8;font-weight:700;">· añadida manualmente</span>}
+                    </div>
+                  </div>
+                  {pk.feasibility && (
+                    <span style={`font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;text-transform:uppercase;background:${feasBg};color:${feasColor};flex-shrink:0;`}>
+                      Viabilidad {pk.feasibility === 'high' ? 'alta' : pk.feasibility === 'medium' ? 'media' : 'baja'}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {keywordStrategy && (keywordStrategy.demandType || keywordStrategy.focus || keywordStrategy.growthService) && (
+            <div style="margin-top:16px;padding:14px 18px;background:#f0f4ff;border-radius:10px;border-left:3px solid #1A4B8C;">
+              <p style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1A4B8C;margin-bottom:6px;">Estrategia configurada</p>
+              <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#434750;">
+                {keywordStrategy.demandType && <span><strong>Demanda:</strong> {keywordStrategy.demandType === 'existing' ? 'captar existente' : keywordStrategy.demandType === 'create' ? 'crear nueva' : 'ambas'}</span>}
+                {keywordStrategy.focus && <span><strong>Foco:</strong> {keywordStrategy.focus === 'volume' ? 'volumen' : 'cualificación'}</span>}
+                {keywordStrategy.growthService && <span><strong>Servicio prioritario:</strong> {keywordStrategy.growthService}</span>}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+
+    {/* Keyword configurator modal (shared component) */}
+    {hasSnapshotData && (
+      <KeywordConfigurator
+        opportunities={keywordOpportunities}
+        autoSelected={autoSelectedKeywords}
+        currentKeywords={priorityKeywords}
+        currentStrategy={keywordStrategy}
+      />
+    )}
 
     <!-- Team -->
     <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">

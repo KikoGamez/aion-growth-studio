@@ -1,0 +1,373 @@
+---
+// Keyword Configurator — single component used from SEO page and Settings.
+// Renders the full Phase 1 (strategic reflection) + Phase 2 (opportunity list)
+// inside a modal. Accepts auto-filled suggestions and the current saved state.
+//
+// Props:
+//   opportunities   — PriorityKeyword[] ranked by opportunity score
+//   autoSelected    — PriorityKeyword[] suggested portfolio (usually 8 items)
+//   currentKeywords — existing saved keywords (if any)
+//   currentStrategy — existing saved strategy (if any)
+
+import type { PriorityKeyword, KeywordStrategy } from '../../lib/db';
+
+interface Props {
+  opportunities: PriorityKeyword[];
+  autoSelected: PriorityKeyword[];
+  currentKeywords?: PriorityKeyword[];
+  currentStrategy?: KeywordStrategy;
+}
+
+const {
+  opportunities,
+  autoSelected,
+  currentKeywords = [],
+  currentStrategy = {},
+} = Astro.props;
+
+const selectedSet = new Set(
+  (currentKeywords.length > 0 ? currentKeywords : autoSelected).map(k => k.keyword.toLowerCase()),
+);
+
+const SEO_COLOR = '#1A4B8C';
+const GREEN = '#1D9E75';
+const ORANGE = '#BA7517';
+const RED = '#E24B4A';
+
+const feasibilityBadge: Record<string, { bg: string; fg: string; label: string }> = {
+  high: { bg: '#d1fae5', fg: '#065f46', label: 'Viabilidad alta' },
+  medium: { bg: '#fef3c7', fg: '#92400e', label: 'Viabilidad media' },
+  low: { bg: '#fee2e2', fg: '#991b1b', label: 'Viabilidad baja' },
+};
+
+const intentLabel: Record<string, string> = {
+  transactional: 'Compra',
+  commercial: 'Comparación',
+  informational: 'Información',
+};
+
+// Serialize all opportunities so JS can reuse them when adding custom keywords
+const opportunitiesJson = JSON.stringify(opportunities);
+---
+
+<!-- Modal root — hidden by default, opened via JS -->
+<div id="keyword-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 20px;">
+  <div style="background:white;border-radius:20px;max-width:900px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);display:flex;flex-direction:column;max-height:calc(100vh - 80px);">
+
+    <!-- Header -->
+    <div style="padding:28px 32px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0;">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style={`width:36px;height:36px;border-radius:10px;background:${SEO_COLOR}15;display:flex;align-items:center;justify-content:center;`}>
+            <span class="material-symbols-outlined" style={`font-size:20px;color:${SEO_COLOR};`}>target</span>
+          </div>
+          <h2 style="font-size:20px;font-weight:900;color:#1a1a2e;letter-spacing:-0.02em;">Configura tus keywords prioritarias</h2>
+        </div>
+        <p style="font-size:13px;color:#64748b;">Nosotros te ayudamos a elegir las mejores para tu negocio. Ajusta, añade o quita lo que quieras.</p>
+      </div>
+      <button id="keyword-modal-close" style="background:#f0f0f0;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:#64748b;">close</span>
+      </button>
+    </div>
+
+    <!-- Scrollable body -->
+    <div style="overflow-y:auto;padding:24px 32px;flex:1;">
+
+      <!-- ═══════ PHASE 1: Strategic reflection ═══════ -->
+      <section style="margin-bottom:32px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style={`font-size:10px;font-weight:800;background:${SEO_COLOR};color:white;padding:3px 8px;border-radius:4px;letter-spacing:0.04em;`}>PASO 1</span>
+          <h3 style="font-size:15px;font-weight:800;color:#1a1a2e;">Reflexión estratégica</h3>
+        </div>
+        <p style="font-size:12px;color:#64748b;margin-bottom:18px;">Solo 3 preguntas. Con tus respuestas ajustamos el scoring de las keywords para que tenga sentido para tu negocio.</p>
+
+        <div style="display:flex;flex-direction:column;gap:20px;">
+
+          <!-- Q1: demand type -->
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:8px;">¿Qué tipo de demanda te interesa más?</label>
+            <div class="strategy-opts" data-field="demandType" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              <label class="strat-opt" data-value="existing">
+                <input type="radio" name="demandType" value="existing" checked={currentStrategy.demandType === 'existing' || !currentStrategy.demandType} />
+                <span class="strat-title">Demanda existente</span>
+                <span class="strat-desc">Gente que ya te busca</span>
+              </label>
+              <label class="strat-opt" data-value="create">
+                <input type="radio" name="demandType" value="create" checked={currentStrategy.demandType === 'create'} />
+                <span class="strat-title">Crear demanda</span>
+                <span class="strat-desc">Posicionarte como referente</span>
+              </label>
+              <label class="strat-opt" data-value="both">
+                <input type="radio" name="demandType" value="both" checked={currentStrategy.demandType === 'both'} />
+                <span class="strat-title">Las dos</span>
+                <span class="strat-desc">Mezcla equilibrada</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Q2: focus -->
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:8px;">¿Qué prefieres: volumen o cualificación?</label>
+            <div class="strategy-opts" data-field="focus" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+              <label class="strat-opt" data-value="volume">
+                <input type="radio" name="focus" value="volume" checked={currentStrategy.focus === 'volume'} />
+                <span class="strat-title">Más volumen</span>
+                <span class="strat-desc">Muchos clics, aunque sean menos cualificados</span>
+              </label>
+              <label class="strat-opt" data-value="quality">
+                <input type="radio" name="focus" value="quality" checked={currentStrategy.focus === 'quality' || !currentStrategy.focus} />
+                <span class="strat-title">Más cualificación</span>
+                <span class="strat-desc">Menos clics pero que conviertan</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Q3: growth service -->
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#1a1a2e;display:block;margin-bottom:8px;">¿Qué servicio quieres hacer crecer los próximos 3 meses?</label>
+            <input type="text" id="strat-growth" placeholder="Ej: software RRHH, control horario, consultoría digital…"
+              value={currentStrategy.growthService || ''}
+              style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:inherit;" />
+            <p style="font-size:11px;color:#94a3b8;margin-top:4px;">Déjalo vacío si no quieres priorizar ninguno en particular.</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ═══════ PHASE 2: Opportunity list ═══════ -->
+      <section>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style={`font-size:10px;font-weight:800;background:${SEO_COLOR};color:white;padding:3px 8px;border-radius:4px;letter-spacing:0.04em;`}>PASO 2</span>
+          <h3 style="font-size:15px;font-weight:800;color:#1a1a2e;">Tus keywords prioritarias</h3>
+        </div>
+        <p style="font-size:12px;color:#64748b;margin-bottom:14px;">
+          Hemos preseleccionado las que creemos mejores para ti (podrás cambiarlas). Marca o desmarca las que quieras, o añade tuyas abajo.
+        </p>
+
+        <!-- Add custom keyword -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;padding:14px;background:#f7f9ff;border-radius:10px;border:1px dashed #cbd5e1;">
+          <input type="text" id="kw-custom-input" placeholder="Añadir una keyword manualmente…"
+            style="flex:1;padding:9px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;" />
+          <button id="kw-custom-add" style={`background:${SEO_COLOR};color:white;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;`}>
+            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:3px;">add</span>
+            Añadir
+          </button>
+        </div>
+
+        <!-- Opportunity list -->
+        <div id="kw-opportunity-list" style="display:flex;flex-direction:column;gap:8px;">
+          {opportunities.map(opp => {
+            const feas = feasibilityBadge[opp.feasibility || 'medium'];
+            const isSelected = selectedSet.has(opp.keyword.toLowerCase());
+            return (
+              <label class="kw-opp-row" data-keyword={opp.keyword} data-json={JSON.stringify(opp)}
+                style={`display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:2px solid ${isSelected ? SEO_COLOR : '#f0f0f0'};border-radius:10px;cursor:pointer;transition:all 0.15s;background:${isSelected ? '#f0f4ff' : 'white'};`}>
+                <input type="checkbox" class="kw-cb" checked={isSelected}
+                  style={`accent-color:${SEO_COLOR};width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px;`} />
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                    <span style="font-size:14px;font-weight:700;color:#1a1a2e;">{opp.keyword}</span>
+                    <span style={`font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;background:${feas.bg};color:${feas.fg};`}>{feas.label}</span>
+                    {opp.intent && (
+                      <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;background:#f1f5f9;color:#475569;">{intentLabel[opp.intent]}</span>
+                    )}
+                  </div>
+                  <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#64748b;">
+                    {opp.volume != null && <span><strong style="color:#1a1a2e;">{opp.volume.toLocaleString()}</strong> vol/mes</span>}
+                    {opp.currentPosition != null && <span>Posición actual: <strong style={`color:${opp.currentPosition <= 10 ? GREEN : opp.currentPosition <= 30 ? ORANGE : RED};`}>{opp.currentPosition}</strong></span>}
+                    {opp.difficulty != null && <span>Dificultad: <strong style="color:#1a1a2e;">{opp.difficulty}/100</strong></span>}
+                    {opp.opportunityScore != null && <span>Score: <strong style={`color:${SEO_COLOR};`}>{opp.opportunityScore}</strong></span>}
+                  </div>
+                  {opp.rationale && (
+                    <p style="font-size:11px;color:#64748b;margin-top:4px;font-style:italic;">↳ {opp.rationale}</p>
+                  )}
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        {/* Manual keywords already saved that weren't in the opportunities list */}
+        {currentKeywords.filter(ck => !opportunities.some(o => o.keyword.toLowerCase() === ck.keyword.toLowerCase())).map(ck => (
+          <label class="kw-opp-row manual" data-keyword={ck.keyword} data-json={JSON.stringify(ck)}
+            style={`display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:2px solid ${SEO_COLOR};border-radius:10px;cursor:pointer;background:#f0f4ff;margin-top:8px;`}>
+            <input type="checkbox" class="kw-cb" checked
+              style={`accent-color:${SEO_COLOR};width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px;`} />
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span style="font-size:14px;font-weight:700;color:#1a1a2e;">{ck.keyword}</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;background:#f3e8ff;color:#6b21a8;">Manual</span>
+              </div>
+            </div>
+          </label>
+        ))}
+
+        <p id="kw-selected-count" style="font-size:12px;color:#64748b;margin-top:14px;text-align:right;"></p>
+      </section>
+    </div>
+
+    <!-- Footer actions -->
+    <div style="padding:20px 32px;border-top:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-shrink:0;background:#fafbfd;border-radius:0 0 20px 20px;">
+      <button id="kw-modal-cancel" style="background:transparent;border:none;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+      <button id="kw-modal-save" style={`background:${SEO_COLOR};color:white;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;`}>
+        <span class="material-symbols-outlined" style="font-size:16px;">save</span>
+        Guardar keywords prioritarias
+      </button>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ opportunitiesJson }}>
+  (function() {
+    const modal = document.getElementById('keyword-modal');
+    if (!modal) return;
+
+    const openBtn = document.getElementById('open-keyword-modal');
+    const closeBtn = document.getElementById('keyword-modal-close');
+    const cancelBtn = document.getElementById('kw-modal-cancel');
+    const saveBtn = document.getElementById('kw-modal-save');
+    const list = document.getElementById('kw-opportunity-list');
+    const customInput = document.getElementById('kw-custom-input');
+    const customAdd = document.getElementById('kw-custom-add');
+    const countEl = document.getElementById('kw-selected-count');
+
+    function openModal() { modal.style.display = 'flex'; updateCount(); }
+    function closeModal() { modal.style.display = 'none'; }
+
+    openBtn && openBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+
+    // Strategic option styling
+    function refreshStratStyles() {
+      document.querySelectorAll('.strat-opt').forEach(function(el) {
+        const input = el.querySelector('input[type="radio"]');
+        const checked = input && input.checked;
+        el.style.background = checked ? '#f0f4ff' : 'white';
+        el.style.borderColor = checked ? '#1A4B8C' : '#e2e8f0';
+      });
+    }
+    document.querySelectorAll('.strat-opt input[type="radio"]').forEach(function(input) {
+      input.addEventListener('change', refreshStratStyles);
+    });
+    refreshStratStyles();
+
+    // Row click toggles checkbox
+    function toggleRow(row) {
+      const cb = row.querySelector('.kw-cb');
+      cb.checked = !cb.checked;
+      row.style.borderColor = cb.checked ? '#1A4B8C' : '#f0f0f0';
+      row.style.background = cb.checked ? '#f0f4ff' : 'white';
+      updateCount();
+    }
+
+    function bindRow(row) {
+      row.addEventListener('click', function(e) {
+        if (e.target.tagName === 'INPUT') { updateCount(); return; }
+        toggleRow(row);
+      });
+    }
+
+    document.querySelectorAll('.kw-opp-row').forEach(bindRow);
+
+    // Add custom keyword
+    customAdd.addEventListener('click', function() {
+      const val = customInput.value.trim();
+      if (!val) return;
+      // Avoid duplicates
+      const existing = Array.from(document.querySelectorAll('.kw-opp-row')).find(function(r) {
+        return (r.getAttribute('data-keyword') || '').toLowerCase() === val.toLowerCase();
+      });
+      if (existing) {
+        existing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const cb = existing.querySelector('.kw-cb');
+        if (!cb.checked) toggleRow(existing);
+        customInput.value = '';
+        return;
+      }
+      const data = { keyword: val, source: 'manual' };
+      const row = document.createElement('label');
+      row.className = 'kw-opp-row manual';
+      row.setAttribute('data-keyword', val);
+      row.setAttribute('data-json', JSON.stringify(data));
+      row.style.cssText = 'display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:2px solid #1A4B8C;border-radius:10px;cursor:pointer;background:#f0f4ff;';
+      row.innerHTML =
+        '<input type="checkbox" class="kw-cb" checked style="accent-color:#1A4B8C;width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px;">' +
+        '<div style="flex:1;">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+            '<span style="font-size:14px;font-weight:700;color:#1a1a2e;">' + val + '</span>' +
+            '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;background:#f3e8ff;color:#6b21a8;">Manual</span>' +
+          '</div>' +
+        '</div>';
+      list.appendChild(row);
+      bindRow(row);
+      customInput.value = '';
+      updateCount();
+    });
+    customInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); customAdd.click(); } });
+
+    function updateCount() {
+      const selected = document.querySelectorAll('.kw-cb:checked').length;
+      countEl.textContent = selected + ' keyword' + (selected !== 1 ? 's' : '') + ' seleccionada' + (selected !== 1 ? 's' : '');
+    }
+
+    // Save
+    saveBtn.addEventListener('click', async function() {
+      const strategy = {
+        demandType: (document.querySelector('input[name="demandType"]:checked') || {}).value || 'existing',
+        focus: (document.querySelector('input[name="focus"]:checked') || {}).value || 'quality',
+        growthService: (document.getElementById('strat-growth') || {}).value || '',
+      };
+
+      const selected = [];
+      document.querySelectorAll('.kw-opp-row').forEach(function(row) {
+        const cb = row.querySelector('.kw-cb');
+        if (!cb.checked) return;
+        try {
+          const data = JSON.parse(row.getAttribute('data-json') || '{}');
+          selected.push(data);
+        } catch (_) {}
+      });
+
+      if (selected.length === 0) {
+        alert('Selecciona al menos 1 keyword');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">hourglass_empty</span> Guardando…';
+
+      try {
+        const res = await fetch('/api/dashboard/save-keywords', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priority_keywords: selected, keyword_strategy: strategy }),
+        });
+        if (!res.ok) throw new Error('Save failed');
+        window.location.reload();
+      } catch (err) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">save</span> Reintentar';
+      }
+    });
+  })();
+</script>
+
+<style>
+  .strat-opt {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    background: white;
+    transition: all 0.15s;
+  }
+  .strat-opt:hover { border-color: #cbd5e1; }
+  .strat-opt input[type="radio"] { display: none; }
+  .strat-opt .strat-title { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 2px; }
+  .strat-opt .strat-desc { font-size: 11px; color: #64748b; }
+  .kw-opp-row:hover { border-color: #cbd5e1; }
+</style>
