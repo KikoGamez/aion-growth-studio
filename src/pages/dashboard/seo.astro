@@ -51,6 +51,50 @@ const gscQueries = (gsc?.topQueries || []).slice(0, 10) as Array<{query: string;
 // ─── Evolution sparklines ─────────────────────────────────────────────────
 const kwHistory = allSnapshots.map(s => s.pipeline_output?.seo?.keywordsTop10 || 0);
 const trafficHistory = allSnapshots.map(s => s.pipeline_output?.seo?.organicTrafficEstimate || 0);
+const top3History = allSnapshots.map(s => s.pipeline_output?.seo?.keywordsTop3 || 0);
+const pos4to10History = allSnapshots.map(s => {
+  const sseo = s.pipeline_output?.seo || {};
+  return sseo.keywordsPos4to10 ?? Math.max(0, (sseo.keywordsTop10 || 0) - (sseo.keywordsTop3 || 0));
+});
+
+// ─── Hero metrics ─────────────────────────────────────────────────────────
+const seoScoreValue = r.score?.breakdown?.seo ?? 0;
+const prevSeoScore = pr.score?.breakdown?.seo;
+const seoScoreDelta = prevSeoScore != null ? seoScoreValue - prevSeoScore : null;
+
+const kwTop10Curr = seo.keywordsTop10 || 0;
+const kwTop10Prev = prevSeo.keywordsTop10;
+const kwTop10Delta = kwTop10Prev != null ? kwTop10Curr - kwTop10Prev : null;
+
+const trafficCurr = seo.organicTrafficEstimate || 0;
+const trafficPrev = prevSeo.organicTrafficEstimate;
+const trafficDelta = trafficPrev != null ? trafficCurr - trafficPrev : null;
+
+// Color palette for hero
+const GREEN_HERO = '#1D9E75';
+const GREEN_BG_HERO = '#E1F5EE';
+const ORANGE_HERO = '#BA7517';
+const ORANGE_BG_HERO = '#FAEEDA';
+const RED_HERO = '#E24B4A';
+const RED_BG_HERO = '#FCEBEB';
+const SEO_COLOR = '#1A4B8C';
+const SEO_BG = '#1A4B8C15';
+
+function seoScoreColor(v: number) { return v >= 50 ? GREEN_HERO : v >= 25 ? ORANGE_HERO : RED_HERO; }
+
+function buildSeoDonut(score: number, radius: number, stroke: number) {
+  const circ = 2 * Math.PI * radius;
+  const pct = Math.min(score, 100) / 100;
+  const offset = circ * (1 - pct);
+  const color = seoScoreColor(score);
+  const size = (radius + stroke) * 2;
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="transform:rotate(-90deg)">
+    <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="${stroke}"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"
+      style="transition:stroke-dashoffset 1s ease;"/>
+  </svg>`;
+}
 
 // ─── Briefing fixes (generated content ready to use) ─────────────────────
 const briefing = r.briefing || {};
@@ -190,6 +234,97 @@ if (seoSkipped) {
       <p style="font-size:14px;color:#64748b;">Posicionamiento en buscadores y visibilidad orgánica</p>
     </div>
   </div>
+
+  <!-- ══ HERO: Score + Key metrics + Trend ══ -->
+  <section style="background:white;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+    <div style="display:flex;gap:40px;align-items:center;flex-wrap:wrap;">
+
+      <!-- Donut -->
+      <div style="position:relative;flex-shrink:0;">
+        <div set:html={buildSeoDonut(seoScoreValue, 64, 10)} />
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <span style={`font-size:36px;font-weight:900;color:${seoScoreColor(seoScoreValue)};letter-spacing:-0.04em;line-height:1;`}>{seoScoreValue}</span>
+          <span style="font-size:11px;font-weight:600;color:#64748b;margin-top:2px;">/100</span>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;flex:1;">
+
+        <!-- Score SEO label card -->
+        <div style={`background:${SEO_BG};border-radius:10px;padding:14px 16px;`}>
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Score SEO</p>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span style={`font-size:24px;font-weight:900;color:${SEO_COLOR};`}>{seoScoreValue}<span style="font-size:13px;color:#64748b;font-weight:600;">/100</span></span>
+            {seoScoreDelta != null && Math.abs(seoScoreDelta) >= 1 && (
+              <span style={`font-size:12px;font-weight:700;color:${seoScoreDelta > 0 ? GREEN_HERO : RED_HERO};`}>
+                {seoScoreDelta > 0 ? '+' : ''}{seoScoreDelta}
+              </span>
+            )}
+          </div>
+          <p style="font-size:10px;color:#64748b;margin-top:2px;">vs semana pasada</p>
+        </div>
+
+        <!-- Keywords Top 10 -->
+        <div style="background:#f7f9ff;border-radius:10px;padding:14px 16px;">
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Keywords Top 10</p>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span style="font-size:24px;font-weight:900;color:#1a1a2e;">{kwTop10Curr.toLocaleString()}</span>
+            {kwTop10Delta != null && kwTop10Delta !== 0 && (
+              <span style={`font-size:12px;font-weight:700;color:${kwTop10Delta > 0 ? GREEN_HERO : RED_HERO};`}>
+                {kwTop10Delta > 0 ? '+' : ''}{kwTop10Delta}
+              </span>
+            )}
+          </div>
+          <p style="font-size:10px;color:#64748b;margin-top:2px;">vs semana pasada</p>
+        </div>
+
+        <!-- Tráfico Orgánico con sparkline inline -->
+        <div style="background:#f7f9ff;border-radius:10px;padding:14px 16px;">
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Tráfico Orgánico</p>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span style="font-size:24px;font-weight:900;color:#1a1a2e;">{fmtNum(trafficCurr)}</span>
+            {trafficDelta != null && Math.abs(trafficDelta) > 0 && (
+              <span style={`font-size:11px;font-weight:700;color:${trafficDelta > 0 ? GREEN_HERO : RED_HERO};`}>
+                {trafficDelta > 0 ? '+' : ''}{fmtNum(Math.abs(trafficDelta))}
+              </span>
+            )}
+          </div>
+          {trafficHistory.length > 1 && (
+            <div style="display:flex;align-items:flex-end;gap:2px;height:20px;margin-top:6px;">
+              {trafficHistory.map((v, i) => {
+                const max = Math.max(...trafficHistory, 1);
+                const h = Math.max(2, Math.round((v / max) * 20));
+                const isLast = i === trafficHistory.length - 1;
+                return <div style={`flex:1;background:${isLast ? SEO_COLOR : '#cbd5e1'};height:${h}px;border-radius:1px 1px 0 0;`}></div>;
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <!-- Main sparkline: Score evolution -->
+    {kwHistory.length > 1 && (
+      <div style="margin-top:24px;border-top:1px solid #f0f0f0;padding-top:16px;">
+        <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:10px;">Evolución Keywords Top 10 ({kwHistory.length} semanas)</p>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:56px;">
+          {kwHistory.map((v, i) => {
+            const max = Math.max(...kwHistory, 1);
+            const h = Math.max(4, Math.round((v / max) * 56));
+            const isLast = i === kwHistory.length - 1;
+            return (
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                <span style={`font-size:9px;font-weight:700;color:${isLast ? SEO_COLOR : '#94a3b8'};`}>{v}</span>
+                <div style={`width:100%;background:${isLast ? SEO_COLOR : '#e2e8f0'};height:${h}px;border-radius:3px 3px 0 0;transition:background 0.3s;`}></div>
+                <span style="font-size:8px;color:#cbd5e1;">S{i + 1}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </section>
 
   <!-- ══ Diagnóstico Ejecutivo IA ══ -->
   <section style="background:linear-gradient(135deg, #000e41, #001f70);border-radius:16px;padding:24px 28px;color:white;">
@@ -452,36 +587,44 @@ if (seoSkipped) {
     </section>
   )}
 
-  <!-- ══ Evolution Sparklines ══ -->
+  <!-- ══ Evolution Sparklines — desglose de posiciones ══ -->
   <section style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
     <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
-      <p style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Keywords Top 10 — evolución</p>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;">
+        <p style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;">Keywords Top 3 — evolución</p>
+        <span style="font-size:18px;font-weight:900;color:#1D9E75;">{seo.keywordsTop3 ?? 0}</span>
+      </div>
+      <p style="font-size:11px;color:#64748b;margin-bottom:8px;">Las que ya reciben la mayoría del tráfico (posiciones 1-3)</p>
       <div style="display:flex;align-items:flex-end;gap:4px;height:48px;">
-        {kwHistory.map((v, i) => {
-          const max = Math.max(...kwHistory, 1);
+        {top3History.map((v, i) => {
+          const max = Math.max(...top3History, 1);
           const h = Math.max(2, Math.round((v / max) * 48));
-          const isLast = i === kwHistory.length - 1;
-          return <div style={`flex:1;background:${isLast ? '#1A4B8C' : '#e2e8f0'};height:${h}px;border-radius:2px 2px 0 0;`}></div>;
+          const isLast = i === top3History.length - 1;
+          return <div style={`flex:1;background:${isLast ? '#1D9E75' : '#e2e8f0'};height:${h}px;border-radius:2px 2px 0 0;`}></div>;
         })}
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#94a3b8;">
-        <span>{kwHistory[0]}</span>
-        <span>{kwHistory[kwHistory.length - 1]}</span>
+        <span>{top3History[0]}</span>
+        <span>{top3History[top3History.length - 1]}</span>
       </div>
     </div>
     <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;">
-      <p style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:12px;">Tráfico Orgánico — evolución</p>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;">
+        <p style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;">Keywords posición 4-10 — evolución</p>
+        <span style="font-size:18px;font-weight:900;color:#BA7517;">{seo.keywordsPos4to10 ?? Math.max(0, (seo.keywordsTop10 || 0) - (seo.keywordsTop3 || 0))}</span>
+      </div>
+      <p style="font-size:11px;color:#64748b;margin-bottom:8px;">Oportunidades optimizables — cerca del top 3</p>
       <div style="display:flex;align-items:flex-end;gap:4px;height:48px;">
-        {trafficHistory.map((v, i) => {
-          const max = Math.max(...trafficHistory, 1);
+        {pos4to10History.map((v, i) => {
+          const max = Math.max(...pos4to10History, 1);
           const h = Math.max(2, Math.round((v / max) * 48));
-          const isLast = i === trafficHistory.length - 1;
-          return <div style={`flex:1;background:${isLast ? '#1A4B8C' : '#e2e8f0'};height:${h}px;border-radius:2px 2px 0 0;`}></div>;
+          const isLast = i === pos4to10History.length - 1;
+          return <div style={`flex:1;background:${isLast ? '#BA7517' : '#e2e8f0'};height:${h}px;border-radius:2px 2px 0 0;`}></div>;
         })}
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#94a3b8;">
-        <span>{fmtNum(trafficHistory[0])}</span>
-        <span>{fmtNum(trafficHistory[trafficHistory.length - 1])}</span>
+        <span>{pos4to10History[0]}</span>
+        <span>{pos4to10History[pos4to10History.length - 1]}</span>
       </div>
     </div>
   </section>
