@@ -1,13 +1,29 @@
 ---
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getClient, IS_DEMO, listClientUsers } from '../../lib/db';
+import { getClient, IS_DEMO, listClientUsers, getClientOnboarding } from '../../lib/db';
 import { getIntegration, isConfigured as isGoogleConfigured } from '../../lib/integrations';
 import type { Tier } from '../../lib/demo-data';
 
 const client = Astro.locals.client ?? await getClient();
 const tier: Tier = client.tier;
-const users = await listClientUsers(client.id);
+const [users, onboarding] = await Promise.all([
+  listClientUsers(client.id),
+  getClientOnboarding(client.id),
+]);
+const savedKpis = onboarding?.primary_kpis || [];
+
+const ALL_KPIS = [
+  { key: 'seo.keywordsTop10', label: 'Keywords Top 10', icon: 'search' },
+  { key: 'seo.traffic', label: 'Trafico Organico', icon: 'trending_up' },
+  { key: 'seo.domainRank', label: 'Domain Rank', icon: 'military_tech' },
+  { key: 'geo.mentionRate', label: 'Visibilidad en IA', icon: 'psychology' },
+  { key: 'web.mobile', label: 'PageSpeed Movil', icon: 'speed' },
+  { key: 'conversion.score', label: 'Funnel de Conversion', icon: 'conversion_path' },
+  { key: 'reputation.score', label: 'Reputacion', icon: 'star' },
+  { key: 'score', label: 'Score Global AION', icon: 'insights' },
+  { key: 'web.desktop', label: 'PageSpeed Desktop', icon: 'computer' },
+];
 const currentUserRole = Astro.locals.user?.role ?? 'viewer';
 const canManageTeam = currentUserRole === 'admin' || currentUserRole === 'superuser';
 
@@ -78,6 +94,44 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
           </div>
         ))}
       </div>
+    </div>
+
+    <!-- KPIs principales -->
+    <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin:0;">Indicadores principales</h2>
+        <span style="font-size:12px;color:#94a3b8;">{savedKpis.length}/3 seleccionados</span>
+      </div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:20px;">Estos KPIs aparecen como metricas principales en tu dashboard. Selecciona 3 y define tus objetivos a 6 meses.</p>
+
+      <div id="settings-kpi-list" style="display:flex;flex-direction:column;gap:8px;">
+        {ALL_KPIS.map(kpi => {
+          const saved = savedKpis.find((k: any) => k.key === kpi.key);
+          const isSelected = !!saved;
+          return (
+            <div class="settings-kpi-row" data-key={kpi.key} data-label={kpi.label}
+              style={`display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid ${isSelected ? '#1A4B8C' : '#f0f0f0'};border-radius:10px;cursor:pointer;transition:all 0.15s;background:${isSelected ? '#f0f4ff' : 'white'};`}>
+              <input type="checkbox" class="kpi-cb" checked={isSelected}
+                style="accent-color:#1A4B8C;width:18px;height:18px;cursor:pointer;" />
+              <span class="material-symbols-outlined" style={`font-size:20px;color:${isSelected ? '#1A4B8C' : '#94a3b8'};`}>{kpi.icon}</span>
+              <span style={`flex:1;font-size:14px;font-weight:${isSelected ? '700' : '500'};color:#1a1a2e;`}>{kpi.label}</span>
+              <div style={`display:flex;align-items:center;gap:6px;${isSelected ? '' : 'opacity:0.3;pointer-events:none;'}`}>
+                <label style="font-size:11px;color:#94a3b8;">Objetivo:</label>
+                <input type="number" class="kpi-target-input" data-key={kpi.key}
+                  value={saved?.target ?? ''}
+                  placeholder="—"
+                  style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:right;" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <button id="btn-save-kpis" style="margin-top:16px;background:#1A4B8C;color:white;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">save</span>
+        Guardar indicadores
+      </button>
+      <p id="kpi-save-status" style="display:none;font-size:12px;margin-top:8px;"></p>
     </div>
 
     <!-- Team -->
@@ -258,6 +312,81 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
         });
         window.location.href = '/dashboard/settings?ga4=connected';
       });
+    });
+    // ── KPI settings ──────────────────────────────────────────────
+    // Row click toggles checkbox
+    document.querySelectorAll('.settings-kpi-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).matches('input[type="number"]')) return; // don't toggle on target input
+        const cb = row.querySelector('.kpi-cb') as HTMLInputElement;
+        const checked = document.querySelectorAll('.kpi-cb:checked');
+        if (cb.checked) {
+          cb.checked = false;
+        } else {
+          if (checked.length >= 3) {
+            // Uncheck the first checked one
+            (checked[0] as HTMLInputElement).checked = false;
+            updateRowStyle(checked[0].closest('.settings-kpi-row') as HTMLElement, false);
+          }
+          cb.checked = true;
+        }
+        updateRowStyle(row as HTMLElement, cb.checked);
+      });
+    });
+
+    function updateRowStyle(row: HTMLElement, selected: boolean) {
+      row.style.borderColor = selected ? '#1A4B8C' : '#f0f0f0';
+      row.style.background = selected ? '#f0f4ff' : 'white';
+      const icon = row.querySelector('.material-symbols-outlined') as HTMLElement;
+      if (icon) icon.style.color = selected ? '#1A4B8C' : '#94a3b8';
+      const label = row.querySelector('span[style*="flex:1"]') as HTMLElement;
+      if (label) label.style.fontWeight = selected ? '700' : '500';
+      const targetDiv = row.querySelector('div:last-child') as HTMLElement;
+      if (targetDiv) { targetDiv.style.opacity = selected ? '1' : '0.3'; targetDiv.style.pointerEvents = selected ? 'auto' : 'none'; }
+    }
+
+    // Save KPIs
+    document.getElementById('btn-save-kpis')?.addEventListener('click', async () => {
+      const selected: any[] = [];
+      document.querySelectorAll('.settings-kpi-row').forEach(row => {
+        const cb = row.querySelector('.kpi-cb') as HTMLInputElement;
+        if (!cb.checked) return;
+        const key = (row as HTMLElement).dataset.key!;
+        const label = (row as HTMLElement).dataset.label!;
+        const targetInput = row.querySelector('.kpi-target-input') as HTMLInputElement;
+        const target = targetInput?.value ? parseInt(targetInput.value, 10) : undefined;
+        selected.push({ key, label, ...(target && !isNaN(target) ? { target } : {}) });
+      });
+
+      if (selected.length === 0 || selected.length > 3) {
+        alert('Selecciona entre 1 y 3 indicadores');
+        return;
+      }
+
+      const btn = document.getElementById('btn-save-kpis') as HTMLButtonElement;
+      btn.textContent = 'Guardando...';
+      btn.disabled = true;
+
+      try {
+        await fetch('/api/dashboard/save-onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ primary_kpis: selected }),
+        });
+        const status = document.getElementById('kpi-save-status')!;
+        status.style.display = 'block';
+        status.style.color = '#1D9E75';
+        status.textContent = 'Indicadores guardados correctamente';
+        setTimeout(() => { status.style.display = 'none'; }, 3000);
+      } catch {
+        const status = document.getElementById('kpi-save-status')!;
+        status.style.display = 'block';
+        status.style.color = '#E24B4A';
+        status.textContent = 'Error al guardar';
+      } finally {
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">save</span> Guardar indicadores';
+        btn.disabled = false;
+      }
     });
   </script>
 </DashboardLayout>

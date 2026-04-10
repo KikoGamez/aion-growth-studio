@@ -21,22 +21,25 @@ export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const body = await request.json();
 
+    // Partial update support: merge with existing data so settings can
+    // update just KPIs without wiping other fields
+    const existing = await getClientOnboarding(client.id);
     const onboardingData = {
       client_id: client.id,
-      business_description: body.business_description || null,
-      primary_goal: body.primary_goal || null,
-      goal_detail: body.goal_detail || null,
-      geo_scope: body.geo_scope || null,
-      geo_detail: body.geo_detail || null,
-      url_architecture: body.url_architecture || null,
-      url_detail: body.url_detail || null,
-      monthly_budget: body.monthly_budget || null,
-      team_size: body.team_size || null,
-      competitors: body.competitors || [],
-      sector: body.sector || null,
-      instagram_handle: body.instagram_handle || null,
-      linkedin_url: body.linkedin_url || null,
-      primary_kpis: Array.isArray(body.primary_kpis) ? body.primary_kpis : [],
+      business_description: body.business_description ?? existing?.business_description ?? null,
+      primary_goal: body.primary_goal ?? existing?.primary_goal ?? null,
+      goal_detail: body.goal_detail ?? existing?.goal_detail ?? null,
+      geo_scope: body.geo_scope ?? existing?.geo_scope ?? null,
+      geo_detail: body.geo_detail ?? existing?.geo_detail ?? null,
+      url_architecture: body.url_architecture ?? existing?.url_architecture ?? null,
+      url_detail: body.url_detail ?? existing?.url_detail ?? null,
+      monthly_budget: body.monthly_budget ?? existing?.monthly_budget ?? null,
+      team_size: body.team_size ?? existing?.team_size ?? null,
+      competitors: body.competitors ?? existing?.competitors ?? [],
+      sector: body.sector ?? existing?.sector ?? null,
+      instagram_handle: body.instagram_handle ?? existing?.instagram_handle ?? null,
+      linkedin_url: body.linkedin_url ?? existing?.linkedin_url ?? null,
+      primary_kpis: Array.isArray(body.primary_kpis) ? body.primary_kpis : (existing?.primary_kpis ?? []),
     };
 
     await saveClientOnboarding(onboardingData);
