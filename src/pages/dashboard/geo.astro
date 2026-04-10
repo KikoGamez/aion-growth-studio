@@ -1,0 +1,465 @@
+---
+export const prerender = false;
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getClient, getLatestSnapshot, getAllSnapshots } from '../../lib/db';
+import type { Tier } from '../../lib/demo-data';
+
+const client = Astro.locals.client ?? await getClient();
+const tier: Tier = client.tier;
+const snapshot = await getLatestSnapshot(client.id);
+const hasData = snapshot.id !== 'empty';
+if (!hasData) return Astro.redirect('/dashboard');
+
+const allSnapshots = await getAllSnapshots(client.id);
+const prevSnap = allSnapshots.length >= 2 ? allSnapshots[allSnapshots.length - 2] : null;
+
+const r = snapshot.pipeline_output || {};
+const pr = prevSnap?.pipeline_output || {};
+const geo = r.geo || {};
+const prevGeo = pr.geo || {};
+
+// ─── Color palette ───────────────────────────────────────────────────────
+const GEO_COLOR = '#7C3AED';
+const GEO_BG = '#7C3AED15';
+const GREEN = '#1D9E75';
+const GREEN_BG = '#E1F5EE';
+const RED = '#E24B4A';
+const RED_BG = '#FCEBEB';
+const ORANGE = '#BA7517';
+const ORANGE_BG = '#FAEEDA';
+const GRAY = '#94a3b8';
+const GRAY_BG = '#f1f5f9';
+
+// ─── Core metrics ────────────────────────────────────────────────────────
+const overallScore = geo.overallScore ?? Math.round(((geo.mentions || 0) / Math.max(geo.totalQueries || 15, 1)) * 100);
+const mentionRate = geo.mentionRate || 0;
+const mentions = geo.mentions || 0;
+const totalQueries = geo.totalQueries || 15;
+const prevMentionRate = prevGeo.mentionRate;
+const mentionDelta = prevMentionRate != null ? mentionRate - prevMentionRate : null;
+const rangeLow = geo.mentionRangeLow;
+const rangeHigh = geo.mentionRangeHigh;
+
+// ─── Sparkline data ──────────────────────────────────────────────────────
+const sparkline = allSnapshots.map((s: any) => {
+  const g = s.pipeline_output?.geo || {};
+  return g.overallScore ?? Math.round(((g.mentions || 0) / Math.max(g.totalQueries || 15, 1)) * 100);
+});
+
+// ─── Funnel ──────────────────────────────────────────────────────────────
+const funnel = geo.funnelBreakdown;
+const funnelLabels: Record<string, string> = { tofu: 'Descubrimiento', mofu: 'Comparación', bofu: 'Decisión de compra' };
+const funnelIcons: Record<string, string> = { tofu: 'explore', mofu: 'compare_arrows', bofu: 'shopping_cart' };
+
+// ─── Category breakdown ──────────────────────────────────────────────────
+const catBreakdown = geo.categoryBreakdown;
+const catLabels: Record<string, string> = {
+  sector: 'Sector', problema: 'Problema', comparativa: 'Comparativa',
+  decision: 'Decisión', recomendacion: 'Recomendación', marca: 'Marca',
+};
+const catIcons: Record<string, string> = {
+  sector: 'category', problema: 'help', comparativa: 'balance',
+  decision: 'gavel', recomendacion: 'thumb_up', marca: 'badge',
+};
+
+// ─── Cross-model ─────────────────────────────────────────────────────────
+const crossModel: Array<{name: string; mentioned: number; total: number}> = geo.crossModel || [];
+const maxMentionedByEngine = Math.max(...crossModel.map(e => e.mentioned), 1);
+
+// ─── Competitors ─────────────────────────────────────────────────────────
+const competitorMentions: Array<{name: string; domain: string; mentions: number; total: number; mentionRate: number}> = geo.competitorMentions || [];
+const allSoV = [
+  { name: client.name, domain: client.domain, mentionRate, isClient: true },
+  ...competitorMentions.map(c => ({ ...c, isClient: false })),
+].sort((a, b) => b.mentionRate - a.mentionRate);
+const maxSoV = Math.max(...allSoV.map(s => s.mentionRate), 1);
+
+// ─── Queries ─────────────────────────────────────────────────────────────
+const queries: Array<{
+  query: string; mentioned: boolean; stage?: string; category?: string;
+  engines?: Array<{name: string; mentioned: boolean}>;
+}> = geo.queries || [];
+const engineNames = queries.length > 0 && queries[0].engines
+  ? queries[0].engines.map((e: any) => e.name)
+  : [];
+const stageOrder = ['tofu', 'mofu', 'bofu'];
+const stageLabelsMap: Record<string, string> = { tofu: 'Descubrimiento (TOFU)', mofu: 'Comparación (MOFU)', bofu: 'Decisión (BOFU)' };
+
+// Group queries by stage
+const queryGroups = stageOrder
+  .map(stage => ({
+    stage,
+    label: stageLabelsMap[stage] || stage,
+    queries: queries.filter(q => q.stage === stage),
+  }))
+  .filter(g => g.queries.length > 0);
+
+// If no stages, one flat group
+if (queryGroups.length === 0 && queries.length > 0) {
+  queryGroups.push({ stage: 'all', label: 'Todas las consultas', queries });
+}
+
+// ─── Score color helper ──────────────────────────────────────────────────
+function scoreColor(v: number) { return v >= 50 ? GREEN : v >= 25 ? ORANGE : RED; }
+function scoreBg(v: number) { return v >= 50 ? GREEN_BG : v >= 25 ? ORANGE_BG : RED_BG; }
+
+// ─── SVG donut builder ───────────────────────────────────────────────────
+function buildDonut(score: number, radius: number, stroke: number) {
+  const circ = 2 * Math.PI * radius;
+  const pct = Math.min(score, 100) / 100;
+  const offset = circ * (1 - pct);
+  const color = scoreColor(score);
+  const size = (radius + stroke) * 2;
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="transform:rotate(-90deg)">
+    <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="${stroke}"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"
+      style="transition:stroke-dashoffset 1s ease;"/>
+  </svg>`;
+}
+---
+
+<DashboardLayout
+  title="Visibilidad IA"
+  currentPath="/dashboard/pillar/geo"
+  tier={tier}
+  clientName={client.name}
+  domain={client.domain}
+  lastReportMonth={snapshot.month} lastReportDate={snapshot.date}
+>
+
+<div style="display:flex;flex-direction:column;gap:24px;max-width:1100px;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:16px;">
+    <a href="/dashboard" style="display:flex;align-items:center;color:#64748b;text-decoration:none;font-size:13px;font-weight:600;" onmouseover="this.style.color='#1a1a2e'" onmouseout="this.style.color='#64748b'">
+      <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span>
+      Resumen Semanal
+    </a>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div style={`width:48px;height:48px;border-radius:14px;background:${GEO_BG};display:flex;align-items:center;justify-content:center;`}>
+      <span class="material-symbols-outlined" style={`font-size:24px;color:${GEO_COLOR};`}>psychology</span>
+    </div>
+    <div>
+      <h1 style="font-size:28px;font-weight:900;color:#1a1a2e;letter-spacing:-0.03em;">Visibilidad IA</h1>
+      <p style="font-size:14px;color:#64748b;">Cómo te ven los modelos de inteligencia artificial &mdash; {snapshot.date}</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- HERO: Score donut + key metrics                                      -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <section style="background:white;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+    <div style="display:flex;gap:40px;align-items:center;flex-wrap:wrap;">
+
+      <!-- Donut -->
+      <div style="position:relative;flex-shrink:0;">
+        <div set:html={buildDonut(overallScore, 64, 10)} />
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <span style={`font-size:36px;font-weight:900;color:${scoreColor(overallScore)};letter-spacing:-0.04em;line-height:1;`}>{overallScore}</span>
+          <span style="font-size:11px;font-weight:600;color:#64748b;margin-top:2px;">/100</span>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;flex:1;">
+        <div style={`background:${GEO_BG};border-radius:10px;padding:14px 16px;`}>
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Tasa de mención</p>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span style={`font-size:24px;font-weight:900;color:${GEO_COLOR};`}>{mentionRate}%</span>
+            {mentionDelta != null && Math.abs(mentionDelta) >= 1 && (
+              <span style={`font-size:12px;font-weight:700;color:${mentionDelta > 0 ? GREEN : RED};`}>
+                {mentionDelta > 0 ? '+' : ''}{mentionDelta}pp
+              </span>
+            )}
+          </div>
+          {rangeLow != null && rangeHigh != null && (
+            <p style="font-size:10px;color:#64748b;margin-top:2px;">IC 95%: {rangeLow}–{rangeHigh}%</p>
+          )}
+        </div>
+
+        <div style="background:#f7f9ff;border-radius:10px;padding:14px 16px;">
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Menciones</p>
+          <span style="font-size:24px;font-weight:900;color:#1a1a2e;">{mentions}<span style="font-size:14px;color:#64748b;font-weight:600;">/{totalQueries}</span></span>
+        </div>
+
+        <div style="background:#f7f9ff;border-radius:10px;padding:14px 16px;">
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Motores IA</p>
+          <span style="font-size:24px;font-weight:900;color:#1a1a2e;">{crossModel.length || '—'}</span>
+          {crossModel.length > 0 && (
+            <p style="font-size:10px;color:#64748b;margin-top:2px;">{crossModel.map(e => e.name).join(', ')}</p>
+          )}
+        </div>
+
+        {geo.brandScore != null && (
+          <div style="background:#f7f9ff;border-radius:10px;padding:14px 16px;">
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Score de marca</p>
+            <span style={`font-size:24px;font-weight:900;color:${scoreColor(geo.brandScore)};`}>{geo.brandScore}<span style="font-size:14px;color:#64748b;font-weight:600;">/100</span></span>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- Sparkline -->
+    {sparkline.length > 1 && (
+      <div style="margin-top:24px;border-top:1px solid #f0f0f0;padding-top:16px;">
+        <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:10px;">Evolución ({sparkline.length} semanas)</p>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:56px;">
+          {sparkline.map((v: number, i: number) => {
+            const max = Math.max(...sparkline, 1);
+            const h = Math.max(4, Math.round((v / max) * 56));
+            const isLast = i === sparkline.length - 1;
+            return (
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                <span style={`font-size:9px;font-weight:700;color:${isLast ? GEO_COLOR : '#94a3b8'};`}>{v}</span>
+                <div style={`width:100%;background:${isLast ? GEO_COLOR : '#e2e8f0'};height:${h}px;border-radius:3px 3px 0 0;transition:background 0.3s;`}></div>
+                <span style="font-size:8px;color:#cbd5e1;">S{i + 1}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- EXECUTIVE NARRATIVE                                                  -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  {geo.executiveNarrative && (
+    <section style={`background:white;border-radius:16px;padding:24px 28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:4px solid ${GEO_COLOR};`}>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span class="material-symbols-outlined" style={`font-size:18px;color:${GEO_COLOR};`}>auto_awesome</span>
+        <p style={`font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${GEO_COLOR};`}>Análisis del Agente IA</p>
+      </div>
+      <p style="font-size:14px;color:#1a1a2e;line-height:1.7;">{geo.executiveNarrative}</p>
+    </section>
+  )}
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- SHARE OF VOICE — tu marca vs competidores                           -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  {competitorMentions.length > 0 && (
+    <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:20px;">Share of Voice en IAs</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        {allSoV.map((entry) => {
+          const barW = Math.max(2, Math.round((entry.mentionRate / maxSoV) * 100));
+          const color = entry.isClient ? GEO_COLOR : '#cbd5e1';
+          const textColor = entry.isClient ? GEO_COLOR : '#434750';
+          return (
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style={`font-size:13px;font-weight:${entry.isClient ? '800' : '600'};color:${textColor};`}>{entry.name}</span>
+                  {entry.isClient && (
+                    <span style={`font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${GEO_COLOR};background:${GEO_BG};padding:2px 7px;border-radius:4px;`}>Tu marca</span>
+                  )}
+                </div>
+                <span style={`font-size:13px;font-weight:800;color:${textColor};`}>{entry.mentionRate}%</span>
+              </div>
+              <div style="background:#f1f5f9;border-radius:6px;height:10px;overflow:hidden;">
+                <div style={`width:${barW}%;height:100%;background:${color};border-radius:6px;transition:width 0.8s ease;`}></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:14px;">% de consultas donde cada marca es mencionada por al menos 1 motor de IA</p>
+    </section>
+  )}
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- FUNNEL BREAKDOWN — Descubrimiento / Comparación / Decisión          -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  {funnel && (
+    <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:20px;">Visibilidad por fase del funnel</h3>
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        {Object.entries(funnel).map(([stage, data]: [string, any]) => {
+          const pct = data.total > 0 ? Math.round((data.mentioned / data.total) * 100) : 0;
+          const color = pct >= 50 ? GREEN : pct >= 25 ? ORANGE : RED;
+          return (
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="material-symbols-outlined" style={`font-size:18px;color:${color};`}>{funnelIcons[stage] || 'circle'}</span>
+                  <span style="font-size:13px;font-weight:700;color:#1a1a2e;">{funnelLabels[stage] || stage}</span>
+                </div>
+                <div style="display:flex;align-items:baseline;gap:6px;">
+                  <span style={`font-size:14px;font-weight:800;color:${color};`}>{pct}%</span>
+                  <span style="font-size:11px;color:#94a3b8;">{data.mentioned}/{data.total}</span>
+                </div>
+              </div>
+              <div style="background:#f1f5f9;border-radius:6px;height:8px;overflow:hidden;">
+                <div style={`width:${Math.max(2, pct)}%;height:100%;background:${color};border-radius:6px;transition:width 0.8s ease;`}></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:14px;">Las consultas de decisión de compra tienen mayor peso en el score global</p>
+    </section>
+  )}
+
+  <!-- Two-column row: Cross-model + Category breakdown -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- CROSS-MODEL ANALYSIS — por motor de IA                          -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    {crossModel.length > 0 && (
+      <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:20px;">Menciones por motor IA</h3>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          {[...crossModel].sort((a, b) => b.mentioned - a.mentioned).map((engine) => {
+            const pct = engine.total > 0 ? Math.round((engine.mentioned / engine.total) * 100) : 0;
+            const barW = Math.max(2, Math.round((engine.mentioned / maxMentionedByEngine) * 100));
+            return (
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                  <span style="font-size:13px;font-weight:600;color:#1a1a2e;">{engine.name}</span>
+                  <span style="font-size:12px;font-weight:700;color:#434750;">{engine.mentioned}/{engine.total} <span style="color:#94a3b8;">({pct}%)</span></span>
+                </div>
+                <div style="background:#f1f5f9;border-radius:6px;height:8px;overflow:hidden;">
+                  <div style={`width:${barW}%;height:100%;background:${GEO_COLOR};border-radius:6px;transition:width 0.8s ease;`}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    )}
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- CATEGORY BREAKDOWN — 6 categorías                               -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    {catBreakdown && (
+      <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:20px;">Desglose por tipo de consulta</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          {Object.entries(catBreakdown).map(([cat, data]: [string, any]) => {
+            const pct = data.total > 0 ? Math.round((data.mentioned / data.total) * 100) : 0;
+            const color = pct >= 50 ? GREEN : pct > 0 ? ORANGE : RED;
+            return (
+              <div style={`background:${pct > 0 ? scoreBg(pct) : GRAY_BG};border-radius:10px;padding:12px;`}>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                  <span class="material-symbols-outlined" style={`font-size:16px;color:${pct > 0 ? color : GRAY};`}>{catIcons[cat] || 'circle'}</span>
+                  <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#64748b;">{catLabels[cat] || cat}</span>
+                </div>
+                <span style={`font-size:20px;font-weight:900;color:${pct > 0 ? color : '#434750'};`}>{data.mentioned}/{data.total}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    )}
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- COVERAGE MAP — tabla prompts × engines                              -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  {queries.length > 0 && engineNames.length > 0 && (
+    <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow-x:auto;">
+      <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:20px;">Mapa de cobertura</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:700px;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:10px 12px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #e2e8f0;width:40%;">Consulta</th>
+            {engineNames.map((name: string) => (
+              <th style="text-align:center;padding:10px 6px;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid #e2e8f0;white-space:nowrap;">{name}</th>
+            ))}
+            <th style="text-align:center;padding:10px 8px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #e2e8f0;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {queryGroups.map((group) => (
+            <>
+              {group.stage !== 'all' && (
+                <tr>
+                  <td colspan={String(engineNames.length + 2)} style={`padding:12px 12px 6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:${GEO_COLOR};background:#faf8ff;border-top:1px solid #e2e8f0;`}>
+                    {group.label}
+                  </td>
+                </tr>
+              )}
+              {group.queries.map((q: any) => {
+                const enginesHit = q.engines?.filter((e: any) => e.mentioned).length || 0;
+                return (
+                  <tr style="border-bottom:1px solid #f5f5f5;">
+                    <td style="padding:10px 12px;color:#1a1a2e;font-weight:500;line-height:1.4;">
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="material-symbols-outlined" style={`font-size:16px;flex-shrink:0;color:${q.mentioned ? GREEN : RED};`}>
+                          {q.mentioned ? 'check_circle' : 'cancel'}
+                        </span>
+                        <span>{q.query}</span>
+                      </div>
+                    </td>
+                    {(q.engines || []).map((eng: any) => (
+                      <td style="text-align:center;padding:8px 4px;">
+                        <div style={`display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:${eng.mentioned ? GREEN_BG : '#fef2f2'};`}>
+                          <span class="material-symbols-outlined" style={`font-size:16px;color:${eng.mentioned ? GREEN : '#fca5a5'};`}>
+                            {eng.mentioned ? 'check' : 'close'}
+                          </span>
+                        </div>
+                      </td>
+                    ))}
+                    <td style="text-align:center;padding:8px;">
+                      <span style={`font-size:12px;font-weight:700;color:${enginesHit > 0 ? GREEN : '#94a3b8'};`}>{enginesHit}/{engineNames.length}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </>
+          ))}
+        </tbody>
+      </table>
+      <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style={`width:20px;height:20px;border-radius:4px;background:${GREEN_BG};display:flex;align-items:center;justify-content:center;`}>
+            <span class="material-symbols-outlined" style={`font-size:14px;color:${GREEN};`}>check</span>
+          </div>
+          <span style="font-size:11px;color:#64748b;">Mencionado</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:20px;height:20px;border-radius:4px;background:#fef2f2;display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-outlined" style="font-size:14px;color:#fca5a5;">close</span>
+          </div>
+          <span style="font-size:11px;color:#64748b;">No mencionado</span>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- FALLBACK: simple query list (when no engine breakdown available)     -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  {queries.length > 0 && engineNames.length === 0 && (
+    <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:16px;">Consultas a IAs</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {queries.map((q: any) => (
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#f7f9ff;border-radius:8px;">
+            <span class="material-symbols-outlined" style={`font-size:18px;color:${q.mentioned ? GREEN : RED};`}>
+              {q.mentioned ? 'check_circle' : 'cancel'}
+            </span>
+            <span style="font-size:13px;color:#1a1a2e;flex:1;">{q.query}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+</div>
+
+<style>
+  @media (max-width: 768px) {
+    div[style*="grid-template-columns:1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+    table {
+      font-size: 12px !important;
+    }
+  }
+</style>
+</DashboardLayout>
