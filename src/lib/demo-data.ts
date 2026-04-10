@@ -620,6 +620,7 @@ export interface DemoRecommendation {
   status: string;
   pillar: string;
   effort?: string;
+  data?: Record<string, any>;
   created_at: string;
   updated_at?: string;
   feedback?: string;
@@ -720,6 +721,187 @@ export const DEMO_RECOMMENDATIONS: DemoRecommendation[] = [
     created_at: '2026-02-24T06:00:00Z',
     updated_at: '2026-03-01T10:00:00Z',
     feedback: 'Preferimos invertir el presupuesto en contenido orgánico por ahora',
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PENDING — al menos 2 por pilar, todas acciones concretas ejecutables
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── GEO (Visibilidad IA) ──
+  {
+    id: 'rec-geo-01',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Publicar una guía de 2.000+ palabras respondiendo "mejores empresas de software RRHH en Barcelona"',
+    description: 'No apareces en ninguna consulta de descubrimiento (0/3). Que te mencionen cuando alguien pregunta tu nombre no es ventaja — tus competidores también aparecerían. La visibilidad real está en consultas genéricas donde el usuario aún no te conoce.',
+    impact: 'high',
+    status: 'pending',
+    pillar: 'geo',
+    effort: 'medium',
+    data: {
+      detail: '1. Elige la consulta TOFU donde no apareces: "mejores empresas de software RRHH en Barcelona".\n2. Escribe un artículo de >2.000 palabras que responda exactamente esa pregunta con datos, fuentes citables y ejemplos concretos.\n3. Incluye schema FAQ y HowTo en el artículo para facilitar indexado por modelos de IA.\n4. Comparte en LinkedIn y en 2 comunidades de tu sector (foros RRHH, grupos de pymes).\n5. En 2-3 semanas, repite la consulta en ChatGPT y Perplexity para verificar si empiezan a citarte.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+  {
+    id: 'rec-geo-02',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Crear perfiles en Crunchbase y G2 con descripción estandarizada de tu actividad',
+    description: 'Gemini y DeepSeek no te mencionan en ninguna consulta. Cada motor IA indexa fuentes distintas — estar en directorios profesionales multiplica tus puntos de entrada.',
+    impact: 'medium',
+    status: 'pending',
+    pillar: 'geo',
+    effort: 'low',
+    data: {
+      detail: '1. Crea tu perfil en Crunchbase (gratuito): descripción, sector, web, ubicación, fundadores.\n2. Regístrate en G2 y completa tu perfil de producto con capturas de pantalla y descripción detallada.\n3. Actualiza tu perfil de LinkedIn con la misma descripción y keywords que en tu web.\n4. Verifica que tu web tiene meta descriptions claras: "TechSolutions — software RRHH para pymes — Barcelona".\n5. Añade schema Organization con foundingDate, description, areaServed en tu web.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+  {
+    id: 'rec-geo-03',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Crear una página "TechSolutions vs Devify" comparando servicios punto por punto',
+    description: 'No apareces en ninguna consulta comparativa (0/3). Cuando alguien pide "alternativas a Devify" las IAs recomiendan a otros — tú no existes en esa conversación.',
+    impact: 'high',
+    status: 'pending',
+    pillar: 'geo',
+    effort: 'medium',
+    data: {
+      detail: '1. Crea una página en tu web con título "TechSolutions vs Devify: comparativa honesta 2026".\n2. Estructura con tabla: funcionalidades, precios, soporte, especialización, casos de éxito.\n3. Sé transparente — las IAs penalizan contenido puramente promocional.\n4. Repite con SoftCatalà y BCN Code si tienes tiempo.\n5. Busca que 1 medio sectorial o blog enlace tu comparativa.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+
+  // ── SEO (falta 1 más, ya tiene rec-05) ──
+  {
+    id: 'rec-seo-01',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Reescribir meta title y description de las 5 páginas con más tráfico incluyendo keyword primaria',
+    description: 'Tus páginas principales tienen meta titles genéricos que no incluyen tus keywords objetivo. Corregirlo mejora CTR en buscadores y ayuda a las IAs a clasificar tu contenido.',
+    impact: 'medium',
+    status: 'pending',
+    pillar: 'seo',
+    effort: 'low',
+    data: {
+      detail: '1. Identifica tus 5 páginas con más tráfico en Google Search Console.\n2. Para cada una, escribe un meta title de 50-60 caracteres que incluya la keyword principal al inicio (ej: "Software RRHH para pymes | TechSolutions Barcelona").\n3. Escribe una meta description de 140-155 caracteres con la keyword + propuesta de valor + CTA.\n4. Verifica con una herramienta de preview SERP que no se cortan.\n5. Despliega los cambios y monitoriza CTR en Search Console durante 2 semanas.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+
+  // ── Web (Performance) ──
+  {
+    id: 'rec-web-01',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Comprimir y convertir a WebP las 10 imágenes más pesadas de la web',
+    description: 'Tu LCP mobile es 2.7s y las imágenes son el principal cuello de botella. Convertir a WebP con lazy loading puede bajar el LCP 300-500ms.',
+    impact: 'high',
+    status: 'pending',
+    pillar: 'web',
+    effort: 'low',
+    data: {
+      detail: '1. Usa PageSpeed Insights para identificar las 10 imágenes que más pesan en tu web.\n2. Conviértelas a WebP con herramientas como Squoosh o TinyPNG (objetivo: <100KB por imagen).\n3. Añade atributos width y height explícitos para evitar layout shifts (CLS).\n4. Activa lazy loading con loading="lazy" en todas las imágenes que no estén en el viewport inicial.\n5. Sube las imágenes optimizadas y verifica con Lighthouse que el LCP ha bajado.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+  {
+    id: 'rec-web-02',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Mover los scripts de analytics y chat al final del body con defer',
+    description: 'Tu FCP es 1.550ms porque scripts de terceros bloquean el renderizado. Diferir su carga puede reducir FCP en 200-400ms.',
+    impact: 'medium',
+    status: 'pending',
+    pillar: 'web',
+    effort: 'low',
+    data: {
+      detail: '1. Abre tu HTML principal e identifica todos los <script> en el <head> que no son críticos (analytics, chat, pixels).\n2. Muévelos justo antes de </body> y añade el atributo defer.\n3. Si usas Google Tag Manager, cárgalo con el snippet asíncrono oficial.\n4. Verifica que analytics sigue registrando visitas correctamente tras el cambio.\n5. Mide FCP antes y después con Lighthouse para confirmar la mejora.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+
+  // ── Conversión ──
+  {
+    id: 'rec-conv-01',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Añadir un formulario de contacto específico en cada página de servicio',
+    description: 'Tienes 4.800 visitas/semana pero solo 1 formulario genérico. Cada página de servicio debería tener su propio CTA contextual para captar leads cualificados.',
+    impact: 'high',
+    status: 'pending',
+    pillar: 'conversión',
+    effort: 'medium',
+    data: {
+      detail: '1. Lista tus páginas de servicio principales (software RRHH, control horario, gestión nóminas).\n2. Crea un formulario corto (nombre, email, empresa) con CTA específico: "Solicitar demo de Control Horario" en vez de "Contactar".\n3. Coloca el formulario después del primer bloque de contenido (above the fold si es posible).\n4. Añade tracking de conversión para medir cuántos leads genera cada página.\n5. A/B testea el CTA durante 2 semanas: "Solicitar demo" vs "Ver precios" vs "Hablar con un experto".',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+  {
+    id: 'rec-conv-02',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Añadir un lead magnet descargable (checklist o guía PDF) en la página de software RRHH',
+    description: 'Tu tasa de conversión estimada es baja. Un lead magnet captura emails de visitantes que aún no están listos para pedir demo pero sí interesados en tu contenido.',
+    impact: 'medium',
+    status: 'pending',
+    pillar: 'conversión',
+    effort: 'medium',
+    data: {
+      detail: '1. Crea un PDF de 3-5 páginas: "Checklist: 10 señales de que tu pyme necesita digitalizar RRHH".\n2. Diseña un banner o popup en tu página de software RRHH con CTA "Descarga gratis".\n3. Pide solo email a cambio de la descarga (reducir fricción = más conversiones).\n4. Configura un email automático de bienvenida con el PDF adjunto + enlace a pedir demo.\n5. Mide tasa de descarga y cuántos de esos leads acaban pidiendo demo en 30 días.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+
+  // ── Contenido (falta 1 más, ya tiene rec-06) ──
+  {
+    id: 'rec-cont-01',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Publicar 1 caso de éxito con datos concretos (ROI, plazos, resultados) de un cliente actual',
+    description: 'No tienes casos de éxito publicados. Las IAs y los buscadores priorizan contenido con evidencia concreta. Un caso bien estructurado mejora conversión y visibilidad.',
+    impact: 'high',
+    status: 'pending',
+    pillar: 'contenido',
+    effort: 'medium',
+    data: {
+      detail: '1. Elige un cliente con resultados medibles y pídele permiso para publicar su caso.\n2. Estructura: problema → solución → resultado (con cifras: "ROI del 340% en 6 meses", "reducción del 50% en tiempo de gestión").\n3. Incluye testimonial con nombre, cargo y empresa del cliente.\n4. Publícalo en tu blog con schema Article y enlázalo desde tu página principal.\n5. Compártelo en LinkedIn mencionando al cliente para amplificar alcance.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+
+  // ── Reputación ──
+  {
+    id: 'rec-rep-01',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Pedir a 5 clientes actuales que dejen una reseña en Google Business Profile esta semana',
+    description: 'Tienes 18 reseñas con 4.6★ pero Devify tiene 47 reseñas. Más reseñas mejoran tu posicionamiento local y dan señales de confianza a las IAs.',
+    impact: 'medium',
+    status: 'pending',
+    pillar: 'reputación',
+    effort: 'low',
+    data: {
+      detail: '1. Selecciona 5 clientes satisfechos con los que tengas buena relación.\n2. Envía un email personalizado (no masivo) con el enlace directo a dejar reseña en Google.\n3. Incluye 2-3 puntos clave que les sugieran mencionar: servicio concreto, resultado, trato.\n4. Haz follow-up por WhatsApp/teléfono a los que no respondan en 3 días.\n5. Responde a cada reseña nueva con un mensaje personalizado de agradecimiento.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
+  },
+  {
+    id: 'rec-rep-02',
+    client_id: 'demo-client-01',
+    source: 'radar',
+    title: 'Responder a todas las reseñas existentes en Google con mensaje personalizado',
+    description: 'Tienes reseñas sin responder. Google y las IAs valoran la actividad del negocio. Responder mejora tu perfil y muestra profesionalidad a potenciales clientes.',
+    impact: 'low',
+    status: 'pending',
+    pillar: 'reputación',
+    effort: 'low',
+    data: {
+      detail: '1. Entra en tu Google Business Profile y revisa todas las reseñas.\n2. Responde a cada una con un mensaje personalizado (no copiar-pegar el mismo texto).\n3. En reseñas positivas: agradece, menciona el servicio y ofrece ayuda futura.\n4. En reseñas negativas (si hay): reconoce el problema, ofrece solución, invita a contactar directamente.\n5. Establece rutina: responder a cada nueva reseña en menos de 48 horas.',
+    },
+    created_at: '2026-04-07T06:00:00Z',
   },
 ];
 

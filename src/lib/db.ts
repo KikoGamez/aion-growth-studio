@@ -392,6 +392,7 @@ export interface Recommendation {
   id?: string;
   client_id: string;
   source: string;
+  pillar?: string;       // 'geo' | 'seo' | 'web' | 'conversión' | 'contenido' | 'reputación'
   title: string;
   description?: string;
   impact?: 'high' | 'medium' | 'low';
@@ -456,6 +457,20 @@ export async function getAllRecommendations(clientId: string): Promise<Recommend
     .from('recommendations')
     .select('*')
     .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  return (data || []) as Recommendation[];
+}
+
+/** Get proposed recommendations filtered by pillar */
+export async function getRecommendationsByPillar(clientId: string, pillar: string): Promise<Recommendation[]> {
+  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => r.status === 'pending' && r.pillar === pillar) as Recommendation[];
+  const sb = getSupabase();
+  const { data } = await sb
+    .from('recommendations')
+    .select('*')
+    .eq('client_id', clientId)
+    .eq('status', 'proposed')
+    .eq('pillar', pillar)
     .order('created_at', { ascending: false });
   return (data || []) as Recommendation[];
 }
