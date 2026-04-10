@@ -96,50 +96,54 @@ const techstack = r.techstack || {};
 const scoreBreakdown = r.score?.breakdown || {};
 const seoSkipped = seo.skipped === true;
 
-interface SeoIssue { severity: 'critical' | 'warning' | 'good'; label: string; detail: string; }
+interface SeoIssue { severity: 'critical' | 'warning' | 'good'; label: string; detail: string; expanded?: string; }
 const onPageIssues: SeoIssue[] = [];
 
 if (crawl.title) {
   const len = (crawl.title as string).length;
-  if (len > 60) onPageIssues.push({ severity: 'warning', label: 'Title demasiado largo', detail: `${len} caracteres (recomendado: 50-60)` });
-  else if (len < 30) onPageIssues.push({ severity: 'warning', label: 'Title demasiado corto', detail: `${len} caracteres. Usa más espacio para keywords.` });
-  else onPageIssues.push({ severity: 'good', label: 'Title correcto', detail: `${len} caracteres` });
-} else { onPageIssues.push({ severity: 'critical', label: 'Sin meta title', detail: 'Sin título definido — fundamental para SEO' }); }
+  const titleText = crawl.title as string;
+  if (len > 60) onPageIssues.push({ severity: 'warning', label: 'Title demasiado largo', detail: `${len} caracteres (recomendado: 50-60)`, expanded: `Tu título actual:\n"${titleText}"\n\nGoogle muestra máximo ~60 caracteres en los resultados. Los últimos ${len - 60} caracteres se cortarán. Pon las keywords principales al inicio y recorta a 50-60 chars.` });
+  else if (len < 30) onPageIssues.push({ severity: 'warning', label: 'Title demasiado corto', detail: `${len} caracteres. Usa más espacio para keywords.`, expanded: `Tu título actual:\n"${titleText}"\n\nTienes ${60 - len} caracteres más disponibles. Incluye keywords relevantes y tu marca. El rango óptimo para Google es 50-60 caracteres.` });
+  else onPageIssues.push({ severity: 'good', label: 'Title correcto', detail: `${len} caracteres`, expanded: `Tu título actual:\n"${titleText}"\n\nLongitud óptima (50-60 chars). Google lo mostrará completo en los resultados.` });
+} else { onPageIssues.push({ severity: 'critical', label: 'Sin meta title', detail: 'Sin título definido — fundamental para SEO', expanded: `Tu web no tiene un <title> definido. Google generará uno automáticamente (y no será bueno).\n\nAñade en el <head>:\n<title>Tu keyword principal — Tu marca</title>\n\nLongitud óptima: 50-60 caracteres.` }); }
 
 if (crawl.description) {
   const len = (crawl.description as string).length;
-  if (len > 160) onPageIssues.push({ severity: 'warning', label: 'Meta description largo', detail: `${len} chars — Google lo cortará` });
-  else if (len < 70) onPageIssues.push({ severity: 'warning', label: 'Meta description corto', detail: `${len} chars — aprovecha más espacio` });
-  else onPageIssues.push({ severity: 'good', label: 'Meta description ok', detail: `${len} chars` });
-} else { onPageIssues.push({ severity: 'critical', label: 'Sin meta description', detail: 'Google generará una automática — menos clicks' }); }
+  const descText = crawl.description as string;
+  if (len > 160) onPageIssues.push({ severity: 'warning', label: 'Meta description largo', detail: `${len} chars — Google lo cortará`, expanded: `Tu meta description actual (${len} chars):\n"${descText}"\n\nGoogle muestra máximo ~155-160 caracteres en escritorio y ~120 en móvil. Los últimos ${len - 155} caracteres se perderán.\n\nLongitud óptima: 120-155 caracteres. Incluye tu keyword principal y un CTA claro.` });
+  else if (len < 70) onPageIssues.push({ severity: 'warning', label: 'Meta description corto', detail: `${len} chars — aprovecha más espacio`, expanded: `Tu meta description actual (${len} chars):\n"${descText}"\n\nTienes ${155 - len} caracteres más disponibles para convencer al usuario de hacer clic.\n\nLongitud óptima: 120-155 caracteres. Incluye keywords, propuesta de valor y un CTA.` });
+  else onPageIssues.push({ severity: 'good', label: 'Meta description ok', detail: `${len} chars`, expanded: `Tu meta description actual (${len} chars):\n"${descText}"\n\nLongitud dentro del rango óptimo (120-155 chars). Google lo mostrará completo.` });
+} else { onPageIssues.push({ severity: 'critical', label: 'Sin meta description', detail: 'Google generará una automática — menos clicks', expanded: `Tu web no tiene meta description. Google extraerá texto aleatorio de tu página — lo que reduce el CTR.\n\nAñade en el <head>:\n<meta name="description" content="Tu descripción aquí">\n\nLongitud óptima: 120-155 caracteres. En móvil Google corta a ~120 chars.` }); }
 
 const h1Count = (crawl.h1s as any[])?.length || 0;
-if (h1Count === 0) onPageIssues.push({ severity: 'critical', label: 'Sin H1', detail: 'Sin encabezado principal' });
-else if (h1Count > 1) onPageIssues.push({ severity: 'warning', label: `${h1Count} H1s`, detail: 'Debería haber solo 1 H1' });
-else onPageIssues.push({ severity: 'good', label: 'H1 correcto', detail: `"${((crawl.h1s as any[])?.[0] || '').slice(0, 40)}"` });
+if (h1Count === 0) onPageIssues.push({ severity: 'critical', label: 'Sin H1', detail: 'Sin encabezado principal', expanded: 'Tu página no tiene ningún <h1>. El H1 es el encabezado más importante para SEO — Google lo usa para entender de qué trata la página.\n\nAñade un único <h1> con tu keyword principal al inicio de tu contenido.' });
+else if (h1Count > 1) onPageIssues.push({ severity: 'warning', label: `${h1Count} H1s`, detail: 'Debería haber solo 1 H1', expanded: `Se encontraron ${h1Count} etiquetas H1:\n${((crawl.h1s as any[]) || []).map((h: string, i: number) => `${i+1}. "${h}"`).join('\n')}\n\nGoogle recomienda un solo H1 por página. Cambia los H1 extra a H2 o H3 según su jerarquía.` });
+else onPageIssues.push({ severity: 'good', label: 'H1 correcto', detail: `"${((crawl.h1s as any[])?.[0] || '').slice(0, 40)}"`, expanded: `Tu H1:\n"${(crawl.h1s as any[])?.[0] || ''}"\n\nUn solo H1 bien definido. Asegúrate de que contenga tu keyword principal.` });
 
-if (crawl.imageCount > 0 && (crawl.imagesWithAlt as number) < (crawl.imageCount as number)) onPageIssues.push({ severity: 'warning', label: `${(crawl.imageCount as number) - (crawl.imagesWithAlt as number)} imágenes sin alt`, detail: 'Google no puede ver imágenes sin alt text' });
-else if (crawl.imageCount > 0) onPageIssues.push({ severity: 'good', label: 'Imágenes con alt text', detail: 'Todas las imágenes tienen texto alternativo' });
+if (crawl.imageCount > 0 && (crawl.imagesWithAlt as number) < (crawl.imageCount as number)) {
+  const missing = (crawl.imageCount as number) - (crawl.imagesWithAlt as number);
+  onPageIssues.push({ severity: 'warning', label: `${missing} imágenes sin alt`, detail: 'Google no puede ver imágenes sin alt text', expanded: `${crawl.imageCount} imágenes en total, ${crawl.imagesWithAlt} con alt text, ${missing} sin él.\n\nEl atributo alt ayuda a Google a indexar las imágenes y mejora la accesibilidad. Describe lo que muestra cada imagen de forma breve y natural, incluyendo keywords cuando tenga sentido.` });
+} else if (crawl.imageCount > 0) onPageIssues.push({ severity: 'good', label: 'Imágenes con alt text', detail: 'Todas las imágenes tienen texto alternativo', expanded: `${crawl.imageCount} imágenes encontradas, todas con alt text. Google puede indexarlas y aparecer en Google Images.` });
 
-if (ssl.valid) onPageIssues.push({ severity: 'good', label: 'SSL activo', detail: `${ssl.protocol || 'TLS'} — expira en ${ssl.daysUntilExpiry || '?'} días` });
-else onPageIssues.push({ severity: 'critical', label: 'Sin SSL', detail: 'Chrome marca tu web como "No segura"' });
+if (ssl.valid) onPageIssues.push({ severity: 'good', label: 'SSL activo', detail: `${ssl.protocol || 'TLS'} — expira en ${ssl.daysUntilExpiry || '?'} días`, expanded: `Certificado SSL válido.\nProtocolo: ${ssl.protocol || 'TLS'}\nExpira en: ${ssl.daysUntilExpiry || '?'} días\n\nGoogle da prioridad a sitios HTTPS. ${(ssl.daysUntilExpiry as number) < 30 ? '⚠ Renueva pronto — quedan menos de 30 días.' : 'Sin problemas a la vista.'}` });
+else onPageIssues.push({ severity: 'critical', label: 'Sin SSL', detail: 'Chrome marca tu web como "No segura"', expanded: 'Tu web no tiene certificado SSL (HTTPS). Chrome y otros navegadores muestran "No segura" en la barra de direcciones, lo que ahuyenta a los visitantes.\n\nAdemás, Google penaliza las webs sin HTTPS en los rankings. Instala un certificado SSL — muchos hostings lo ofrecen gratis con Let\'s Encrypt.' });
 
-if (crawl.hasSchemaMarkup) onPageIssues.push({ severity: 'good', label: 'Schema markup', detail: `Tipos: ${((crawl.schemaTypes as any[]) || []).join(', ')}` });
-else onPageIssues.push({ severity: 'warning', label: 'Sin schema markup', detail: 'Google y las IAs no entienden tu negocio' });
+if (crawl.hasSchemaMarkup) onPageIssues.push({ severity: 'good', label: 'Schema markup', detail: `Tipos: ${((crawl.schemaTypes as any[]) || []).join(', ')}`, expanded: `Schema detectado: ${((crawl.schemaTypes as any[]) || []).join(', ')}\n\nEl marcado Schema ayuda a Google a mostrar rich snippets (estrellas, precios, FAQ…) que aumentan el CTR. Revisa si cubre los tipos más relevantes para tu negocio.` });
+else onPageIssues.push({ severity: 'warning', label: 'Sin schema markup', detail: 'Google y las IAs no entienden tu negocio', expanded: 'No se detectó Schema (JSON-LD) en tu web. Sin Schema, Google no puede generar rich snippets (estrellas, FAQ, precios…) y las IAs no pueden estructurar tu información.\n\nAñade al menos Schema de tipo Organization y, si aplica, LocalBusiness, Product o FAQ.' });
 
-if (crawl.hasSitemap) onPageIssues.push({ severity: 'good', label: 'Sitemap', detail: 'Google descubre tus páginas' });
-else onPageIssues.push({ severity: 'warning', label: 'Sin sitemap.xml', detail: 'Google no descubre todas tus páginas' });
+if (crawl.hasSitemap) onPageIssues.push({ severity: 'good', label: 'Sitemap', detail: 'Google descubre tus páginas', expanded: `Se detectó sitemap.xml. Google lo usa para descubrir e indexar todas tus páginas.\n\nVerifica que esté actualizado y que incluya solo URLs canónicas (no duplicados ni páginas con noindex).` });
+else onPageIssues.push({ severity: 'warning', label: 'Sin sitemap.xml', detail: 'Google no descubre todas tus páginas', expanded: `No se encontró sitemap.xml. Sin él, Google depende del crawling para descubrir tus páginas — y puede perderse algunas.\n\nCrea un sitemap.xml en la raíz de tu web y envíalo en Google Search Console. La mayoría de CMS lo generan automáticamente.` });
 
-if (crawl.hasCanonical) onPageIssues.push({ severity: 'good', label: 'Canonical', detail: 'Evita duplicados' });
-else onPageIssues.push({ severity: 'warning', label: 'Sin canonical', detail: 'Posible contenido duplicado' });
+if (crawl.hasCanonical) onPageIssues.push({ severity: 'good', label: 'Canonical', detail: 'Evita duplicados', expanded: 'Se detectó etiqueta canonical. Esto indica a Google cuál es la URL principal de cada página, evitando problemas de contenido duplicado.' });
+else onPageIssues.push({ severity: 'warning', label: 'Sin canonical', detail: 'Posible contenido duplicado', expanded: 'No se detectó etiqueta <link rel="canonical">. Sin ella, Google puede indexar múltiples URLs con el mismo contenido (con/sin www, con/sin trailing slash, con parámetros…), diluyendo tu posicionamiento.\n\nAñade en cada página:\n<link rel="canonical" href="https://tudominio.com/pagina" />' });
 
 const mobilePS = pagespeed.mobile?.performance;
-if (mobilePS >= 90) onPageIssues.push({ severity: 'good', label: `PageSpeed mobile: ${mobilePS}`, detail: 'Excelente' });
-else if (mobilePS >= 50) onPageIssues.push({ severity: 'warning', label: `PageSpeed mobile: ${mobilePS}`, detail: 'Mejorable' });
-else if (mobilePS) onPageIssues.push({ severity: 'critical', label: `PageSpeed mobile: ${mobilePS}`, detail: `LCP: ${pagespeed.mobile?.lcp ? ((pagespeed.mobile.lcp as number)/1000).toFixed(1)+'s' : '?'}` });
+if (mobilePS >= 90) onPageIssues.push({ severity: 'good', label: `PageSpeed mobile: ${mobilePS}`, detail: 'Excelente', expanded: `Puntuación PageSpeed Insights para móvil: ${mobilePS}/100.\n\nExcelente rendimiento. Google prioriza la experiencia móvil desde 2021 (mobile-first indexing).` });
+else if (mobilePS >= 50) onPageIssues.push({ severity: 'warning', label: `PageSpeed mobile: ${mobilePS}`, detail: 'Mejorable', expanded: `Puntuación PageSpeed Insights para móvil: ${mobilePS}/100.\n\nEl objetivo es superar 90. Revisa LCP (carga del elemento principal), CLS (estabilidad visual) y FID (interactividad).\n\n${pagespeed.mobile?.lcp ? `LCP actual: ${((pagespeed.mobile.lcp as number)/1000).toFixed(1)}s (Google recomienda < 2.5s)` : ''}\n\nAcciones comunes: optimizar imágenes (WebP), reducir JS/CSS no utilizado, usar lazy loading.` });
+else if (mobilePS) onPageIssues.push({ severity: 'critical', label: `PageSpeed mobile: ${mobilePS}`, detail: `LCP: ${pagespeed.mobile?.lcp ? ((pagespeed.mobile.lcp as number)/1000).toFixed(1)+'s' : '?'}`, expanded: `Puntuación PageSpeed Insights para móvil: ${mobilePS}/100 — rendimiento pobre.\n\n${pagespeed.mobile?.lcp ? `LCP: ${((pagespeed.mobile.lcp as number)/1000).toFixed(1)}s (Google recomienda < 2.5s)` : ''}\n\nEsto afecta directamente al ranking en Google. Prioriza: optimizar imágenes, reducir JavaScript, mejorar el servidor (TTFB) y habilitar compresión.` });
 
-if ((crawl.wordCount as number) < 300) onPageIssues.push({ severity: 'warning', label: `${crawl.wordCount} palabras`, detail: 'Poco contenido para SEO' });
-if ((crawl.internalLinks as number) < 5) onPageIssues.push({ severity: 'warning', label: `${crawl.internalLinks} enlaces internos`, detail: 'Pocos enlaces dificultan el crawling' });
+if ((crawl.wordCount as number) < 300) onPageIssues.push({ severity: 'warning', label: `${crawl.wordCount} palabras`, detail: 'Poco contenido para SEO', expanded: `Tu página tiene ${crawl.wordCount} palabras. Google necesita contenido para entender de qué trata tu web.\n\nEl mínimo recomendado es 300 palabras para tu homepage. Las páginas que rankean en top 10 tienen de media 1.400+ palabras.\n\nAñade secciones con tus servicios, beneficios, casos de uso o FAQ.` });
+if ((crawl.internalLinks as number) < 5) onPageIssues.push({ severity: 'warning', label: `${crawl.internalLinks} enlaces internos`, detail: 'Pocos enlaces dificultan el crawling', expanded: `Solo ${crawl.internalLinks} enlaces internos detectados. Los enlaces internos ayudan a Google a descubrir tus páginas y distribuyen la autoridad del dominio.\n\nRecomendación: al menos 5-10 enlaces internos en tu homepage apuntando a tus páginas más importantes (servicios, productos, contacto, blog).` });
 
 const criticals = onPageIssues.filter(i => i.severity === 'critical');
 const warnings = onPageIssues.filter(i => i.severity === 'warning');
@@ -201,7 +205,7 @@ if (seoSkipped) {
     <div style="padding:20px 24px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">
       <div>
         <h2 style="font-size:15px;font-weight:800;color:#1a1a2e;">Auditoría SEO On-Page</h2>
-        <p style="font-size:12px;color:#64748b;margin-top:2px;">Estado técnico de tu web para buscadores</p>
+        <p style="font-size:12px;color:#64748b;margin-top:2px;">Haz clic en cada punto para ver el detalle y la recomendación</p>
       </div>
       <div style="display:flex;gap:6px;">
         {criticals.length > 0 && <span style="background:#FCEBEB;color:#E24B4A;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;">{criticals.length} críticos</span>}
@@ -209,18 +213,28 @@ if (seoSkipped) {
         {goods.length > 0 && <span style="background:#E1F5EE;color:#1D9E75;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;">{goods.length} ok</span>}
       </div>
     </div>
-    <div style="padding:4px 0;">
-      {[...criticals, ...warnings, ...goods].map(issue => {
+    <div style="display:grid;grid-template-columns:1fr 1fr;padding:8px 12px;gap:0;">
+      {[...criticals, ...warnings, ...goods].map((issue, idx) => {
         const s = sevIcon[issue.severity];
         return (
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 24px;border-bottom:1px solid #f8f8f8;">
-            <div style={`width:28px;height:28px;border-radius:8px;background:${s.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;`}>
-              <span class="material-symbols-outlined" style={`font-size:16px;color:${s.color};`}>{s.icon}</span>
+          <div class="onpage-item" data-idx={idx} style="padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.15s;">
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <div style={`width:26px;height:26px;border-radius:7px;background:${s.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;`}>
+                <span class="material-symbols-outlined" style={`font-size:15px;color:${s.color};`}>{s.icon}</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <p style="font-size:13px;font-weight:700;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{issue.label}</p>
+                  <span class="material-symbols-outlined onpage-chevron" style="font-size:14px;color:#94a3b8;transition:transform 0.2s;flex-shrink:0;">expand_more</span>
+                </div>
+                <p style="font-size:11px;color:#64748b;line-height:1.3;margin-top:1px;">{issue.detail}</p>
+              </div>
             </div>
-            <div>
-              <p style="font-size:13px;font-weight:700;color:#1a1a2e;">{issue.label}</p>
-              <p style="font-size:12px;color:#64748b;line-height:1.4;margin-top:2px;">{issue.detail}</p>
-            </div>
+            {issue.expanded && (
+              <div class="onpage-expanded" style="display:none;margin-top:10px;margin-left:36px;padding:12px 14px;background:#f7f9ff;border-radius:8px;border:1px solid #e2e8f0;">
+                <p style="font-size:12px;color:#434750;line-height:1.6;white-space:pre-line;">{issue.expanded}</p>
+              </div>
+            )}
           </div>
         );
       })}
@@ -555,7 +569,28 @@ if (seoSkipped) {
 
 </div>
 
+<style>
+  .onpage-item:hover { background: #f7f9ff; }
+  .onpage-item.open .onpage-chevron { transform: rotate(180deg); }
+  .onpage-item.open { background: #f7f9ff; }
+</style>
+
 <script>
+  document.querySelectorAll('.onpage-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const expanded = item.querySelector('.onpage-expanded') as HTMLElement;
+      if (!expanded) return;
+      const isOpen = item.classList.contains('open');
+      if (isOpen) {
+        item.classList.remove('open');
+        expanded.style.display = 'none';
+      } else {
+        item.classList.add('open');
+        expanded.style.display = 'block';
+      }
+    });
+  });
+
   document.querySelectorAll('.btn-copy-fix').forEach(btn => {
     btn.addEventListener('click', async () => {
       const content = (btn as HTMLElement).dataset.content || '';
