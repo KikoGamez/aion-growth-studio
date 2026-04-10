@@ -20,14 +20,42 @@ const prevSeo = pr.seo || {};
 const gsc = r.analytics?.gsc;
 const prevGsc = pr.analytics?.gsc;
 
-// ─── Stat cards data ──────────────────────────────────────────────────────
+// ─── Stat cards data (Keywords Top 10 y Tráfico Orgánico están en el hero) ──
 const stats = [
-  { label: 'Keywords Top 10', value: seo.keywordsTop10 || 0, prev: prevSeo.keywordsTop10, icon: 'search', better: 'up' },
-  { label: 'Tráfico Orgánico', value: seo.organicTrafficEstimate || 0, prev: prevSeo.organicTrafficEstimate, icon: 'trending_up', better: 'up', format: 'number' },
-  { label: 'Domain Rank', value: seo.domainRank || '—', prev: prevSeo.domainRank, icon: 'shield', better: 'down', format: 'number' },
-  { label: 'Referring Domains', value: seo.referringDomains || '—', prev: prevSeo.referringDomains, icon: 'link', better: 'up' },
-  { label: 'Backlinks', value: seo.backlinksTotal || '—', prev: prevSeo.backlinksTotal, icon: 'hub', better: 'up', format: 'number' },
-  { label: 'Páginas Indexadas', value: seo.indexedPages || gsc?.indexedPages || '—', prev: prevSeo.indexedPages, icon: 'description', better: 'up' },
+  {
+    label: 'Domain Rank',
+    value: seo.domainRank || '—',
+    prev: prevSeo.domainRank,
+    icon: 'shield',
+    better: 'up',
+    format: 'number',
+    tooltip: 'Autoridad de tu dominio (0-100). Cuanto más alto, más fácil rankear. Se calcula en base a la cantidad y calidad de los enlaces que recibes desde otras webs. Fuente: DataForSEO.',
+  },
+  {
+    label: 'Referring Domains',
+    value: seo.referringDomains || '—',
+    prev: prevSeo.referringDomains,
+    icon: 'link',
+    better: 'up',
+    tooltip: 'Número de dominios únicos distintos que enlazan a tu web. Más diversidad de dominios = mejor señal de autoridad para Google que muchos enlaces desde un mismo sitio.',
+  },
+  {
+    label: 'Backlinks',
+    value: seo.backlinksTotal || '—',
+    prev: prevSeo.backlinksTotal,
+    icon: 'hub',
+    better: 'up',
+    format: 'number',
+    tooltip: 'Total de enlaces externos que apuntan a tu web (incluye varios del mismo dominio). La calidad de los enlaces importa más que la cantidad pura.',
+  },
+  {
+    label: 'Páginas Indexadas',
+    value: seo.indexedPages || gsc?.indexedPages || '—',
+    prev: prevSeo.indexedPages,
+    icon: 'description',
+    better: 'up',
+    tooltip: 'Páginas tuyas que Google tiene en su índice y puede mostrar en resultados de búsqueda. Se obtiene mediante una búsqueda "site:tudominio.com" en Google.',
+  },
 ];
 
 // ─── Keywords table ───────────────────────────────────────────────────────
@@ -376,8 +404,8 @@ if (seoSkipped) {
     </div>
   </section>
 
-  <!-- ══ Stat Cards ══ -->
-  <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+  <!-- ══ Stat Cards — Autoridad y métricas de enlaces ══ -->
+  <section style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
     {stats.map(s => {
       const curr = typeof s.value === 'number' ? s.value : 0;
       const prev = typeof s.prev === 'number' ? s.prev : null;
@@ -389,10 +417,11 @@ if (seoSkipped) {
         <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
             <span class="material-symbols-outlined" style="font-size:16px;color:#64748b;">{s.icon}</span>
-            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;">{s.label}</span>
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;flex:1;">{s.label}</span>
+            <span class="material-symbols-outlined stat-info" title={s.tooltip} style="font-size:14px;color:#cbd5e1;cursor:help;">info</span>
           </div>
           <div style="display:flex;align-items:baseline;gap:8px;">
-            <span style="font-size:26px;font-weight:900;color:#1a1a2e;">{s.format === 'number' && typeof s.value === 'number' ? fmtNum(s.value) : s.value}</span>
+            <span style="font-size:26px;font-weight:900;color:#1a1a2e;">{s.format === 'number' && typeof s.value === 'number' ? fmtNum(s.value) : s.value}{s.label === 'Domain Rank' && typeof s.value === 'number' && <span style="font-size:14px;color:#64748b;font-weight:600;">/100</span>}</span>
             {delta != null && Math.abs(delta) > 0 && (
               <span style={`font-size:12px;font-weight:700;color:${deltaColor};`}>
                 {delta > 0 ? '↑' : '↓'}{Math.abs(delta).toLocaleString()}

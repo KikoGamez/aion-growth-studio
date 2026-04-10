@@ -16,8 +16,8 @@ export async function runSEO(url: string): Promise<SEOResult> {
   const timer = setTimeout(() => controller.abort(), 45000);
 
   try {
-    // ── Tier 1 + Tier 2 + Organic Competitors + History in parallel ──
-    const [overviewRes, kwRes, compRes, histRes] = await Promise.all([
+    // ── Tier 1 + Tier 2 + Organic Competitors + History + Backlinks in parallel ──
+    const [overviewRes, kwRes, compRes, histRes, bkRes] = await Promise.all([
       fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live', {
         method: 'POST',
         signal: controller.signal,
@@ -61,6 +61,13 @@ export async function runSEO(url: string): Promise<SEOResult> {
         headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
         body: JSON.stringify([{ target: domain, location_code: 2724, language_code: 'es' }]),
       }),
+      // Backlinks summary — domain authority rank, referring domains, backlinks total, spam score
+      fetch('https://api.dataforseo.com/v3/backlinks/summary/live', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+        body: JSON.stringify([{ target: domain, include_subdomains: true }]),
+      }),
     ]);
 
     if (!overviewRes.ok) {
@@ -69,11 +76,12 @@ export async function runSEO(url: string): Promise<SEOResult> {
       return { skipped: true, reason: `DataForSEO: ${msg}`.slice(0, 120) };
     }
 
-    const [data, kwData, compData, histData] = await Promise.all([
+    const [data, kwData, compData, histData, bkData] = await Promise.all([
       overviewRes.json(),
       kwRes.ok ? kwRes.json() : Promise.resolve(null),
       compRes.ok ? compRes.json() : Promise.resolve(null),
       histRes.ok ? histRes.json() : Promise.resolve(null),
+      bkRes.ok ? bkRes.json() : Promise.resolve(null),
     ]);
 
     const task = data?.tasks?.[0];
@@ -120,6 +128,33 @@ export async function runSEO(url: string): Promise<SEOResult> {
     };
 
     const _logParts: string[] = [`kw:${keywordsTop10} etv:${m?.etv != null ? Math.round(m.etv) : 0}`];
+
+    // ── Backlinks summary (Domain Rank, Referring Domains, Backlinks) ──
+    // DataForSEO Backlinks API uses a 0-1000 scale for rank; we normalize
+    // to 0-100 to match our SEOResult type convention.
+    try {
+      const bkTask = bkData?.tasks?.[0];
+      if (bkTask?.status_code === 20000 && bkTask.result_count > 0) {
+        const bkItem = bkTask.result?.[0];
+        if (bkItem) {
+          if (bkItem.rank != null) {
+            baseResult.domainRank = Math.round(bkItem.rank / 10);
+          }
+          if (bkItem.referring_domains != null) {
+            baseResult.referringDomains = bkItem.referring_domains;
+          }
+          if (bkItem.backlinks != null) {
+            baseResult.backlinksTotal = bkItem.backlinks;
+          }
+          if (bkItem.backlinks_spam_score != null) {
+            baseResult.spamScore = bkItem.backlinks_spam_score;
+          }
+          _logParts.push(`dr:${baseResult.domainRank ?? '?'} rd:${baseResult.referringDomains ?? '?'} bl:${baseResult.backlinksTotal ?? '?'}`);
+        }
+      } else {
+        _logParts.push(`backlinks:skip(${bkTask?.status_code ?? 'no-task'})`);
+      }
+    } catch { _logParts.push('backlinks:except'); }
 
     // ── Organic competitors from DataForSEO ───────────────────────────
     // Blocklist: generic/media domains that share informational keywords but aren't real competitors
