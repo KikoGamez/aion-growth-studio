@@ -422,10 +422,15 @@ const _ownReviewScore = _gbpR > 0 && _tpR > 0
   : 0;
 
 const radarColors = ['#1A4B8C','#D85A30','#888780'];
+// GEO axis fallback: mentionRate is the direct comparable metric vs
+// competitor mentions, but it can be null when the GEO module produced
+// overallScore without mentionRate. Fall back to overallScore and finally
+// to score.breakdown.geo (same logic as src/lib/audit/modules/score.ts).
+const _ownGeoAxis = geo?.mentionRate ?? geo?.overallScore ?? r.score?.breakdown?.geo ?? 0;
 const radarDatasets = [
   { label: domain, color: radarColors[0], values: [
     Math.round(((seo?.keywordsTop10||0)/maxKW)*100),
-    geo?.mentionRate??0,
+    _ownGeoAxis,
     _ownReviewScore,
     Math.round((Math.max(linkedin?.followers||0,instagram?.followers||0)/maxFollowers)*100),
     ps?.mobile?.performance??0,

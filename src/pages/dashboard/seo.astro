@@ -288,9 +288,15 @@ function buildSeoDonut(score: number, radius: number, stroke: number) {
   </svg>`;
 }
 
-// ─── Briefing fixes (generated content ready to use) ─────────────────────
-const briefing = r.briefing || {};
-const fixes = (briefing.fixes || []) as Array<{type: string; content: string; where: string}>;
+// ─── Ready-to-use fixes (generated content ready to copy-paste) ─────────
+// Prefer Growth Agent readyToUseFixes (new source after commit 5). Falls back
+// to legacy briefing.fixes only for old snapshots generated pre-refactor.
+const _ga = r.growth_analysis || {};
+const _legacyBriefing = r.briefing || {};
+const fixes = ((_ga.readyToUseFixes && _ga.readyToUseFixes.length > 0)
+  ? _ga.readyToUseFixes
+  : (_legacyBriefing.fixes || [])
+) as Array<{type: string; content: string; where: string}>;
 const fixTypeLabels: Record<string, { label: string; icon: string }> = {
   meta_description: { label: 'Meta Description', icon: 'description' },
   meta_title: { label: 'Meta Title', icon: 'title' },
@@ -298,6 +304,8 @@ const fixTypeLabels: Record<string, { label: string; icon: string }> = {
   schema_faq: { label: 'Schema FAQ (JSON-LD)', icon: 'quiz' },
   schema_product: { label: 'Schema Product', icon: 'shopping_bag' },
   schema_local: { label: 'Schema LocalBusiness', icon: 'location_on' },
+  h1: { label: 'H1 principal', icon: 'title' },
+  alt_text: { label: 'Alt text para imágenes', icon: 'image' },
 };
 
 // ─── Difficulty badge color ───────────────────────────────────────────────

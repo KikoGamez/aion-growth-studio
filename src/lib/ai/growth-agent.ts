@@ -72,6 +72,18 @@ export interface AuditSummaries {
   experience: string;   // 1-2 sentences on web + conversion + measurement combined
 }
 
+/**
+ * Copy-paste ready content fixes for on-page issues. Generated only when
+ * the audit detects specific problems (missing meta description, no schema,
+ * generic title, etc). The client literally copies and pastes into their
+ * HTML. Rendered in the SEO dashboard page and the audit report.
+ */
+export interface ReadyToUseFix {
+  type: 'meta_title' | 'meta_description' | 'schema_organization' | 'schema_faq' | 'schema_product' | 'schema_local' | 'h1' | 'alt_text';
+  content: string;      // final content, copy-paste ready (JSON-LD valid, title 50-60 chars, etc)
+  where: string;        // where to paste it ("<head> of homepage", "<title> tag", etc)
+}
+
 export interface GrowthAnalysis {
   version: number;                           // schema version (bump on breaking changes)
   generatedAt: string;
@@ -80,6 +92,7 @@ export interface GrowthAnalysis {
   pillarAnalysis: Record<Pillar, PillarNarrative>;
   prioritizedActions: PrioritizedAction[];   // already ordered by rank
   auditSummaries?: AuditSummaries;           // only populated when audit report will use it
+  readyToUseFixes?: ReadyToUseFix[];         // copy-paste content for detected on-page issues
   qaPassed?: boolean;                        // true when validated by Opus QA
   qaNotes?: string[];                        // list of corrections QA applied, for audit trail
 }
@@ -173,6 +186,71 @@ Si un pilar no tiene datos (ej: no hay audit GEO), los pesos se redistribuyen en
 3. Di cuál es la palanca concreta que más moverá el número si se ejecuta (viene del plan de acciones priorizadas)
 4. Nunca inventes valores que no estén en el contexto. Si un pilar no tiene datos, dilo.
 
+## Reglas de redacción — NO NEGOCIABLES
+
+Estas reglas vienen de errores reales que hemos visto en producción. Violarlas hace que el QA te rechace:
+
+**R1 — Fidelidad numérica absoluta**
+Cada número que cites debe coincidir EXACTAMENTE con los datos del audit. Si ves organicTrafficEstimate: 4800, escribes "4.800" — no "cerca de 5K", no "5.000", no "~4800". Literal siempre.
+
+**R2 — Nunca digas "100% tráfico de marca" si hay non-brand**
+Si \`seo.topKeywords\` incluye keywords no-branded con tráfico alto (posición top y volumen >500), entonces hay captación no-branded real. NUNCA digas "100% branded". Si \`brandTrafficPct\` es 100 pero ves keywords como "control horario pymes" ranqueando, el número brandTrafficPct está mal — refleja el mix real que ves en topKeywords. Si una keyword top posicionada #1 no es el nombre de la marca, ESO es captación nueva y hay que celebrarla como fortaleza.
+
+**R3 — Sin competidores reales, sin comparativas**
+Si \`competitors.competitors\` está vacío o \`competitor_traffic.items\` tiene length 0, está PROHIBIDO hacer comparativas numéricas del tipo "3x menos que competidor X" o "Devify te gana con 60% SoV". Puedes decir "no hay datos de competidores para comparar" o directamente omitir la comparación.
+
+**R4 — 0 keyword gaps = no recomiendes gap attack**
+Si \`keyword_gap.items\` tiene length 0, está PROHIBIDO recomendar "atacar el gap de keywords". Recomienda en su lugar "optimizar las keywords en posición 4-10" o "crear contenido pilar sobre [tema específico del negocio]".
+
+**R5 — Habla en términos de negocio, no de tecnología**
+Prohibido citar términos técnicos crudos sin traducir: canonical tags, schema markup, LCP, CLS, TTFB, hreflang. Debes traducirlos a impacto real:
+- MAL: "tu LCP es 4.8s"
+- BIEN: "Google tarda 4,8 segundos en mostrar tu contenido en móvil — cada segundo reduce la conversión un 10-20%"
+- MAL: "sin schema markup"
+- BIEN: "Google y las IAs no entienden bien qué vende tu web por falta de datos estructurados"
+
+**R6 — Palabras prohibidas (frases vacías)**
+Nunca escribas: "bases técnicas aceptables", "déficits significativos", "oportunidades de captación", "presencia digital mejorable", "soluciones de mejora". Son rellenos sin contenido. Si vas a decir algo, dilo con dato.
+
+**R7 — GEO mention rate 0 ≠ "invisible total"**
+Si mentionRate es 0% pero overallScore > 0 (suele venir del brand score por reconocimiento de entidad), no digas "invisible en IA". Matiza: "sin presencia en consultas de descubrimiento, con reconocimiento básico de marca".
+
+**R8 — Adaptación a tipo de negocio (sector-aware)**
+Las acciones prioritarias DEBEN adaptarse al sector. Usa estas reglas:
+- **Banca privada, wealth management, finanzas, seguros**: NUNCA recomiendes "formulario de contacto visible" ni "chat de soporte en tiempo real". SÍ "solicitar cita con advisor", "calculadora de rentabilidad", "acceso a plataforma segura". Lenguaje de asesoramiento, no de captación masiva.
+- **Hostelería / restauración**: SÍ "reservas online", "menú visible en web", "Google Business Profile optimizado con fotos actualizadas".
+- **Ecommerce**: SÍ formulario corto, carrito, chat de soporte, valoraciones de producto, reviews.
+- **B2B / servicios profesionales**: SÍ casos de éxito con métricas, testimonios con nombre+cargo+empresa, solicitar presupuesto, agendar llamada.
+- **Local (peluquería, clínica, taller)**: SÍ GBP, reseñas, WhatsApp, horarios visibles, teléfono click-to-call.
+
+**R9 — Adaptación a team_size y budget**
+- team_size \`solo\` (1 persona) → acciones que pueda ejecutar solo, sin requerir equipo. Automatizaciones > acciones manuales repetitivas.
+- team_size \`2-5\` → máximo 3 iniciativas pesadas simultáneas.
+- budget \`0\` → PROHIBIDO recomendar campañas paid (Google Ads, Meta Ads). Solo orgánico.
+- budget \`<500\` → orgánico prioritario, paid solo si es imprescindible.
+- budget \`>5000\` → plan más agresivo, mix orgánico + paid.
+
+**R10 — Las acciones son acciones, no diagnósticos**
+- MAL (diagnóstico): "Tu presencia digital obtiene un 57/100"
+- BIEN (acción): "Optimizar las 37 keywords en posición 4-10 para doblar el tráfico orgánico en 6-8 semanas"
+Cada título empieza por verbo imperativo. Cada descripción: problema con dato → cómo hacerlo → resultado esperado con timeline.
+
+---
+
+## Ejemplo de veredicto CORRECTO (shot learning)
+
+> "Andbank aparece en el 45% de las consultas de IA — por encima de Lombard Odier (0%) pero por debajo de Banco Sabadell (73%). Con 69 keywords en top 10 hay tracción orgánica real, pero la web tarda 6s en cargar en móvil (Google recomienda <2.5s) y no hay blog ni sitemap XML. Optimizar las 37 keywords en posición 4-10 es la acción de mayor retorno inmediato."
+
+Por qué funciona: 5 datos numéricos concretos, menciona el dominio, compara con competidores reales, traduce LCP a segundos con referencia al umbral Google, identifica la palanca de mayor retorno.
+
+## Ejemplo de veredicto INCORRECTO (NO hagas esto)
+
+> "Tu presencia digital tiene bases técnicas aceptables pero déficits significativos en visibilidad y posicionamiento. Estás perdiendo oportunidades de captación cada día."
+
+Por qué se rechaza: 0 datos concretos, 0 menciones del dominio, 0 comparaciones, 100% genérico, 3 de las frases prohibidas en una sola oración.
+
+---
+
 ## Tu tarea en este momento
 
 Estás generando el análisis completo del dashboard de un cliente. TODO el contenido de la intranet de este cliente saldrá de tu respuesta: el resumen ejecutivo, los comentarios de cada pilar (SEO, GEO, Web, Conversión, Contenido, Reputación) y el plan de acción priorizado.
@@ -240,11 +318,43 @@ Responde con JSON válido siguiendo EXACTAMENTE este schema (sin texto adicional
   "auditSummaries": {
     "benchmark": "1-2 frases sobre la posición del cliente vs los competidores detectados (usar nombres reales y datos concretos)",
     "experience": "1-2 frases resumiendo el estado combinado de Web + Conversión + medición (PageSpeed, funnelScore, techstack maturity)"
-  }
+  },
+  "readyToUseFixes": [
+    {
+      "type": "meta_description",
+      "content": "Meta description optimizada de 120-155 caracteres con keyword principal + propuesta de valor + CTA implícito",
+      "where": "Pegar en el <meta name=\"description\"> del <head> de la home"
+    },
+    {
+      "type": "meta_title",
+      "content": "Title optimizado de 50-60 chars con keyword principal al inicio + marca al final",
+      "where": "Pegar en el <title> del <head> de la home"
+    },
+    {
+      "type": "schema_organization",
+      "content": "JSON-LD completo de Organization con name, url, logo, sameAs, contactPoint — válido según schema.org",
+      "where": "Añadir en el <head> de todas las páginas como <script type=\"application/ld+json\">"
+    }
+  ]
 }
 \`\`\`
 
 **Sobre \`auditSummaries\`**: son dos resúmenes cortos que alimentan el informe público del audit (los bloques "Benchmark" y "Experiencia"). Úsalos para condensar en 1-2 frases lo que ya dijiste de forma más larga en \`pillarAnalysis\`, con la misma voz y los mismos datos exactos. NO inventes nada nuevo aquí — si no hay datos de competidores, \`benchmark\` debe decirlo explícitamente en vez de generalidades.
+
+**Sobre \`readyToUseFixes\`**: SOLO genera fixes para problemas on-page realmente detectados en los datos del audit. Ejemplos de condiciones:
+- Si \`crawl.description\` está vacío o < 70 chars → genera un \`meta_description\` nuevo de 120-155 chars
+- Si \`crawl.title\` está vacío o > 60 chars o no incluye la keyword principal → genera un \`meta_title\` de 50-60 chars
+- Si \`crawl.hasSchemaMarkup\` es false → genera un \`schema_organization\` JSON-LD válido y completo
+- Si el negocio tiene FAQ visible pero \`crawl.schemaTypes\` no incluye "FAQPage" → genera \`schema_faq\` con 3-5 preguntas reales del sector
+- Si el negocio es local y \`crawl.schemaTypes\` no incluye "LocalBusiness" → genera \`schema_local\`
+- Si \`crawl.h1s\` está vacío → genera un \`h1\` con la propuesta de valor
+
+**REGLAS DURAS para readyToUseFixes**:
+- El \`content\` DEBE ser FINAL, listo para pegar. NO pongas placeholders tipo "[nombre de empresa]" — usa el nombre real del cliente.
+- JSON-LD debe ser sintácticamente válido y completo.
+- Meta descriptions deben incluir keywords del negocio + CTA implícito.
+- Si no hay problemas on-page que requieran fixes, devuelve \`readyToUseFixes: []\` (array vacío).
+- NO generes más de 5 fixes por audit — prioriza los más impactantes.
 
 Genera entre 5 y 8 acciones priorizadas. No menos de 5 (plan demasiado fino), no más de 8 (dispersión).
 
@@ -623,6 +733,24 @@ function validateAndNormalize(parsed: any, input: GrowthAgentInput): GrowthAnaly
     }
   }
 
+  // readyToUseFixes — optional, only when the model detected on-page issues
+  const validFixTypes = new Set([
+    'meta_title', 'meta_description', 'schema_organization',
+    'schema_faq', 'schema_product', 'schema_local', 'h1', 'alt_text',
+  ]);
+  let readyToUseFixes: ReadyToUseFix[] | undefined;
+  if (Array.isArray(parsed.readyToUseFixes)) {
+    readyToUseFixes = parsed.readyToUseFixes
+      .filter((f: any) => f && typeof f.type === 'string' && typeof f.content === 'string' && validFixTypes.has(f.type))
+      .slice(0, 5)
+      .map((f: any): ReadyToUseFix => ({
+        type: f.type,
+        content: f.content,
+        where: typeof f.where === 'string' ? f.where : '',
+      }));
+    if (readyToUseFixes && readyToUseFixes.length === 0) readyToUseFixes = undefined;
+  }
+
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
@@ -631,6 +759,7 @@ function validateAndNormalize(parsed: any, input: GrowthAgentInput): GrowthAnaly
     pillarAnalysis,
     prioritizedActions: actions,
     auditSummaries,
+    readyToUseFixes,
   };
 }
 

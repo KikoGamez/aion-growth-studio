@@ -142,11 +142,30 @@ export async function runInstagram(
   competitorUrls: string[] = [],
   userHandle?: string,
 ): Promise<InstagramResult> {
-  let handle = userHandle || crawlData.instagramHandle;
+  const domain = (() => {
+    try { return new URL(crawlData.finalUrl || '').hostname.replace(/^www\./, '').split('.')[0]; } catch { return ''; }
+  })();
 
-  // Fallback 1: try to extract handle from the site directly
+  // Helper: accept handle only if it passes brand match validation.
+  // userHandle (explicitly set by the client) is trusted — no validation.
+  const validate = (h: string | null | undefined): string | undefined => {
+    if (!h) return undefined;
+    if (handleMatchesBrand(h, domain, crawlData.companyName)) return h;
+    console.log(`[instagram] Rejected @${h} — doesn't match domain "${domain}" or company "${crawlData.companyName}"`);
+    return undefined;
+  };
+
+  // Priority 0: user explicitly set handle (trusted)
+  let handle: string | undefined = userHandle;
+
+  // Priority 1: handle detected during crawl (needs validation — crawl may
+  // have picked up a third-party account in footer/testimonials/credits)
+  if (!handle) handle = validate(crawlData.instagramHandle);
+
+  // Fallback 1: extract handle from the site HTML (needs validation for
+  // the same reason — any instagram.com link in the page qualifies)
   if (!handle && crawlData.finalUrl) {
-    handle = await extractHandleFromSite(crawlData.finalUrl) || undefined;
+    handle = validate(await extractHandleFromSite(crawlData.finalUrl));
   }
 
   // Fallback 2: search Google for "site:instagram.com {brand}"
@@ -160,7 +179,7 @@ export async function runInstagram(
   }
 
   if (!handle) {
-    return { found: false, reason: 'No Instagram account found via website or search' };
+    return { found: false, reason: 'No Instagram account matching the brand found via website or search' };
   }
 
   const profileData = await fetchProfile(handle);
