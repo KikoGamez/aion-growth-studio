@@ -108,7 +108,8 @@
       if (welcome) welcome.remove();
 
       const wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;' + (role === 'user' ? 'justify-content:flex-end;' : 'justify-content:flex-start;');
+      wrap.className = 'msg-wrap-' + role;
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;' + (role === 'user' ? 'align-items:flex-end;' : 'align-items:flex-start;');
       const bubble = document.createElement('div');
       bubble.className = 'msg-' + role;
       bubble.style.cssText = role === 'user'
@@ -121,7 +122,106 @@
       wrap.appendChild(bubble);
       messagesEl.appendChild(wrap);
       messagesEl.scrollTop = messagesEl.scrollHeight;
-      return bubble;
+      return { bubble, wrap };
+    }
+
+    // Render advisor action cards (Option A: compact) below the message bubble.
+    // Each card has title + impact badge + description + "Añadir al plan" / "Descartar" buttons.
+    // Both buttons call POST /api/dashboard/update-action with recommendationId + status.
+    function renderActionCards(wrap, actions) {
+      if (!actions || !actions.length) return;
+      const container = document.createElement('div');
+      container.className = 'advisor-actions';
+      container.style.cssText = 'max-width:100%;display:flex;flex-direction:column;gap:8px;margin-top:2px;';
+
+      const header = document.createElement('p');
+      header.style.cssText = 'font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#4338CA;margin:0 0 2px 2px;display:flex;align-items:center;gap:4px;';
+      header.innerHTML = '<span class="material-symbols-outlined" style="font-size:13px;">auto_awesome</span>' + actions.length + ' ' + (actions.length === 1 ? 'acción recomendada' : 'acciones recomendadas');
+      container.appendChild(header);
+
+      for (const a of actions) {
+        const card = document.createElement('div');
+        card.className = 'advisor-action-card';
+        card.dataset.recommendationId = a.id;
+        card.style.cssText = 'background:white;border:1px solid #e2e8f0;border-left:3px solid #4338CA;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;transition:opacity 0.3s,transform 0.3s,max-height 0.3s;';
+
+        const impactColors = {
+          high: { bg: '#FCEBEB', fg: '#E24B4A', label: 'Alto impacto' },
+          medium: { bg: '#FAEEDA', fg: '#BA7517', label: 'Impacto medio' },
+          low: { bg: '#E0EDFF', fg: '#1A4B8C', label: 'Impacto bajo' },
+        };
+        const impact = impactColors[a.impact] || impactColors.medium;
+
+        const headRow = document.createElement('div');
+        headRow.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:8px;';
+        const titleEl = document.createElement('p');
+        titleEl.style.cssText = 'font-size:13px;font-weight:800;color:#1a1a2e;line-height:1.35;margin:0;flex:1;';
+        titleEl.textContent = a.title;
+        const badge = document.createElement('span');
+        badge.style.cssText = 'font-size:9px;font-weight:800;padding:3px 8px;border-radius:999px;white-space:nowrap;flex-shrink:0;background:' + impact.bg + ';color:' + impact.fg + ';';
+        badge.textContent = impact.label;
+        headRow.appendChild(titleEl);
+        headRow.appendChild(badge);
+        card.appendChild(headRow);
+
+        if (a.description) {
+          const descEl = document.createElement('p');
+          descEl.style.cssText = 'font-size:11px;color:#64748b;line-height:1.45;margin:0;';
+          const truncated = a.description.length > 180 ? a.description.slice(0, 180) + '…' : a.description;
+          descEl.textContent = truncated;
+          card.appendChild(descEl);
+        }
+
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:6px;margin-top:2px;';
+
+        const acceptBtn = document.createElement('button');
+        acceptBtn.type = 'button';
+        acceptBtn.style.cssText = 'flex:1;background:#1A4B8C;color:white;border:none;border-radius:8px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;';
+        acceptBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">add_task</span>Añadir al plan';
+
+        const rejectBtn = document.createElement('button');
+        rejectBtn.type = 'button';
+        rejectBtn.style.cssText = 'background:white;color:#64748b;border:1px solid #e2e8f0;border-radius:8px;padding:7px 12px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;';
+        rejectBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">close</span>Descartar';
+
+        async function decide(status) {
+          acceptBtn.disabled = true;
+          rejectBtn.disabled = true;
+          try {
+            const res = await fetch('/api/dashboard/update-action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ recommendationId: a.id, status: status }),
+            });
+            if (!res.ok) throw new Error('update failed ' + res.status);
+            // Success: show confirmation + fade out
+            card.style.borderLeftColor = status === 'accepted' ? '#1D9E75' : '#94a3b8';
+            const confirm = document.createElement('p');
+            confirm.style.cssText = 'font-size:11px;font-weight:700;color:' + (status === 'accepted' ? '#1D9E75' : '#94a3b8') + ';margin:0;display:flex;align-items:center;gap:4px;';
+            confirm.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">' + (status === 'accepted' ? 'check_circle' : 'do_not_disturb_on') + '</span>' + (status === 'accepted' ? 'Añadido a tu plan de acción' : 'Descartado');
+            btnRow.replaceWith(confirm);
+          } catch (err) {
+            acceptBtn.disabled = false;
+            rejectBtn.disabled = false;
+            const errEl = document.createElement('p');
+            errEl.style.cssText = 'font-size:10px;color:#E24B4A;margin:2px 0 0;';
+            errEl.textContent = 'Error — vuelve a intentarlo';
+            card.appendChild(errEl);
+          }
+        }
+
+        acceptBtn.addEventListener('click', function() { decide('accepted'); });
+        rejectBtn.addEventListener('click', function() { decide('rejected'); });
+
+        btnRow.appendChild(acceptBtn);
+        btnRow.appendChild(rejectBtn);
+        card.appendChild(btnRow);
+        container.appendChild(card);
+      }
+
+      wrap.appendChild(container);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
     form.addEventListener('submit', async function(e) {
@@ -136,7 +236,9 @@
       statusEl.textContent = 'Pensando…';
 
       appendMessage('user', msg);
-      const advisorBubble = appendMessage('advisor', '');
+      const advisor = appendMessage('advisor', '');
+      const advisorBubble = advisor.bubble;
+      const advisorWrap = advisor.wrap;
       const textEl = advisorBubble.querySelector('.msg-text');
       textEl.innerHTML = '<span style="color:#94a3b8;">Pensando…</span>';
 
@@ -182,6 +284,9 @@
               }
               if (data.done && data.threadId) {
                 currentThreadId = data.threadId;
+                if (Array.isArray(data.actions) && data.actions.length > 0) {
+                  renderActionCards(advisorWrap, data.actions);
+                }
               }
             } catch (_) {}
           }

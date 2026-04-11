@@ -163,23 +163,69 @@ export const POST: APIRoute = async ({ request, locals }) => {
         console.error('[advisor] Stream error:', (err as Error).message);
       }
 
-      // ── Post-stream processing (non-blocking) ─────────────
+      // ── Post-stream processing ────────────────────────────
       const costCents = estimateCostCents(inputTokens, outputTokens);
 
-      // Send metadata as final SSE event
+      // Parse actions/learnings from the full response BEFORE sending done,
+      // so we can create recommendations synchronously and include them in
+      // the done event. This lets the ChatWidget render action cards with
+      // real recommendationIds that can be accepted/rejected via update-action.
+      const { cleanText, actions: parsedActions, learnings } = parseAdvisorResponse(fullText);
+
+      const actionsWithIds: Array<{
+        id: string;
+        title: string;
+        description: string;
+        impact: 'high' | 'medium' | 'low';
+        expected_kpis?: ExpectedKPI[];
+      }> = [];
+      for (const a of parsedActions) {
+        try {
+          const id = await logRecommendation({
+            client_id: client.id,
+            source: 'advisor',
+            title: a.title,
+            description: a.description,
+            impact: a.impact || 'medium',
+            data: a.expected_kpis?.length ? { expected_kpis: a.expected_kpis } : undefined,
+          });
+          if (id) {
+            actionsWithIds.push({
+              id,
+              title: a.title,
+              description: a.description,
+              impact: a.impact || 'medium',
+              expected_kpis: a.expected_kpis,
+            });
+          }
+        } catch (err) {
+          console.error('[advisor] Failed to create action:', (err as Error).message);
+        }
+      }
+
+      // Send metadata as final SSE event — now includes actions for the widget
       controller.enqueue(encoder.encode(`data: ${JSON.stringify({
         done: true,
         threadId,
         inputTokens,
         outputTokens,
         costCents,
+        actions: actionsWithIds,
       })}\n\n`));
 
       controller.close();
 
-      // Fire-and-forget: save response + extract actions + record usage
-      processResponse(threadId!, client.id, fullText, inputTokens, outputTokens, costCents)
-        .catch(err => console.error('[advisor] Post-process error:', err.message));
+      // Fire-and-forget: save message, learnings, record usage, auto-title
+      processPostStream(
+        threadId!,
+        client.id,
+        cleanText,
+        inputTokens,
+        outputTokens,
+        costCents,
+        actionsWithIds.map(a => a.id),
+        learnings,
+      ).catch(err => console.error('[advisor] Post-process error:', err.message));
     },
   });
 
@@ -192,53 +238,37 @@ export const POST: APIRoute = async ({ request, locals }) => {
   });
 };
 
-// ── Post-stream processing ─────────────────────────────────────
+// ── Post-stream processing (fire-and-forget) ──────────────────
+// Recommendations have already been created synchronously before the done
+// event was sent so the widget has their IDs. Here we just persist the
+// assistant message, save learnings, record usage, auto-title the thread.
 
-async function processResponse(
+async function processPostStream(
   threadId: string,
   clientId: string,
-  fullText: string,
+  cleanText: string,
   inputTokens: number,
   outputTokens: number,
   costCents: number,
+  actionIds: string[],
+  learnings: ParsedLearning[],
 ) {
-  // 1. Extract actions and learnings from response
-  const { cleanText, actions, learnings } = parseAdvisorResponse(fullText);
-
-  // 2. Create recommendations for extracted actions
-  const actionIds: string[] = [];
-  for (const action of actions) {
-    try {
-      const id = await logRecommendation({
-        client_id: clientId,
-        source: 'advisor',
-        title: action.title,
-        description: action.description,
-        impact: action.impact || 'medium',
-        data: action.expected_kpis?.length ? { expected_kpis: action.expected_kpis } : undefined,
-      });
-      if (id) actionIds.push(id);
-    } catch (err) {
-      console.error('[advisor] Failed to create action:', (err as Error).message);
-    }
-  }
-
-  // 3. Save learnings
+  // 1. Save learnings
   if (learnings.length) {
     await saveLearnings(clientId, learnings).catch(() => {});
   }
 
-  // 4. Save advisor message
+  // 2. Save advisor message
   await saveMessage(threadId, clientId, 'advisor', cleanText, {
     tokensInput: inputTokens,
     tokensOutput: outputTokens,
     actionsCreated: actionIds,
   });
 
-  // 5. Record usage
+  // 3. Record usage
   await recordUsage(clientId, costCents);
 
-  // 6. Auto-title thread if first response
+  // 4. Auto-title thread if first response
   if (cleanText.length > 20) {
     // Use first sentence as title (max 60 chars)
     const firstSentence = cleanText.split(/[.!?\n]/)[0]?.trim().slice(0, 60);
@@ -247,7 +277,7 @@ async function processResponse(
     }
   }
 
-  console.log(`[advisor] ${clientId}: ${inputTokens}+${outputTokens} tokens, €${(costCents / 100).toFixed(2)}, ${actions.length} actions, ${learnings.length} learnings`);
+  console.log(`[advisor] ${clientId}: ${inputTokens}+${outputTokens} tokens, €${(costCents / 100).toFixed(2)}, ${actionIds.length} actions, ${learnings.length} learnings`);
 }
 
 // ── Response parser ────────────────────────────────────────────
