@@ -9,7 +9,7 @@ const BLOG_LINK_RE = /\/(blog|noticias|news|articulos|articles|actualidad|magazi
 
 async function fetchSitemapXml(url: string): Promise<string | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), 60_000);
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return null;
@@ -61,7 +61,7 @@ async function findBlogByCrawl(origin: string): Promise<{ blogUrl?: string; post
   try {
     // Fetch homepage and look for blog links
     const res = await axios.get(origin, {
-      timeout: 8000,
+      timeout: 60_000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
       validateStatus: (s) => s < 500,
     });
@@ -82,7 +82,7 @@ async function findBlogByCrawl(origin: string): Promise<{ blogUrl?: string; post
       for (const path of commonPaths) {
         try {
           const check = await axios.head(`${origin}${path}`, {
-            timeout: 3000,
+            timeout: 30_000,
             maxRedirects: 2,
             validateStatus: (s) => s < 400,
           });
@@ -98,7 +98,7 @@ async function findBlogByCrawl(origin: string): Promise<{ blogUrl?: string; post
 
     // Fetch the blog page and extract post dates
     const blogRes = await axios.get(blogUrl, {
-      timeout: 8000,
+      timeout: 60_000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
       validateStatus: (s) => s < 500,
     });

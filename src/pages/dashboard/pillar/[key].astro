@@ -43,7 +43,6 @@ function getKPIs(): KPI[] {
     case 'seo': return [
       { label: 'Keywords Top 10', current: r.seo?.keywordsTop10 || 0, prev: pr.seo?.keywordsTop10, better: 'up' },
       { label: 'Tráfico orgánico', current: r.seo?.organicTrafficEstimate || 0, prev: pr.seo?.organicTrafficEstimate, unit: 'visitas/sem', better: 'up' },
-      { label: 'Domain Rank', current: r.seo?.domainRank || 0, prev: pr.seo?.domainRank, better: 'down' },
       { label: 'Keywords de pago', current: r.seo?.paidKeywordsTotal || 0, prev: pr.seo?.paidKeywordsTotal, better: 'up' },
     ];
     case 'geo': return [

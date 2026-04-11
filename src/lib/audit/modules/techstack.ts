@@ -110,7 +110,7 @@ const CMS_SIGNATURES: Array<{ name: string; patterns: string[] }> = [
 export async function runTechStack(url: string): Promise<TechStackResult> {
   try {
     const res = await axios.get(url, {
-      timeout: 10000,
+      timeout: 90_000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
       maxRedirects: 5,
       validateStatus: (s) => s < 500,

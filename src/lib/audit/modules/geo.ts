@@ -161,7 +161,7 @@ async function askGemini(query: string, engine: Engine, signal: AbortSignal): Pr
   return (data?.candidates?.[0]?.content?.parts?.[0]?.text || '') as string;
 }
 
-async function askEngine(query: string, engine: Engine, timeout = 15000): Promise<string> {
+async function askEngine(query: string, engine: Engine, timeout = 120_000): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
@@ -299,7 +299,7 @@ async function generateQueries(
     `[{"category":"sector","query":"..."},{"category":"problema","query":"..."},...,{"category":"marca","query":"...","isBrandQuery":true}]`;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  const timer = setTimeout(() => controller.abort(), 180_000);
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

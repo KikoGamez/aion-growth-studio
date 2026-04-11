@@ -163,7 +163,6 @@ export interface PageSpeedResult extends ModuleResult {
 export interface SectorBenchmarks {
   keywordsTop10: { low: number; median: number; high: number };
   organicTrafficMonthly: { low: number; median: number; high: number };
-  domainRank: { low: number; median: number; high: number };
   instagramFollowers?: { low: number; median: number; high: number };
   linkedinFollowers?: { low: number; median: number; high: number };
 }
@@ -321,7 +320,6 @@ export interface CompetitorTrafficItem {
   name: string;
   domain: string;
   url: string;
-  domainRank?: number;
   organicTrafficEstimate?: number;
   estimatedAdsCost?: number;
   keywordsTop10?: number;
@@ -445,11 +443,6 @@ export interface SEOResult extends ModuleResult {
   isInvestingPaid?: boolean;
   paidDetectionMethod?: string; // 'labs' | 'google_ads_competition'
   paidTopKeywords?: Array<{ keyword: string; position?: number; volume: number; cpc?: number; competition?: string }>;
-  // Backlinks / Domain Authority (DataForSEO Backlinks API)
-  referringDomains?: number;
-  backlinksTotal?: number;
-  domainRank?: number;   // 0-100: DataForSEO domain authority score
-  spamScore?: number;    // 0-100: link profile spam risk
   // Historical organic trend (12 months)
   organicHistory?: Array<{ month: string; etv: number; keywords: number }>;
   organicTrend?: 'up' | 'down' | 'stable';

@@ -58,22 +58,23 @@ export const PHASE_ENTRY_STEPS = new Set(Object.keys(PHASE_STEPS));
 
 // ── Per-module timeouts (ms) ──────────────────────────────────────
 
-// Vercel Pro: 300s function timeout — generous per-module limits
+// Vercel Pro hard ceiling is 300s per function invocation. Each audit step
+// is its own HTTP call, so every step gets the full 300s budget.
+// We don't want artificial timeouts to be the cause of audit failures:
+// every module gets as much time as Vercel allows, minus a safety margin
+// so the timeout wrapper still catches genuinely stuck calls before Vercel
+// kills the function with a 504 (which loses diagnostics).
+const GENEROUS = 270_000; // 270s — leaves 30s headroom under the 300s Vercel ceiling
+
 export const STEP_TIMEOUTS: Record<string, number> = {
-  geo: 90_000,
-  competitor_traffic: 60_000,
-  seo: 45_000,
-  pagespeed: 90_000,
-  traffic: 30_000,
-  instagram: 90_000,
-  linkedin: 90_000,
-  reputation: 30_000,
-  growth_agent: 100_000, // Sonnet draft (~30s) + structural + Opus QA (~40s) + corrections — safety margin
-  score: 15_000,
-  competitors: 30_000,
-  competitor_pagespeed: 120_000,
+  // Synthesis steps need less — they only run locally / on cached data
+  score: 30_000,
+  // growth_agent: Sonnet (~30s) + structural + Opus QA (~40s) + corrections.
+  // Capped at 100s so a failure falls through to the deterministic fallback
+  // instead of eating the whole function budget (see commit 723ceae).
+  growth_agent: 100_000,
 };
-const DEFAULT_TIMEOUT = 30_000;
+const DEFAULT_TIMEOUT = GENEROUS;
 
 // ── Social prefetch ───────────────────────────────────────────────
 
@@ -216,7 +217,6 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
         gbpCategories: (results.gbp as any)?.categories,
         seoKeywordsTop10: (results.seo as any)?.keywordsTop10,
         seoTraffic: (results.seo as any)?.organicTraffic,
-        seoDomainRank: (results.seo as any)?.domainRank,
       });
     }
 
@@ -228,10 +228,11 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
     }
 
     case 'keyword_gap': {
-      const ctItems: Array<{ url: string; domainRank?: number }> =
+      const ctItems: Array<{ url: string; keywordsTop10?: number }> =
         (results.competitor_traffic as any)?.items || [];
-      const compsByDr = [...ctItems].sort((a, b) => (b.domainRank || 0) - (a.domainRank || 0));
-      const bestComp = compsByDr[0]?.url ||
+      // Pick the competitor with most keywords in top 10 — the strongest SEO peer
+      const compsByKw = [...ctItems].sort((a, b) => (b.keywordsTop10 || 0) - (a.keywordsTop10 || 0));
+      const bestComp = compsByKw[0]?.url ||
         (results.competitors as any)?.competitors?.[0]?.url || '';
       return runKeywordGap(url, bestComp);
     }

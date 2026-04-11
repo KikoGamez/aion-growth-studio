@@ -25,7 +25,6 @@ interface SourceKeyword {
 }
 
 interface ScoringContext {
-  domainRank?: number;
   businessDescription?: string;
   growthService?: string;
   demandType?: KeywordStrategy['demandType'];
@@ -53,13 +52,12 @@ function detectIntent(keyword: string): PriorityKeyword['intent'] {
 
 // ─── Feasibility scoring ─────────────────────────────────────────────────
 // Returns a multiplier 0.2 – 1.5:
-//   >1.0  easy wins (already close to top 10, low difficulty vs authority)
+//   >1.0  easy wins (already close to top 10, low difficulty)
 //   ~1.0  balanced (reachable with normal effort)
-//   <0.7  stretch goals (difficulty exceeds authority by a lot)
+//   <0.7  stretch goals (high difficulty keywords)
 function feasibility(
   position: number | undefined,
   difficulty: number | undefined,
-  domainRank: number | undefined,
 ): { score: number; label: 'high' | 'medium' | 'low' } {
   // Position leverage — fruit on the branch
   let positionMult = 1.0;
@@ -71,21 +69,16 @@ function feasibility(
     else positionMult = 0.5;                      // stretch
   }
 
-  // Authority vs difficulty
-  // Normalise: domainRank 0-100 vs difficulty 0-100.
-  // If dr >= diff + 15 → comfortable; if within ±15 → doable; if dr < diff - 15 → hard
-  let authorityMult = 1.0;
-  if (difficulty != null && domainRank != null) {
-    const gap = domainRank - difficulty;
-    if (gap >= 15) authorityMult = 1.2;
-    else if (gap >= -5) authorityMult = 1.0;
-    else if (gap >= -20) authorityMult = 0.7;
-    else authorityMult = 0.4;
-  } else if (difficulty != null && difficulty > 60) {
-    authorityMult = 0.6;
+  // Difficulty-only multiplier (we don't measure domain authority)
+  let diffMult = 1.0;
+  if (difficulty != null) {
+    if (difficulty <= 30) diffMult = 1.2;
+    else if (difficulty <= 50) diffMult = 1.0;
+    else if (difficulty <= 70) diffMult = 0.7;
+    else diffMult = 0.4;
   }
 
-  const score = Math.max(0.2, Math.min(1.5, positionMult * authorityMult));
+  const score = Math.max(0.2, Math.min(1.5, positionMult * diffMult));
   const label: 'high' | 'medium' | 'low' =
     score >= 1.1 ? 'high' : score >= 0.75 ? 'medium' : 'low';
   return { score, label };
@@ -183,7 +176,7 @@ function scoreKeyword(
   context: ScoringContext,
 ): PriorityKeyword {
   const intent = detectIntent(kw.keyword);
-  const feas = feasibility(kw.position, kw.difficulty, context.domainRank);
+  const feas = feasibility(kw.position, kw.difficulty);
   const uv = usefulVolume(kw.volume, intent, context.focus);
   const align = alignment(kw.keyword, context);
 
@@ -324,7 +317,6 @@ export function computeKeywordOpportunities(
   const { pipelineOutput, onboarding, strategy, limit = 15 } = input;
 
   const context: ScoringContext = {
-    domainRank: pipelineOutput?.seo?.domainRank,
     businessDescription: onboarding?.business_description,
     growthService: strategy?.growthService,
     demandType: strategy?.demandType,

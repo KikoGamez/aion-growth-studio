@@ -13,7 +13,7 @@ async function filterValidDomains(
     competitors.map(async (comp) => {
       const normalized = comp.url.startsWith('http') ? comp.url : `https://${comp.url}`;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
+      const timer = setTimeout(() => controller.abort(), 60_000);
       try {
         const res = await fetch(normalized, {
           method: 'HEAD',
@@ -91,7 +91,7 @@ export async function runCompetitors(
         try {
           // Step 1: try the exact URL provided (captures section context when it's a subpage)
           const res = await axios.get(normalized, {
-            timeout: 6000,
+            timeout: 60_000,
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
             validateStatus: (s) => s < 500,
           });
@@ -105,7 +105,7 @@ export async function runCompetitors(
           // Step 2: subpage returned error/challenge page — fall back to root domain
           if (hasSubpath) {
             const rootRes = await axios.get(rootUrl, {
-              timeout: 5000,
+              timeout: 60_000,
               headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
               validateStatus: (s) => s < 500,
             });
@@ -134,7 +134,7 @@ export async function runCompetitors(
         const normalized = `https://${comp.domain}`;
         try {
           const res = await axios.get(normalized, {
-            timeout: 6000,
+            timeout: 60_000,
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
             validateStatus: (s) => s < 500,
           });
@@ -184,7 +184,6 @@ export async function runCompetitors(
 
   // Build business profile for the LLM
   const seoTraffic = (extraContext as any)?.seoTraffic ?? 0;
-  const seoDR = (extraContext as any)?.seoDomainRank ?? 0;
   const sizeHint = seoKeywords <= 10 ? 'very small (freelance/startup level, almost no organic presence)'
     : seoKeywords <= 50 ? 'small (small business, early online presence)'
     : seoKeywords <= 200 ? 'medium (established SME)'
@@ -196,7 +195,7 @@ export async function runCompetitors(
     `Sector: ${sector}`,
     description && `Description: ${description}`,
     bt && `Business type: ${bt}`,
-    `Online size: ${sizeHint} (${seoKeywords} keywords, ~${seoTraffic} monthly organic visits, DR ${seoDR})`,
+    `Online size: ${sizeHint} (${seoKeywords} keywords, ~${seoTraffic} monthly organic visits)`,
     igBio && `Instagram bio: ${igBio}`,
     gbpCats && `Google Business categories: ${gbpCats}`,
     locationHint && `Location: ${locationHint}`,
@@ -250,7 +249,7 @@ RULES:
 
   // Use Sonnet for better sector understanding and competitor relevance
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
+  const timer = setTimeout(() => controller.abort(), 150_000);
   let validated: any = null;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {

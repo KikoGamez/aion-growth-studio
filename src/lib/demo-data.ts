@@ -94,7 +94,6 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       seo: {
         keywordsTop10: 8,
         organicTrafficEstimate: 3200,
-        domainRank: 18200,
         paidKeywordsTotal: 0,
         topKeywords: [
           { keyword: 'software rrhh pymes', volume: 1400, position: 14, difficulty: 45 },
@@ -113,9 +112,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 12400, keywordsTop10: 45, domainRank: 8900, mobilePerformance: 78 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 8900, keywordsTop10: 32, domainRank: 11200, mobilePerformance: 71 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5100, keywordsTop10: 18, domainRank: 15600, mobilePerformance: 65 },
+          { domain: 'devify.io', organicTrafficEstimate: 12400, keywordsTop10: 45, mobilePerformance: 78 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 8900, keywordsTop10: 32, mobilePerformance: 71 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5100, keywordsTop10: 18, mobilePerformance: 65 },
         ],
       },
       insights: {
@@ -163,7 +162,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
     month: 'febrero-2026',
     score: 29,
     pipeline_output: {
-      seo: { keywordsTop10: 9, organicTrafficEstimate: 3350, domainRank: 17800, paidKeywordsTotal: 0, topKeywords: [
+      seo: { keywordsTop10: 9, organicTrafficEstimate: 3350, paidKeywordsTotal: 0, topKeywords: [
         { keyword: 'software rrhh pymes', volume: 1400, position: 13, difficulty: 45 },
         { keyword: 'gestión personal barcelona', volume: 720, position: 16, difficulty: 32 },
       ]},
@@ -175,9 +174,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 12600, keywordsTop10: 46, domainRank: 8800, mobilePerformance: 79 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 9000, keywordsTop10: 33, domainRank: 11100, mobilePerformance: 72 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5200, keywordsTop10: 19, domainRank: 15400, mobilePerformance: 65 },
+          { domain: 'devify.io', organicTrafficEstimate: 12600, keywordsTop10: 46, mobilePerformance: 79 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 9000, keywordsTop10: 33, mobilePerformance: 72 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5200, keywordsTop10: 19, mobilePerformance: 65 },
         ],
       },
       insights: { summary: 'Ligera mejora en posiciones SEO. La web sigue sin SSL ni GBP.', bullets: ['Activar HTTPS urgente', 'Crear GBP', 'Empezar a publicar en blog'] },
@@ -208,7 +207,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
     month: 'marzo-2026',
     score: 31,
     pipeline_output: {
-      seo: { keywordsTop10: 10, organicTrafficEstimate: 3500, domainRank: 17200, paidKeywordsTotal: 0, topKeywords: [
+      seo: { keywordsTop10: 10, organicTrafficEstimate: 3500, paidKeywordsTotal: 0, topKeywords: [
         { keyword: 'software rrhh pymes', volume: 1400, position: 12, difficulty: 45 },
         { keyword: 'gestión personal barcelona', volume: 720, position: 14, difficulty: 32 },
         { keyword: 'programa nóminas pymes', volume: 980, position: 19, difficulty: 51 },
@@ -221,9 +220,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 12800, keywordsTop10: 47, domainRank: 8700, mobilePerformance: 79 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 9100, keywordsTop10: 33, domainRank: 11000, mobilePerformance: 72 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5300, keywordsTop10: 19, domainRank: 15300, mobilePerformance: 66 },
+          { domain: 'devify.io', organicTrafficEstimate: 12800, keywordsTop10: 47, mobilePerformance: 79 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 9100, keywordsTop10: 33, mobilePerformance: 72 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5300, keywordsTop10: 19, mobilePerformance: 66 },
         ],
       },
       insights: { summary: 'Semana de avances: HTTPS activado, GBP creado con 3 reseñas iniciales, primer post publicado.', bullets: ['HTTPS activo — impacto SEO en 2-3 semanas', 'GBP Barcelona con 3 reseñas (objetivo: 10)', 'Seguir publicando en blog'] },
@@ -255,7 +254,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
     month: 'marzo-2026',
     score: 31,
     pipeline_output: {
-      seo: { keywordsTop10: 11, organicTrafficEstimate: 3600, domainRank: 16800, paidKeywordsTotal: 0, topKeywords: [
+      seo: { keywordsTop10: 11, organicTrafficEstimate: 3600, paidKeywordsTotal: 0, topKeywords: [
         { keyword: 'software rrhh pymes', volume: 1400, position: 11, difficulty: 45 },
         { keyword: 'gestión personal barcelona', volume: 720, position: 13, difficulty: 32 },
       ]},
@@ -267,9 +266,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 13000, keywordsTop10: 48, domainRank: 8600, mobilePerformance: 80 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 9200, keywordsTop10: 34, domainRank: 10900, mobilePerformance: 73 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5400, keywordsTop10: 20, domainRank: 15200, mobilePerformance: 66 },
+          { domain: 'devify.io', organicTrafficEstimate: 13000, keywordsTop10: 48, mobilePerformance: 80 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 9200, keywordsTop10: 34, mobilePerformance: 73 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5400, keywordsTop10: 20, mobilePerformance: 66 },
         ],
       },
       insights: { summary: 'Semana de consolidación. GBP crece a 6 reseñas. PageSpeed mobile mejora a 60.', bullets: ['Seguir con reseñas GBP', 'Publicar segundo artículo', 'Considerar lead magnet'] },
@@ -300,7 +299,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
     month: 'marzo-2026',
     score: 33,
     pipeline_output: {
-      seo: { keywordsTop10: 13, organicTrafficEstimate: 3900, domainRank: 16100, paidKeywordsTotal: 0, topKeywords: [
+      seo: { keywordsTop10: 13, organicTrafficEstimate: 3900, paidKeywordsTotal: 0, topKeywords: [
         { keyword: 'software rrhh pymes', volume: 1400, position: 9, difficulty: 45 },
         { keyword: 'gestión personal barcelona', volume: 720, position: 11, difficulty: 32 },
         { keyword: 'programa nóminas pymes', volume: 980, position: 16, difficulty: 51 },
@@ -313,9 +312,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 13200, keywordsTop10: 49, domainRank: 8500, mobilePerformance: 80 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 9300, keywordsTop10: 34, domainRank: 10800, mobilePerformance: 73 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5500, keywordsTop10: 20, domainRank: 15100, mobilePerformance: 67 },
+          { domain: 'devify.io', organicTrafficEstimate: 13200, keywordsTop10: 49, mobilePerformance: 80 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 9300, keywordsTop10: 34, mobilePerformance: 73 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5500, keywordsTop10: 20, mobilePerformance: 67 },
         ],
       },
       insights: { summary: 'El efecto HTTPS empieza a notarse: +2 score, keywords top10 suben a 13. Segunda landing creada.', bullets: ['Lanzar lead magnet', 'Seguir con blog quincenal', 'Mejorar LCP'] },
@@ -347,7 +346,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
     month: 'marzo-2026',
     score: 34,
     pipeline_output: {
-      seo: { keywordsTop10: 15, organicTrafficEstimate: 4200, domainRank: 15400, paidKeywordsTotal: 0, topKeywords: [
+      seo: { keywordsTop10: 15, organicTrafficEstimate: 4200, paidKeywordsTotal: 0, topKeywords: [
         { keyword: 'software rrhh pymes', volume: 1400, position: 8, difficulty: 45 },
         { keyword: 'gestión personal barcelona', volume: 720, position: 9, difficulty: 32 },
         { keyword: 'programa nóminas pymes', volume: 980, position: 14, difficulty: 51 },
@@ -361,9 +360,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 13400, keywordsTop10: 50, domainRank: 8400, mobilePerformance: 81 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 9400, keywordsTop10: 35, domainRank: 10700, mobilePerformance: 73 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5600, keywordsTop10: 21, domainRank: 15000, mobilePerformance: 67 },
+          { domain: 'devify.io', organicTrafficEstimate: 13400, keywordsTop10: 50, mobilePerformance: 81 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 9400, keywordsTop10: 35, mobilePerformance: 73 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5600, keywordsTop10: 21, mobilePerformance: 67 },
         ],
       },
       insights: { summary: 'Lead magnet publicado y GBP superó 10 reseñas. Primera mención GEO adicional detectada.', bullets: ['Lead magnet activo', 'GBP con 12 reseñas (4.5★)', 'GEO subió a 3 menciones'] },
@@ -394,7 +393,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
     month: 'marzo-2026',
     score: 33,
     pipeline_output: {
-      seo: { keywordsTop10: 14, organicTrafficEstimate: 4100, domainRank: 15200, paidKeywordsTotal: 0, topKeywords: [
+      seo: { keywordsTop10: 14, organicTrafficEstimate: 4100, paidKeywordsTotal: 0, topKeywords: [
         { keyword: 'software rrhh pymes', volume: 1400, position: 9, difficulty: 45 },
         { keyword: 'gestión personal barcelona', volume: 720, position: 10, difficulty: 32 },
         { keyword: 'programa nóminas pymes', volume: 980, position: 15, difficulty: 51 },
@@ -454,9 +453,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 14200, keywordsTop10: 52, domainRank: 8200, mobilePerformance: 82 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 9500, keywordsTop10: 35, domainRank: 10600, mobilePerformance: 74 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5700, keywordsTop10: 21, domainRank: 14900, mobilePerformance: 67 },
+          { domain: 'devify.io', organicTrafficEstimate: 14200, keywordsTop10: 52, mobilePerformance: 82 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 9500, keywordsTop10: 35, mobilePerformance: 74 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5700, keywordsTop10: 21, mobilePerformance: 67 },
         ],
       },
       insights: { summary: 'Ligero retroceso esta semana: -1 punto. Devify rediseñó su web y ganó velocidad. Normal, no preocupante.', bullets: ['Mantener publicación de contenido', 'Vigilar movimiento de Devify', 'Considerar ads'] },
@@ -487,7 +486,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
     month: 'abril-2026',
     score: 36,
     pipeline_output: {
-      seo: { keywordsTop10: 18, organicTrafficEstimate: 4800, domainRank: 14500, paidKeywordsTotal: 0, topKeywords: [
+      seo: { keywordsTop10: 18, organicTrafficEstimate: 4800, paidKeywordsTotal: 0, topKeywords: [
         { keyword: 'software rrhh pymes', volume: 1400, position: 7, difficulty: 45 },
         { keyword: 'gestión personal barcelona', volume: 720, position: 8, difficulty: 32 },
         { keyword: 'programa nóminas pymes', volume: 980, position: 13, difficulty: 51 },
@@ -548,9 +547,9 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
       competitors: { competitors: COMPETITORS },
       competitor_traffic: {
         items: [
-          { domain: 'devify.io', organicTrafficEstimate: 14500, keywordsTop10: 53, domainRank: 8100, mobilePerformance: 82 },
-          { domain: 'softcatala.tech', organicTrafficEstimate: 9600, keywordsTop10: 36, domainRank: 10500, mobilePerformance: 74 },
-          { domain: 'bcncode.es', organicTrafficEstimate: 5800, keywordsTop10: 22, domainRank: 14800, mobilePerformance: 68 },
+          { domain: 'devify.io', organicTrafficEstimate: 14500, keywordsTop10: 53, mobilePerformance: 82 },
+          { domain: 'softcatala.tech', organicTrafficEstimate: 9600, keywordsTop10: 36, mobilePerformance: 74 },
+          { domain: 'bcncode.es', organicTrafficEstimate: 5800, keywordsTop10: 22, mobilePerformance: 68 },
         ],
       },
       instagram: {
@@ -631,7 +630,7 @@ export const DEMO_SNAPSHOTS: Snapshot[] = [
         },
         pillarAnalysis: {
           seo: {
-            assessment: 'SEO en clara trayectoria ascendente: 18 keywords top 10 (vs 8 hace 8 semanas), tráfico orgánico en 4.800/semana y Domain Rank mejorando (18.200 → 14.500). El cuello de botella ahora es la conversión de ese tráfico, no la visibilidad. Hay 3 keywords estratégicas (software RRHH pymes pos 7, gestión personal Barcelona pos 8, app control horario pos 15) donde pequeños empujones dan grandes retornos.',
+            assessment: 'SEO en clara trayectoria ascendente: 18 keywords top 10 (vs 8 hace 8 semanas) y tráfico orgánico en 4.800/semana. El cuello de botella ahora es la conversión de ese tráfico, no la visibilidad. Hay 3 keywords estratégicas (software RRHH pymes pos 7, gestión personal Barcelona pos 8, app control horario pos 15) donde pequeños empujones dan grandes retornos.',
             keyFinding: '"App control horario" (1.900 búsquedas/mes) está en posición 15 — un artículo pilar de 2.000 palabras puede meterla en top 10 en 4-6 semanas.',
           },
           geo: {

@@ -23,7 +23,6 @@ Respond with ONLY a valid JSON object (no markdown, no explanation):
   "benchmarks": {
     "keywordsTop10": {"low": 50, "median": 300, "high": 1500},
     "organicTrafficMonthly": {"low": 2000, "median": 15000, "high": 80000},
-    "domainRank": {"low": 20, "median": 35, "high": 60},
     "instagramFollowers": {"low": 500, "median": 3000, "high": 15000},
     "linkedinFollowers": {"low": 200, "median": 1500, "high": 8000}
   }

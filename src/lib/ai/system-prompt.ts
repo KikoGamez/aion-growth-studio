@@ -105,7 +105,6 @@ KPIs disponibles (usa estas claves exactas):
 - score → Score Global
 - seo.keywordsTop10 → Keywords Top 10
 - seo.traffic → Tráfico Orgánico
-- seo.domainRank → Domain Rank
 - geo.mentionRate → Mention Rate IA
 - web.mobile → PageSpeed Mobile
 - web.desktop → PageSpeed Desktop

@@ -27,7 +27,6 @@ function extractKPI(snapshot: Snapshot, key: string): number {
     case 'score': return snapshot.score || 0;
     case 'seo.keywordsTop10': return r.seo?.keywordsTop10 || 0;
     case 'seo.traffic': return r.seo?.organicTrafficEstimate || 0;
-    case 'seo.domainRank': return r.seo?.domainRank || 0;
     case 'geo.mentionRate': return r.geo?.mentionRate || 0;
     case 'web.mobile': return r.pagespeed?.mobile?.performance || 0;
     case 'web.desktop': return r.pagespeed?.desktop?.performance || 0;
@@ -41,7 +40,6 @@ const KPI_DEFS: Array<{ key: string; label: string; category: KPITimeline['categ
   { key: 'score', label: 'Score Global', category: 'overall' },
   { key: 'seo.keywordsTop10', label: 'Keywords Top 10', category: 'seo' },
   { key: 'seo.traffic', label: 'Tráfico Orgánico', category: 'seo' },
-  { key: 'seo.domainRank', label: 'Domain Rank', category: 'seo' },
   { key: 'geo.mentionRate', label: 'Mention Rate IA', category: 'geo' },
   { key: 'web.mobile', label: 'PageSpeed Mobile', category: 'web' },
   { key: 'web.desktop', label: 'PageSpeed Desktop', category: 'web' },

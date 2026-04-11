@@ -42,7 +42,7 @@ export async function runCompetitorPageSpeed(
             const apiUrl =
               `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(targetUrl)}&key=${API_KEY}&category=performance&strategy=mobile`;
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 30000);
+            const timer = setTimeout(() => controller.abort(), 180_000);
             const res = await fetch(apiUrl, { signal: controller.signal });
             clearTimeout(timer);
             if (!res.ok) return 0;

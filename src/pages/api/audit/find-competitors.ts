@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
     let title = '', description = '', h1 = '', bodyText = '';
     try {
       const res = await axios.get(normalizedUrl, {
-        timeout: 8000,
+        timeout: 60_000,
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)', Accept: 'text/html' },
         validateStatus: (s) => s < 500,
       });

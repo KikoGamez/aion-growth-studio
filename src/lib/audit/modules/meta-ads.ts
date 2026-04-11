@@ -2,7 +2,7 @@ import type { MetaAdsResult, CrawlResult } from '../types';
 
 async function checkMetaAds(query: string): Promise<boolean> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5_000);
+  const timer = setTimeout(() => controller.abort(), 60_000);
   try {
     const encoded = encodeURIComponent(query);
     const url =

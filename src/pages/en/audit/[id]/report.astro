@@ -55,21 +55,13 @@ const blogUrlEn: string | undefined = cc?.blogUrl || crawl.blogUrl;
 const newsCountEn: number = repRaw.newsCount ?? 0;
 const newsHeadlinesEn: Array<{title:string;source:string;date?:string}> = repRaw.newsHeadlines || [];
 
-// Brand Authority score (0-100): backlinks + blog + press + GEO visibility + LinkedIn
+// Brand Authority score (0-100): blog + press + GEO visibility + LinkedIn
 const brandAuthorityScoreEn = (() => {
   let ba = 0;
-  const rd = seo?.referringDomains ?? 0;
-  if (rd >= 500) ba += 35;
-  else if (rd >= 100) ba += 25;
-  else if (rd >= 20) ba += 15;
-  else if (rd >= 5) ba += 8;
-  else if (rd >= 1) ba += 3;
-  const dr = seo?.domainRank ?? 0;
-  if (dr > 0) ba += Math.round(Math.min(dr / 100, 1) * 25);
   if (hasBlogEn) {
-    ba += 12;
-    if ((cc?.totalPosts ?? 0) >= 20) ba += 13;
-    else if ((cc?.totalPosts ?? 0) >= 5) ba += 7;
+    ba += 25;
+    if ((cc?.totalPosts ?? 0) >= 20) ba += 25;
+    else if ((cc?.totalPosts ?? 0) >= 5) ba += 15;
   }
   const nc = newsCountEn;
   if (nc >= 10) ba += 15;
@@ -110,7 +102,13 @@ function statusStyle(s: AreaStatus): { bg: string; fg: string; label: string } {
 const statusByArea: { area: string; status: AreaStatus; summary: string; anchor: string }[] = [
   { area: 'Organic SEO', status: ss(r.score?.breakdown?.seo ?? r.score?.breakdown?.seoVisibility ?? health.visibilidad ?? 0), summary: seo ? `${fmt(seo.keywordsTop10)} keywords top 10, ~${fmt(seo.organicTrafficEstimate)} visits/mo` : 'No SEO data', anchor: '#seo' },
   { area: 'AI Visibility', status: ss(geo?.mentionRate ?? 0), summary: geo ? `Mentioned in ${geo.mentionRate ?? 0}% of AI queries` : 'No GEO data', anchor: '#ia' },
-  { area: 'Reputation', status: ss(brandAuthorityScoreEn), summary: seo?.domainRank != null ? `Domain authority: ${seo.domainRank}/100 — ${seo.domainRank >= 50 ? 'competitive advantage' : seo.domainRank >= 20 ? 'moderate, developing' : 'low, harder to rank'}` : 'No authority data', anchor: '#autoridad' },
+  { area: 'Reputation', status: ss(brandAuthorityScoreEn), summary: (() => {
+    const parts: string[] = [];
+    if (newsCountEn > 0) parts.push(`${newsCountEn} press mentions`);
+    if (linkedin?.followers) parts.push(`${fmt(linkedin.followers)} LinkedIn followers`);
+    if (hasBlogEn) parts.push('active blog');
+    return parts.length > 0 ? parts.join(', ') : 'No authority data';
+  })(), anchor: '#autoridad' },
   { area: 'Benchmark', status: hasCompetitorData ? ss(health.competitividad ?? 0) : 'bad', summary: hasCompetitorData ? `${ctItems.length} competitors with data` : 'No competitor data', anchor: '#competidores' },
   { area: 'Web & Speed', status: ss(ps?.mobile?.performance ?? 0), summary: ps ? `Mobile score: ${ps.mobile?.performance ?? '—'}/100` : 'No PageSpeed data', anchor: '#experiencia' },
   { area: 'Conversion', status: ss(cv?.funnelScore ?? health.conversion ?? 0), summary: cv ? `Funnel score: ${cv.funnelScore ?? '—'}/100` : 'No conversion data', anchor: '#experiencia' },
@@ -1257,8 +1255,8 @@ const heroStatus = statusStyle(ss(health.total));
             </div>
           </div>
 
-          <!-- Alternative signals: GEO + LinkedIn (when no backlinks data) -->
-          {seo?.domainRank == null && (geo?.mentionRate != null || (linkedin?.followers ?? 0) > 0) && (
+          <!-- Alternative signals: GEO + LinkedIn -->
+          {(geo?.mentionRate != null || (linkedin?.followers ?? 0) > 0) && (
             <div class="grid-2" style="margin-bottom:14px;">
               {geo?.mentionRate != null && (
                 <div class="metric-card" style={`border-left:3px solid ${geo.mentionRate>=60?'#1D9E75':geo.mentionRate>=30?'#BA7517':'#9CA3AF'};`}>
@@ -1274,28 +1272,6 @@ const heroStatus = statusStyle(ss(health.total));
                   <div class="metric-sub" style="margin-top:4px;">Indicator of professional authority and brand reach</div>
                 </div>
               )}
-            </div>
-          )}
-
-          <!-- Domain Authority -->
-          {seo && seo.domainRank != null && (
-            <div style="background:#F8F9FB;border-radius:12px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
-                <div style={`font-size:2rem;font-weight:800;color:${seo.domainRank>=50?'#1D9E75':seo.domainRank>=20?'#BA7517':'#E24B4A'};line-height:1;`}>{seo.domainRank}</div>
-                <div style="font-size:0.65rem;color:#9CA3AF;">/100</div>
-              </div>
-              <div style="flex:1;min-width:200px;">
-                <div style="font-size:0.78rem;font-weight:700;color:#1A1A2E;margin-bottom:4px;">Domain Authority</div>
-                {seo.domainRank < 20 && (
-                  <p style="font-size:0.78rem;color:#5A6478;line-height:1.5;margin:0;">Google sees you as a new or low-relevance domain. This means it is harder to rank content because the search engine does not yet trust you as a reference source. Getting mentions in relevant industry media is the main lever to improve.</p>
-                )}
-                {seo.domainRank >= 20 && seo.domainRank < 50 && (
-                  <p style="font-size:0.78rem;color:#5A6478;line-height:1.5;margin:0;">Moderate authority — you can compete for medium-difficulty keywords. To target the most competitive ones, you need to strengthen your presence in specialized media and industry publications.</p>
-                )}
-                {seo.domainRank >= 50 && (
-                  <p style="font-size:0.78rem;color:#5A6478;line-height:1.5;margin:0;">Strong authority — you have a clear competitive advantage for ranking new content. Google considers you a reference source, making it easier to rank for difficult keywords.</p>
-                )}
-              </div>
             </div>
           )}
 
@@ -1318,7 +1294,7 @@ const heroStatus = statusStyle(ss(health.total));
               </ul>
             </div>
           )}
-          {seo && seo.domainRank == null && seo.referringDomains == null && (hasBlogEn || newsCountEn > 0 || geo?.mentionRate != null || (linkedin?.followers ?? 0) > 0) && (
+          {(hasBlogEn || newsCountEn > 0 || geo?.mentionRate != null || (linkedin?.followers ?? 0) > 0) && (
             <div class="callout callout-amber">
               The reputation score reflects available presence signals:{' '}
               {geo?.mentionRate != null && <span>AI visibility ({geo.mentionRate}%), </span>}
@@ -1327,13 +1303,8 @@ const heroStatus = statusStyle(ss(health.total));
               {(linkedin?.followers ?? 0) > 0 && <span>LinkedIn ({fmt(linkedin?.followers)} followers)</span>}.
             </div>
           )}
-          {(!seo || (seo.domainRank == null && seo.referringDomains == null)) && !hasBlogEn && newsCountEn === 0 && (
+          {!hasBlogEn && newsCountEn === 0 && !(geo?.mentionRate != null) && (linkedin?.followers ?? 0) === 0 && (
             <div class="callout callout-amber">Could not retrieve authority data for this site.</div>
-          )}
-          {(seo?.spamScore ?? 0) > 40 && (
-            <div class="callout callout-red" style="margin-top:8px;">
-              <strong>Alert:</strong> Your domain has a high spam score ({seo?.spamScore}%). Review and disavow toxic links via Google Search Console.
-            </div>
           )}
         </div>
 

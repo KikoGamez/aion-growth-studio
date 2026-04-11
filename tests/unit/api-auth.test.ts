@@ -20,17 +20,14 @@ describe('mapResultsForPlatform', () => {
   it('maps SEO fields from camelCase to snake_case', () => {
     const raw = {
       seo: {
-        domainRank: 45,
         keywordsTop3: 5,
         keywordsTop10: 20,
         keywordsTop30: 50,
         organicTrafficEstimate: 8000,
-        referringDomains: 120,
-        backlinksTotal: 500,
       },
     };
     const mapped = mapResultsForPlatform(raw);
-    expect(mapped.seo.domain_rank).toBe(45);
+    expect(mapped.seo.keywords_top3).toBe(5);
     expect(mapped.seo.keywords_top10).toBe(20);
     expect(mapped.seo.organic_traffic).toBe(8000);
   });
@@ -38,7 +35,7 @@ describe('mapResultsForPlatform', () => {
   it('handles missing data gracefully', () => {
     const mapped = mapResultsForPlatform({});
     expect(mapped.score.total).toBeUndefined();
-    expect(mapped.seo.domain_rank).toBeUndefined();
+    expect(mapped.seo.keywords_top10).toBeUndefined();
     expect(mapped.ssl.valid).toBeUndefined();
   });
 });

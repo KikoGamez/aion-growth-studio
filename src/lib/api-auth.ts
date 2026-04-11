@@ -56,13 +56,10 @@ export function mapResultsForPlatform(raw: Record<string, any>): Record<string, 
       },
     },
     seo: {
-      domain_rank: raw.seo?.domainRank,
       keywords_top3: raw.seo?.keywordsTop3,
       keywords_top10: raw.seo?.keywordsTop10,
       keywords_top30: raw.seo?.keywordsTop30,
       organic_traffic: raw.seo?.organicTrafficEstimate,
-      referring_domains: raw.seo?.referringDomains,
-      backlinks_total: raw.seo?.backlinksTotal,
     },
     traffic: {
       visits: raw.traffic?.visits,

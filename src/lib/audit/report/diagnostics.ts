@@ -35,23 +35,15 @@ export function diagnosisSEO(seo: any, ctItems: any[]): string {
   }
   const kw = fmt(seo.keywordsTop10);
   const etv = fmt(seo.organicTrafficEstimate);
-  const dr = seo.domainRank ?? 0;
 
   let base = `Rankeas en ${kw} keywords dentro del top 10 de Google, generando aproximadamente ${etv} visitas orgánicas al mes.`;
 
   if (ctItems.length > 0) {
     const avgKW = ctItems.reduce((s: number, c: any) => s + (c.keywordsTop10 || 0), 0) / ctItems.length;
-    const avgDR = ctItems.reduce((s: number, c: any) => s + (c.domainRank || 0), 0) / ctItems.length;
     const capturePct = avgKW > 0 ? Math.round(((seo.keywordsTop10 || 0) / avgKW) * 100) : null;
-    const drDiff = Math.round(avgDR - dr);
 
     if (capturePct !== null) {
       base += ` Comparado con la media de tus competidores (${fmt(Math.round(avgKW))} keywords top 10), capturas el ${capturePct}% de la demanda orgánica del sector.`;
-    }
-    if (drDiff > 5) {
-      base += ` Tu Domain Rank (${dr}) está ${drDiff} puntos por debajo de la media competidora (${Math.round(avgDR)}), lo que limita tu autoridad frente a Google.`;
-    } else if (drDiff < -5) {
-      base += ` Tu Domain Rank (${dr}) supera la media del sector (${Math.round(avgDR)}), lo que es una ventaja de autoridad clara.`;
     }
   }
   return base;

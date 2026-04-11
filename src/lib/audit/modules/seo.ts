@@ -12,21 +12,19 @@ export async function runSEO(url: string): Promise<SEOResult> {
     .hostname.replace(/^www\./, '');
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45000);
 
   try {
-    // ── Tier 1 + Tier 2 + Organic Competitors + History + Backlinks in parallel ──
-    const [overviewRes, kwRes, compRes, histRes, bkRes] = await Promise.all([
+    // ── Tier 1 + Tier 2 + Organic Competitors + History in parallel ──
+    // Backlinks endpoint deliberately NOT fetched — not in our DataForSEO plan
+    // and we don't surface Domain Rank / referring domains in the product.
+    const [overviewRes, kwRes, compRes, histRes] = await Promise.all([
       fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live', {
         method: 'POST',
-        signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
         body: JSON.stringify([{ target: domain, location_code: 2724, language_code: 'es' }]),
       }),
       fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live', {
         method: 'POST',
-        signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
         body: JSON.stringify([{
           target: domain,
@@ -44,7 +42,6 @@ export async function runSEO(url: string): Promise<SEOResult> {
       // These are guaranteed to have DataForSEO data (unlike LLM-guessed URLs).
       fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/competitors_domain/live', {
         method: 'POST',
-        signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
         body: JSON.stringify([{
           target: domain,
@@ -57,16 +54,8 @@ export async function runSEO(url: string): Promise<SEOResult> {
       // Historical rank overview — 12 months of organic ETV + keywords
       fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/historical_rank_overview/live', {
         method: 'POST',
-        signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
         body: JSON.stringify([{ target: domain, location_code: 2724, language_code: 'es' }]),
-      }),
-      // Backlinks summary — domain authority rank, referring domains, backlinks total, spam score
-      fetch('https://api.dataforseo.com/v3/backlinks/summary/live', {
-        method: 'POST',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
-        body: JSON.stringify([{ target: domain, include_subdomains: true }]),
       }),
     ]);
 
@@ -76,12 +65,11 @@ export async function runSEO(url: string): Promise<SEOResult> {
       return { skipped: true, reason: `DataForSEO: ${msg}`.slice(0, 120) };
     }
 
-    const [data, kwData, compData, histData, bkData] = await Promise.all([
+    const [data, kwData, compData, histData] = await Promise.all([
       overviewRes.json(),
       kwRes.ok ? kwRes.json() : Promise.resolve(null),
       compRes.ok ? compRes.json() : Promise.resolve(null),
       histRes.ok ? histRes.json() : Promise.resolve(null),
-      bkRes.ok ? bkRes.json() : Promise.resolve(null),
     ]);
 
     const task = data?.tasks?.[0];
@@ -128,33 +116,6 @@ export async function runSEO(url: string): Promise<SEOResult> {
     };
 
     const _logParts: string[] = [`kw:${keywordsTop10} etv:${m?.etv != null ? Math.round(m.etv) : 0}`];
-
-    // ── Backlinks summary (Domain Rank, Referring Domains, Backlinks) ──
-    // DataForSEO Backlinks API uses a 0-1000 scale for rank; we normalize
-    // to 0-100 to match our SEOResult type convention.
-    try {
-      const bkTask = bkData?.tasks?.[0];
-      if (bkTask?.status_code === 20000 && bkTask.result_count > 0) {
-        const bkItem = bkTask.result?.[0];
-        if (bkItem) {
-          if (bkItem.rank != null) {
-            baseResult.domainRank = Math.round(bkItem.rank / 10);
-          }
-          if (bkItem.referring_domains != null) {
-            baseResult.referringDomains = bkItem.referring_domains;
-          }
-          if (bkItem.backlinks != null) {
-            baseResult.backlinksTotal = bkItem.backlinks;
-          }
-          if (bkItem.backlinks_spam_score != null) {
-            baseResult.spamScore = bkItem.backlinks_spam_score;
-          }
-          _logParts.push(`dr:${baseResult.domainRank ?? '?'} rd:${baseResult.referringDomains ?? '?'} bl:${baseResult.backlinksTotal ?? '?'}`);
-        }
-      } else {
-        _logParts.push(`backlinks:skip(${bkTask?.status_code ?? 'no-task'})`);
-      }
-    } catch { _logParts.push('backlinks:except'); }
 
     // ── Organic competitors from DataForSEO ───────────────────────────
     // Blocklist: generic/media domains that share informational keywords but aren't real competitors
@@ -266,7 +227,6 @@ export async function runSEO(url: string): Promise<SEOResult> {
         if (checkKeywords.length > 0) {
           const adsRes = await fetch('https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live', {
             method: 'POST',
-            signal: controller.signal,
             headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
             body: JSON.stringify([{
               keywords: checkKeywords,
@@ -417,7 +377,6 @@ export async function runSEO(url: string): Promise<SEOResult> {
         }),
         // Sitemap URL count
         fetch(new URL('/sitemap.xml', `https://${domain}`).href, {
-          signal: controller.signal,
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
         }).catch(() => null),
       ]);
@@ -494,7 +453,7 @@ export async function runSEO(url: string): Promise<SEOResult> {
             .slice(0, 5);
           const subResults = await Promise.allSettled(
             subUrls.map(u => fetch(u, {
-              signal: AbortSignal.timeout(8000),
+              signal: AbortSignal.timeout(60_000),
               headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
             }).then(r => r.ok ? r.text() : ''))
           );
@@ -525,9 +484,7 @@ export async function runSEO(url: string): Promise<SEOResult> {
 
     return baseResult;
   } catch (err: any) {
-    const msg = err.name === 'AbortError' ? 'DataForSEO timed out (45s)' : err.message?.slice(0, 100);
-    return { skipped: true, reason: msg };
-  } finally {
-    clearTimeout(timer);
+    const msg = err.message?.slice(0, 100) || 'unknown error';
+    return { skipped: true, reason: `DataForSEO: ${msg}` };
   }
 }

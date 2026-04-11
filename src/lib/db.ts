@@ -83,9 +83,6 @@ function computeDemoBreakdown(po: Record<string, any>): { total: number; breakdo
 
   // Reputation — composite
   const repComponents: Array<{ value: number; weight: number }> = [];
-  if (seo.domainRank != null && seo.domainRank > 0) {
-    repComponents.push({ value: Math.min(100, seo.domainRank > 1000 ? 100 - Math.min(50, Math.round(seo.domainRank / 500)) : seo.domainRank), weight: 0.25 });
-  }
   const rating = gbp.rating ?? rep.gbpRating;
   if (rating != null) {
     const ratingScore = Math.min(100, Math.max(0, Math.round(((rating - 2) / 3) * 100)));

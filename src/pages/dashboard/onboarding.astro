@@ -334,7 +334,6 @@ const prefillLI = existing?.linkedin_url
     const ALL_KPIS = [
       { key: 'seo.keywordsTop10', label: 'Keywords Top 10', desc: 'Palabras clave posicionadas en los 10 primeros resultados de Google', icon: 'search' },
       { key: 'seo.traffic', label: 'Trafico Organico', desc: 'Visitas mensuales desde buscadores (sin pagar)', icon: 'trending_up' },
-      { key: 'seo.domainRank', label: 'Domain Rank', desc: 'Autoridad de tu dominio frente a la competencia (0-100)', icon: 'military_tech' },
       { key: 'geo.mentionRate', label: 'Visibilidad en IA', desc: 'Porcentaje de consultas en ChatGPT/Perplexity donde te mencionan', icon: 'psychology' },
       { key: 'web.mobile', label: 'PageSpeed Movil', desc: 'Velocidad de carga en movil (0-100). Impacta en SEO y conversion', icon: 'speed' },
       { key: 'conversion.score', label: 'Funnel de Conversion', desc: 'Capacidad de tu web para convertir visitas en leads o ventas (0-100)', icon: 'conversion_path' },
@@ -346,7 +345,7 @@ const prefillLI = existing?.linkedin_url
     const GOAL_KPIS: Record<string, string[]> = {
       generate_leads: ['seo.keywordsTop10', 'conversion.score', 'seo.traffic'],
       sell_online: ['seo.traffic', 'conversion.score', 'web.mobile'],
-      brand_positioning: ['seo.domainRank', 'geo.mentionRate', 'reputation.score'],
+      brand_positioning: ['geo.mentionRate', 'reputation.score', 'seo.keywordsTop10'],
       local_traffic: ['reputation.score', 'seo.keywordsTop10', 'web.mobile'],
       other: ['seo.keywordsTop10', 'seo.traffic', 'conversion.score'],
     };

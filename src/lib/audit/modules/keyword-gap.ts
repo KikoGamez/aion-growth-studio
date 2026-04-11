@@ -23,7 +23,7 @@ export async function runKeywordGap(
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
+  const timer = setTimeout(() => controller.abort(), 180_000);
 
   try {
     // Use domain_intersection: keywords competitor ranks for but we don't

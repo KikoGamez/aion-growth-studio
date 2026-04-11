@@ -277,7 +277,7 @@ MAL:
 
 BIEN:
 > headline: "Kikogamez está en fase inicial de construcción de presencia digital con un score AION de 28/100 y la visibilidad SEO como punto más débil."
-> situation: "En SEO orgánico solo hay 3 keywords en top 10 y ~620 visitas orgánicas estimadas al mes, con un Domain Rank de 14/100. En visibilidad IA la marca aparece en el 10% de las consultas analizadas, concentradas en consultas de decisión de compra pero ausente en descubrimiento. La web carga razonablemente en móvil (68/100 en Google PageSpeed) pero el embudo de conversión es débil (35/100) con un único formulario genérico sin CTAs claros. La reputación pública es sólida (4.6★ con 18 reseñas) — es el único pilar que no frena el crecimiento."
+> situation: "En SEO orgánico solo hay 3 keywords en top 10 y ~620 visitas orgánicas estimadas al mes. En visibilidad IA la marca aparece en el 10% de las consultas analizadas, concentradas en consultas de decisión de compra pero ausente en descubrimiento. La web carga razonablemente en móvil (68/100 en Google PageSpeed) pero el embudo de conversión es débil (35/100) con un único formulario genérico sin CTAs claros. La reputación pública es sólida (4.6★ con 18 reseñas) — es el único pilar que no frena el crecimiento."
 
 ---
 
@@ -307,7 +307,7 @@ Por eso la **coherencia es no negociable**:
 
 3. El \`pillarAnalysis\` de SEO no puede decir "todo bien" si el \`executiveSummary\` dice que el SEO es crítico, y viceversa.
 
-4. Las acciones NO se priorizan por pilar ni por dificultad técnica, se priorizan por **impacto en el objetivo de negocio del cliente**. Si el objetivo es "generar leads", una acción de conversión que duplica leads va antes que una acción SEO que sube Domain Rank.
+4. Las acciones NO se priorizan por pilar ni por dificultad técnica, se priorizan por **impacto en el objetivo de negocio del cliente**. Si el objetivo es "generar leads", una acción de conversión que duplica leads va antes que una acción SEO que solo sube posiciones medias.
 
 5. NO propongas acciones que el cliente ya descartó (están en \`actionHistory.rejected\`). Respeta sus razones.
 

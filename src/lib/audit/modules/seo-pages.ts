@@ -14,7 +14,7 @@ export async function runSeoPages(url: string): Promise<SeoPagesResult> {
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  const timer = setTimeout(() => controller.abort(), 180_000);
 
   try {
     const res = await fetch(

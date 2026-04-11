@@ -23,7 +23,7 @@ const DATA_POINTS: DataPoint[] = [
   { id: 'sector.detected', label: 'Sector detection', critical: true, check: r => !!r.sector?.sector },
   { id: 'seo.keywords', label: 'SEO keywords', critical: true, check: r => r.seo && !r.seo.skipped && r.seo.keywordsTop10 != null },
   { id: 'seo.traffic', label: 'Organic traffic', critical: true, check: r => r.seo?.organicTrafficEstimate != null },
-  // Domain rank removed — backlinks endpoint not in our DataForSEO plan
+  // Domain rank removed — backlinks endpoint is paid and we deliberately don't extract/show it
   { id: 'seo.topKeywords', label: 'Top keywords list', critical: false, check: r => (r.seo?.topKeywords?.length ?? 0) > 0 },
   { id: 'seo.history', label: 'Organic trend (12m)', critical: false, check: r => (r.seo?.organicHistory?.length ?? 0) >= 3 },
   { id: 'seo.brand', label: 'Brand vs non-brand', critical: false, check: r => r.seo?.brandTrafficPct != null },

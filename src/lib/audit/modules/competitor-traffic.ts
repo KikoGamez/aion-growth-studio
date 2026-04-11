@@ -52,7 +52,7 @@ async function fetchSingle(
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  const timer = setTimeout(() => controller.abort(), 120_000);
   try {
     const res = await fetch(
       'https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live',

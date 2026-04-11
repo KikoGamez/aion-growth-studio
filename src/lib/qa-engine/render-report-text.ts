@@ -100,14 +100,6 @@ export function renderReportText(results: Record<string, any>, domain: string): 
       const dir = seo.organicTrend === 'up' ? '↑ Creciente' : seo.organicTrend === 'down' ? '↓ Descendente' : '→ Estable';
       lines.push(`Tendencia 12 meses:   ${dir} (${seo.organicTrendPct > 0 ? '+' : ''}${seo.organicTrendPct ?? 0}%)`);
     }
-    if (seo.domainRank != null) {
-      lines.push(`Domain rank:          ${seo.domainRank}`);
-    } else if ((seo.keywordsTop10 ?? 0) > 100) {
-      // High-authority domain but DR API failed — don't say "no authority"
-      lines.push(`Domain rank:          No disponible (API no devolvió dato, el dominio tiene ${fmtNum(seo.keywordsTop10)} keywords posicionadas)`);
-    } else {
-      lines.push(`Domain rank:          No disponible`);
-    }
   }
   if (seo.trendLost > 0 || seo.trendUp > 0) {
     lines.push(`Tendencia:            +${seo.trendUp ?? 0} subidas / -${seo.trendLost ?? 0} bajadas`);
@@ -151,10 +143,10 @@ export function renderReportText(results: Record<string, any>, domain: string): 
   }
   if (ctItems.length) {
     lines.push('Comparativa de tráfico:');
-    lines.push(`  ${domain}: ${seo.keywordsTop10 ?? 0} kw top10 | ${fmtNum(seo.organicTrafficEstimate)} vis/mes | DR ${seo.domainRank ?? 'N/A'}`);
+    lines.push(`  ${domain}: ${seo.keywordsTop10 ?? 0} kw top10 | ${fmtNum(seo.organicTrafficEstimate)} vis/mes`);
     ctItems.forEach((c: any) => {
       const tag = c.type === 'aspirational' ? ' [aspiracional]' : '';
-      lines.push(`  ${c.name}${tag}: ${c.keywordsTop10 ?? 'N/A'} kw | ${fmtNum(c.organicTrafficEstimate)} vis/mes | DR ${c.domainRank ?? 'N/A'}`);
+      lines.push(`  ${c.name}${tag}: ${c.keywordsTop10 ?? 'N/A'} kw | ${fmtNum(c.organicTrafficEstimate)} vis/mes`);
     });
   } else if (compList.length === 0) {
     // Fallback: reference competitors by sector

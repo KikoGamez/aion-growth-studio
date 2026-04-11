@@ -19,7 +19,7 @@ async function fetchLinkedInPosts(companyUrl: string, followers: number): Promis
     const res = await axios.post(
       `https://api.apify.com/v2/acts/harvestapi~linkedin-company-posts/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=30`,
       { companyUrls: [companyUrl], maxPosts: 15 },
-      { timeout: 35000, headers: { 'Content-Type': 'application/json' } },
+      { timeout: 180_000, headers: { 'Content-Type': 'application/json' } },
     );
     const posts = res.data;
     if (!Array.isArray(posts) || posts.length === 0) return null;
@@ -72,7 +72,7 @@ async function searchLinkedInUrl(crawl: CrawlResult): Promise<string | null> {
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const timer = setTimeout(() => controller.abort(), 60_000);
     const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
       method: 'POST',
       signal: controller.signal,
@@ -213,12 +213,12 @@ async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
         axios.post(
           `https://api.apify.com/v2/acts/harvestapi~linkedin-profile-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=30`,
           { urls: [url] },
-          { timeout: 40000, headers: { 'Content-Type': 'application/json' } },
+          { timeout: 180_000, headers: { 'Content-Type': 'application/json' } },
         ),
         axios.post(
           `https://api.apify.com/v2/acts/harvestapi~linkedin-profile-posts/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=30`,
           { profileUrls: [url], maxPosts: 15 },
-          { timeout: 40000, headers: { 'Content-Type': 'application/json' } },
+          { timeout: 180_000, headers: { 'Content-Type': 'application/json' } },
         ),
       ]);
 
@@ -307,7 +307,7 @@ async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
         axios.post(
           `https://api.apify.com/v2/acts/riceman~linkedin-company-data-insights-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=30`,
           { company_linkedin_urls: [url] },
-          { timeout: 35000, headers: { 'Content-Type': 'application/json' } },
+          { timeout: 180_000, headers: { 'Content-Type': 'application/json' } },
         ),
         // Posts Actor runs in parallel — doesn't add latency
         fetchLinkedInPosts(url, 0), // followers=0 placeholder, recalc ER below
@@ -355,9 +355,9 @@ async function fetchLinkedInProfile(url: string): Promise<LinkedInResult> {
   // Method 2: HTML scraping with Googlebot UA
   const attempts = [
     ...(APIFY_TOKEN
-      ? [{ headers: HEADERS, timeout: 12000, maxRedirects: 3, validateStatus: (s: number) => s < 500, ...apifyProxyConfig() }]
+      ? [{ headers: HEADERS, timeout: 90_000, maxRedirects: 3, validateStatus: (s: number) => s < 500, ...apifyProxyConfig() }]
       : []),
-    { headers: HEADERS, timeout: 10000, maxRedirects: 3, validateStatus: (s: number) => s < 500 },
+    { headers: HEADERS, timeout: 90_000, maxRedirects: 3, validateStatus: (s: number) => s < 500 },
   ];
 
   let lastErr: any;
@@ -455,7 +455,7 @@ async function extractLinkedInFromSite(
   try {
     const normalized = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
     const res = await axios.get(normalized, {
-      timeout: 6000,
+      timeout: 60_000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
       validateStatus: (s) => s < 500,
     });

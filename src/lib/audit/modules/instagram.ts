@@ -49,7 +49,7 @@ async function searchInstagramHandle(crawl: CrawlResult): Promise<string | null>
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 90_000);
     const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
       method: 'POST',
       signal: controller.signal,
@@ -102,7 +102,7 @@ async function searchInstagramHandleBroad(crawl: CrawlResult): Promise<string | 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
+    const timer = setTimeout(() => controller.abort(), 90_000);
     const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
       method: 'POST',
       signal: controller.signal,
@@ -218,7 +218,7 @@ async function fetchProfile(handle: string): Promise<InstagramResult> {
       const actorRes = await axios.post(
         `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=45`,
         { usernames: [handle] },
-        { timeout: 50_000, headers: { 'Content-Type': 'application/json' } },
+        { timeout: 200_000, headers: { 'Content-Type': 'application/json' } },
       );
       const items = actorRes.data;
       if (Array.isArray(items) && items.length > 0) {
@@ -296,7 +296,7 @@ async function extractHandleFromSite(siteUrl: string): Promise<string | null> {
   try {
     const normalized = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
     const res = await axios.get(normalized, {
-      timeout: 6000,
+      timeout: 60_000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
       validateStatus: (s) => s < 500,
     });

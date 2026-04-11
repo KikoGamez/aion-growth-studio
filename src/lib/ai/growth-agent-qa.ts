@@ -119,7 +119,6 @@ export async function runQAReview(
     seo: {
       keywordsTop10: seo.keywordsTop10,
       organicTrafficEstimate: seo.organicTrafficEstimate,
-      domainRank: seo.domainRank,
       topKeywords: (seo.topKeywords || []).slice(0, 5),
     },
     geo: {
@@ -139,7 +138,7 @@ export async function runQAReview(
     content: { postsLast90Days: cc.postsLast90Days, cadenceLevel: cc.cadenceLevel, totalPosts: cc.totalPosts },
     crawl: { title: crawl.title, description: crawl.description, wordCount: crawl.wordCount, hasSchemaMarkup: crawl.hasSchemaMarkup, hasSitemap: crawl.hasSitemap },
     competitors: comps.map((c: any) => c.name || c.url).slice(0, 5),
-    competitorTraffic: ct.slice(0, 3).map((c: any) => ({ domain: c.domain, keywordsTop10: c.keywordsTop10, organicTrafficEstimate: c.organicTrafficEstimate, domainRank: c.domainRank })),
+    competitorTraffic: ct.slice(0, 3).map((c: any) => ({ domain: c.domain, keywordsTop10: c.keywordsTop10, organicTrafficEstimate: c.organicTrafficEstimate })),
   }, null, 2);
 
   const draftJson = JSON.stringify(analysis, null, 2);
@@ -178,7 +177,7 @@ Busca contradicciones entre lo que dice el análisis y lo que muestran los datos
 
 5. **Regla del funnel score alto**: si funnelScore > 60 pero el análisis dice "sin conversión" o "problema crítico de conversión" — INCORRECTO. Corrige para reflejar el dato real.
 
-6. **DomainRank null con >50 keywords**: si domainRank es null pero hay más de 50 keywords posicionadas, NO digas "sin autoridad". La ausencia del dato no implica cero autoridad — probablemente el API no devolvió el campo. Reformula a "autoridad de dominio: no medida" o similar.
+6. **No inventar métricas de autoridad de dominio**: AION no mide Domain Rank ni referring domains (no usamos la API de backlinks). Si el análisis menciona "domain rank", "DR", "autoridad de dominio X/100", "backlinks" o "referring domains", bórralo — son datos que no tenemos. La autoridad se infiere de señales reales: volumen de keywords top 10, GBP, prensa, LinkedIn.
 
 7. **Sin datos de competidores → sin comparativas**: si el análisis tiene 0 items en competitor_traffic o competitors.competitors está vacío, el análisis NO puede hacer comparativas numéricas con competidores. Elimina TODA frase del tipo "vs Competidor X" o "3x menos que..." cuando no hay datos reales.
 

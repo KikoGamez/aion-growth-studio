@@ -9,7 +9,7 @@ const DFS_PASSWORD = import.meta.env?.DATAFORSEO_PASSWORD || process.env.DATAFOR
 async function searchPlaces(query: string): Promise<any[]> {
   if (!API_KEY) return [];
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const timer = setTimeout(() => controller.abort(), 60_000);
 
   try {
     const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
@@ -47,7 +47,7 @@ async function searchDFS(keyword: string): Promise<{ title: string; rating: numb
   for (const locCode of SPAIN_CITIES) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
+      const timer = setTimeout(() => controller.abort(), 90_000);
       const res = await fetch('https://api.dataforseo.com/v3/business_data/google/my_business_info/live', {
         method: 'POST',
         signal: controller.signal,

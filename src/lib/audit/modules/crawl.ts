@@ -22,7 +22,7 @@ async function enrichFromGoogle(domain: string, result: CrawlResult): Promise<Cr
   try {
     // Search for the domain — Google returns the real title, description, sitelinks
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 60_000);
     const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
       method: 'POST',
       signal: controller.signal,
@@ -236,7 +236,7 @@ function looksEnglish(text: string): boolean {
 async function translateToSpanish(text: string): Promise<string | null> {
   if (!ANTHROPIC_API_KEY) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), 30_000);
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -271,7 +271,7 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
     // the first time (cold cache, heavy plugins). 10s was too tight and caused
     // intermittent failures that cascaded to all downstream modules.
     const response = await axios.get(url, {
-      timeout: 20000,
+      timeout: 150_000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0; +https://aiongrowth.studio)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -337,8 +337,8 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
     let hasRobotsTxt = false;
     try {
       const [sitemapRes, robotsRes] = await Promise.all([
-        axios.head(new URL('/sitemap.xml', url).href, { timeout: 3000, validateStatus: () => true }),
-        axios.head(new URL('/robots.txt', url).href, { timeout: 3000, validateStatus: () => true }),
+        axios.head(new URL('/sitemap.xml', url).href, { timeout: 30_000, validateStatus: () => true }),
+        axios.head(new URL('/robots.txt', url).href, { timeout: 30_000, validateStatus: () => true }),
       ]);
       hasSitemap = sitemapRes.status < 400;
       hasRobotsTxt = robotsRes.status < 400;

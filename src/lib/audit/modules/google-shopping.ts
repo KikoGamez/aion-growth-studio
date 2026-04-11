@@ -30,7 +30,7 @@ export async function runGoogleShopping(
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
+  const timer = setTimeout(() => controller.abort(), 150_000);
 
   try {
     // Pick up to 3 high-volume product keywords to search in Google Shopping

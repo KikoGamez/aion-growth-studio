@@ -17,7 +17,7 @@ async function fetchGBPReputation(
   if (!PLACES_API_KEY) return { rating: null, reviews: null, found: false };
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
+  const timer = setTimeout(() => controller.abort(), 90_000);
 
   try {
     const query = cityHint
@@ -106,7 +106,7 @@ async function fetchTrustpilotDFS(
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 120_000);
 
   try {
     const res = await fetch(
@@ -139,7 +139,7 @@ async function fetchTrustpilotDirect(
   domain: string,
 ): Promise<{ rating: number | null; reviews: number | null; found: boolean }> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8_000);
+  const timer = setTimeout(() => controller.abort(), 60_000);
   try {
     const res = await fetch(`https://es.trustpilot.com/review/${domain}`, {
       signal: controller.signal,
@@ -205,7 +205,7 @@ async function fetchTripadvisor(
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 120_000);
 
   try {
     const res = await fetch(
@@ -248,7 +248,7 @@ async function fetchAmazonPresence(
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 120_000);
 
   try {
     // Search Google for the brand on Amazon
@@ -300,7 +300,7 @@ async function fetchNewsPresence(
 
   const auth = Buffer.from(`${DFS_LOGIN}:${DFS_PASSWORD}`).toString('base64');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 120_000);
 
   try {
     const res = await fetch(

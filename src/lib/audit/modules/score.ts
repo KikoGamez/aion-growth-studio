@@ -84,11 +84,6 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
   // fails the score still runs, just slightly less precise.
   const repComponents: { value: number; weight: number }[] = [];
 
-  // Domain authority (when available — not always indexed by backlink API)
-  if (seo.domainRank != null && seo.domainRank > 0) {
-    repComponents.push({ value: Math.min(100, seo.domainRank), weight: 0.25 });
-  }
-
   // Google Business Profile rating
   if (gbp.rating != null) {
     // 2.0 → 0, 3.0 → 33, 4.0 → 67, 4.5 → 83, 5.0 → 100

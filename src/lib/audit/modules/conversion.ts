@@ -7,7 +7,7 @@ const ANTHROPIC_API_KEY = import.meta.env?.ANTHROPIC_API_KEY || process.env.ANTH
 export async function runConversion(url: string, crawlData: CrawlResult): Promise<ConversionResult> {
   try {
     const res = await axios.get(url, {
-      timeout: 15000,
+      timeout: 120_000,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIONAuditBot/1.0)' },
       maxRedirects: 5,
       validateStatus: (s) => s < 500,
@@ -107,7 +107,7 @@ async function analyzeWithLLM(
   crawl: CrawlResult,
 ): Promise<{ funnelScore?: number; summary?: string; strengths?: string[]; weaknesses?: string[] }> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
+  const timer = setTimeout(() => controller.abort(), 150_000);
   try {
     const prompt = `Analiza la capacidad de conversión de este sitio web.
 

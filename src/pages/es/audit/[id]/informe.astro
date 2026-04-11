@@ -168,11 +168,6 @@ const avgRating: number | null = (() => {
 })();
 const brandAuthorityScoreEs = (() => {
   let ba = 0;
-  // Domain authority (0-20)
-  const rd = seo?.referringDomains ?? 0;
-  if (rd >= 500) ba += 12; else if (rd >= 100) ba += 8; else if (rd >= 20) ba += 5; else if (rd >= 1) ba += 2;
-  const dr = seo?.domainRank ?? 0;
-  if (dr > 0) ba += Math.round(Math.min(dr / 100, 1) * 8);
   // Reviews/reputation (0-25) — Google (GBP), Trustpilot, Tripadvisor, Amazon
   // Use best available rating: GBP takes priority if available
   const cr = Math.max(gbp?.rating ?? 0, repRaw.combinedRating ?? 0);
@@ -261,7 +256,6 @@ const statusByArea: { area: string; status: AreaStatus; summary: string; anchor:
   { area: 'Reputación', status: ss(brandAuthorityScoreEs), summary: (() => {
     const parts: string[] = [];
     if (avgRating) parts.push(`${avgRating}★ media`);
-    if (seo?.domainRank != null) parts.push(`DR: ${seo.domainRank}`);
     if (newsCountEs > 0) parts.push(`${newsCountEs} menciones en prensa`);
     if (linkedin?.followers) parts.push(`${fmt(linkedin.followers)} seguidores LI`);
     return parts.length > 0 ? parts.join(', ') : 'Sin datos de autoridad digital';
@@ -704,7 +698,6 @@ const executiveBullets: string[] = insightBullets.length >= 3 ? insightBullets :
 const heroStatus = statusStyle(ss(health.total));
 
 // ── Precomputed colors (avoid nested ternaries in JSX that break esbuild) ──
-const drColor = seo?.domainRank != null ? (seo.domainRank >= 50 ? '#1D9E75' : seo.domainRank >= 20 ? '#BA7517' : '#E24B4A') : '#9CA3AF';
 const blogLastDays = cc?.daysSinceLastPost ?? 999;
 const blogLastColor = blogLastDays <= 30 ? '#1D9E75' : blogLastDays <= 90 ? '#BA7517' : '#E24B4A';
 const funnelScoreColor = (cv?.funnelScore ?? 0) >= 60 ? '#1D9E75' : (cv?.funnelScore ?? 0) >= 35 ? '#BA7517' : '#E24B4A';
@@ -2289,28 +2282,6 @@ const donutSVG = buildDonutSVG();
             </div>
           </div>
 
-          <!-- Domain authority -->
-          {seo && seo.domainRank != null && (
-            <div class="surface-card" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:1.5rem;">
-              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
-                <div style={`font-size:2.5rem;font-weight:900;color:${seo.domainRank >= 50 ? '#69FF87' : seo.domainRank >= 20 ? '#aac7ff' : '#ffb4ab'};line-height:1;letter-spacing:-0.02em;`}>{seo.domainRank}</div>
-                <div style="font-size:0.65rem;color:#8d909b;">/100</div>
-              </div>
-              <div style="flex:1;min-width:200px;">
-                <div style="font-size:0.82rem;font-weight:700;color:#e2e0fc;margin-bottom:4px;">Autoridad de dominio</div>
-                {seo.domainRank < 20 && (
-                  <p style="font-size:0.78rem;color:#c3c6d2;line-height:1.5;margin:0;">Google os ve como un dominio nuevo o poco relevante. Conseguir menciones en medios del sector es la palanca principal.</p>
-                )}
-                {seo.domainRank >= 20 && seo.domainRank < 50 && (
-                  <p style="font-size:0.78rem;color:#c3c6d2;line-height:1.5;margin:0;">Autoridad moderada — podeis competir por keywords de dificultad media.</p>
-                )}
-                {seo.domainRank >= 50 && (
-                  <p style="font-size:0.78rem;color:#c3c6d2;line-height:1.5;margin:0;">Autoridad fuerte — ventaja competitiva clara para posicionar contenido nuevo.</p>
-                )}
-              </div>
-            </div>
-          )}
-
           <!-- News headlines -->
           {newsHeadlinesEs.length > 0 && (
             <div class="glass-card" style="margin-bottom:1.5rem;">
@@ -2333,13 +2304,8 @@ const donutSVG = buildDonutSVG();
             </div>
           )}
 
-          {(!seo || seo.domainRank == null) && !hasBlogEs && newsCountEs === 0 && (
+          {!seo && !hasBlogEs && newsCountEs === 0 && (
             <div class="callout callout-warning">No se han podido obtener datos de autoridad para este sitio.</div>
-          )}
-          {(seo?.spamScore ?? 0) > 40 && (
-            <div class="callout callout-error" style="margin-top:12px;">
-              <strong>Alerta:</strong> Tu dominio tiene un spam score elevado ({seo?.spamScore}%). Revisa y desautoriza enlaces toxicos desde Google Search Console.
-            </div>
           )}
         </div>
 

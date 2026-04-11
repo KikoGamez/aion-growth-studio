@@ -123,7 +123,6 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
     geoScope: onboarding?.geo_scope,
     keywordsTop10: seoData?.keywordsTop10,
     organicTraffic: seoData?.organicTraffic,
-    domainRank: seoData?.domainRank,
   });
   if (playbook) sections.push(playbook);
 
@@ -139,7 +138,7 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
 
     const seo = r.seo as any;
     if (seo && !seo.skipped) {
-      sections.push(`SEO: ${seo.keywordsTop10 ?? '?'} KW top10, ${seo.keywordsTop3 ?? '?'} top3, tráfico orgánico ~${seo.organicTraffic ?? '?'}, DR ${seo.domainRank ?? '?'}`);
+      sections.push(`SEO: ${seo.keywordsTop10 ?? '?'} KW top10, ${seo.keywordsTop3 ?? '?'} top3, tráfico orgánico ~${seo.organicTraffic ?? '?'}`);
     }
 
     const geo = r.geo as any;
@@ -177,7 +176,7 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
     if (ct?.items?.length) {
       sections.push('\nCompetidores (datos SEO):');
       for (const c of ct.items.slice(0, 3)) {
-        sections.push(`  ${c.name || c.domain}: ${c.keywordsTop10 ?? '?'} KW top10, tráfico ~${c.organicTraffic ?? '?'}, DR ${c.domainRank ?? '?'}`);
+        sections.push(`  ${c.name || c.domain}: ${c.keywordsTop10 ?? '?'} KW top10, tráfico ~${c.organicTraffic ?? '?'}`);
       }
     }
 

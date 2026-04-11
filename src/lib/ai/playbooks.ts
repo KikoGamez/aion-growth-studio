@@ -16,7 +16,6 @@ interface ClientProfile {
   // Visibility metrics (from audit) — used to detect low-visibility sites
   keywordsTop10?: number;
   organicTraffic?: number;
-  domainRank?: number;
 }
 
 /** Build a context block tailored to this client's profile */
@@ -210,7 +209,6 @@ function buildGeoContext(geoScope?: string): string | null {
 function buildLowVisibilityContext(profile: ClientProfile): string | null {
   const kw = profile.keywordsTop10 ?? -1;
   const traffic = profile.organicTraffic ?? -1;
-  const dr = profile.domainRank ?? -1;
 
   // No data at all — probably no audit yet
   if (kw < 0 && traffic < 0) return null;
@@ -224,7 +222,7 @@ function buildLowVisibilityContext(profile: ClientProfile): string | null {
   if (isVeryLow) {
     return `### ⚡ WEB CON VISIBILIDAD MUY BAJA — MODO CRECIMIENTO DESDE CERO
 
-IMPORTANTE PARA EL ADVISOR: Esta web tiene ${kw >= 0 ? kw : 'casi cero'} keywords en top 10 y ~${traffic >= 0 ? traffic : '0'} visitas orgánicas al mes${dr >= 0 ? ` (DR: ${dr})` : ''}. Los datos de análisis competitivo y benchmarks tienen valor limitado porque la web está partiendo prácticamente de cero.
+IMPORTANTE PARA EL ADVISOR: Esta web tiene ${kw >= 0 ? kw : 'casi cero'} keywords en top 10 y ~${traffic >= 0 ? traffic : '0'} visitas orgánicas al mes. Los datos de análisis competitivo y benchmarks tienen valor limitado porque la web está partiendo prácticamente de cero.
 
 **Tu tono debe ser:**
 Honesto pero motivador. "Tus métricas actuales son bajas, pero eso significa que cada acción que tomes tendrá un impacto visible rápidamente. Solo puedes crecer."

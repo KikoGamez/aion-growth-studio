@@ -174,7 +174,6 @@ function extractKpiValue(data: any, key: string): number | null {
     case 'score': return data.score?.total ?? null;
     case 'seo.keywordsTop10': return data.seo?.keywordsTop10 ?? null;
     case 'seo.traffic': return data.seo?.organicTrafficEstimate ?? null;
-    case 'seo.domainRank': return data.seo?.domainRank ?? null;
     case 'geo.mentionRate': return data.geo?.mentionRate ?? null;
     case 'web.mobile': return data.pagespeed?.mobile?.performance ?? null;
     case 'web.desktop': return data.pagespeed?.desktop?.performance ?? null;
