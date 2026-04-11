@@ -257,27 +257,29 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
   }
 
   if (actionPlan.length || completedActions.length) {
-    sections.push('\n## PLAN DE ACCIÓN DEL CLIENTE');
+    sections.push('\n## PLAN DE ACCIÓN DEL CLIENTE — ⚠️ NO REPROPONGAS ESTAS ACCIONES');
+    sections.push('(Estas acciones YA están en el plan del cliente. NUNCA las incluyas en un nuevo bloque ```actions```. Piensa en "equivalente": misma intención + mismo entregable = duplicado, aunque cambies el nombre.)');
     const active = actionPlan.filter(a => a.status === 'in_progress');
     const pending = actionPlan.filter(a => a.status === 'pending');
     if (active.length) {
-      sections.push('En marcha:');
+      sections.push('\n**En marcha** (ya en ejecución — no las toques):');
       for (const a of active) {
-        sections.push(`  - ${a.title} (desde ${a.started_at?.slice(0, 10) || '?'})`);
+        sections.push(`  ❌ [YA EN PLAN] ${a.title}${a.started_at ? ` · desde ${a.started_at.slice(0, 10)}` : ''}`);
       }
     }
     if (pending.length) {
-      sections.push('Pendientes de empezar:');
-      for (const a of pending.slice(0, 5)) {
-        sections.push(`  - [${a.impact}] ${a.title}`);
+      sections.push('\n**Pendientes de empezar** (aceptadas por el cliente, esperando arranque — no las repropongas):');
+      for (const a of pending) {
+        sections.push(`  ❌ [YA EN PLAN] ${a.title}${a.impact ? ` · impacto ${a.impact}` : ''}`);
       }
     }
     if (completedActions.length) {
-      sections.push(`Completadas: ${completedActions.length} acciones`);
-      for (const a of completedActions.slice(0, 5)) {
-        sections.push(`  - ${a.title} (completada ${a.completed_at?.slice(0, 10) || '?'})`);
+      sections.push(`\n**Completadas** (${completedActions.length} en total — no sugieras volver a hacerlas):`);
+      for (const a of completedActions.slice(0, 8)) {
+        sections.push(`  ✔ [HECHO] ${a.title}${a.completed_at ? ` · ${a.completed_at.slice(0, 10)}` : ''}`);
       }
     }
+    sections.push('\n(Recordatorio: cuando el cliente pida "las siguientes N acciones" o "qué más puedo hacer", ordena tu backlog de oportunidades por prioridad, EXCLUYE todas las marcadas arriba, y devuelve las N siguientes.)');
   }
 
   // ── 5. Learnings (accumulated memory) ──────────────────────────
