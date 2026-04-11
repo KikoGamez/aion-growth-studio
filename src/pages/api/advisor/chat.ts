@@ -82,9 +82,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }));
 
   // ── Stream Claude response ───────────────────────────────────
+  // max_tokens 1024 ≈ 700-800 words of headroom; system prompt enforces
+  // 200 words max for normal questions (400 when user asks "en detalle").
   const claudeBody = {
     model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
+    max_tokens: 1024,
     stream: true,
     system: ADVISOR_CHAT_PROMPT + '\n\n---\n\n## CONTEXTO DEL CLIENTE\n\n' + context,
     messages: claudeMessages,

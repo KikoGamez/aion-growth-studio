@@ -1,4 +1,5 @@
 import { getClientOnboarding, getLatestSnapshot, getAllSnapshots, getProposedRecommendations, getActionPlan, getCompletedActions } from '../db';
+import { getIntegration } from '../integrations';
 import { getRecentMessages, getLearnings, getDocuments, type AdvisorMessage } from './db';
 import { buildPlaybookContext } from '../ai/playbooks';
 
@@ -6,14 +7,15 @@ import { buildPlaybookContext } from '../ai/playbooks';
  * Build the full client context for the advisor prompt.
  *
  * Includes: onboarding, KPIs, evolution, recommendations, past conversations,
- * learnings, and uploaded documents.
+ * learnings, uploaded documents, connected integrations, priority keywords
+ * and keyword strategy.
  *
  * Memory strategy:
  * - Last 60 days: all messages included verbatim
  * - Older: only client_learnings (auto-summarized)
  */
 export async function buildAdvisorContext(clientId: string, domain: string): Promise<string> {
-  const [onboarding, latestSnap, allSnaps, proposedRecs, actionPlan, completedActions, recentMsgs, learnings, documents] =
+  const [onboarding, latestSnap, allSnaps, proposedRecs, actionPlan, completedActions, recentMsgs, learnings, documents, googleIntegration] =
     await Promise.all([
       getClientOnboarding(clientId),
       getLatestSnapshot(clientId),
@@ -24,6 +26,7 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
       getRecentMessages(clientId, 60),
       getLearnings(clientId, 50),
       getDocuments(clientId),
+      getIntegration(clientId, 'google_analytics').catch(() => null),
     ]);
 
   const sections: string[] = [];
@@ -43,6 +46,69 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
     }
     if (onboarding.instagram_handle) sections.push(`Instagram: @${onboarding.instagram_handle}`);
     if (onboarding.linkedin_url) sections.push(`LinkedIn: ${onboarding.linkedin_url}`);
+  }
+
+  // ── 1c. Connected integrations — NEVER suggest re-connecting ──
+  sections.push('\n## INTEGRACIONES CONECTADAS');
+  sections.push('(El cliente YA tiene estas integraciones configuradas — no las sugieras reconectar ni configurar)');
+  if (googleIntegration && googleIntegration.status === 'connected') {
+    const parts: string[] = [];
+    parts.push('- Google Search Console: CONECTADO (scope: webmasters.readonly)');
+    if (googleIntegration.property_id) {
+      parts.push(`- Google Analytics 4: CONECTADO — property "${googleIntegration.property_name || googleIntegration.property_id}"`);
+    } else {
+      parts.push('- Google Analytics 4: OAuth autorizado pero sin property_id seleccionada (el cliente podría seleccionar una desde ajustes)');
+    }
+    if (googleIntegration.account_email) parts.push(`- Cuenta Google vinculada: ${googleIntegration.account_email}`);
+    sections.push(parts.join('\n'));
+  } else {
+    sections.push('- Google Analytics 4 / Search Console: NO conectados (puedes recomendar conectarlos si aplica)');
+  }
+
+  // ── 1d. Priority keywords — the client's declared strategic focus ──
+  const priorityKeywords = onboarding?.priority_keywords || [];
+  const keywordStrategy = onboarding?.keyword_strategy;
+  if (priorityKeywords.length > 0 || (keywordStrategy && (keywordStrategy.demandType || keywordStrategy.focus || keywordStrategy.growthService))) {
+    sections.push('\n## KEYWORDS PRIORITARIAS Y ESTRATEGIA (definidas por el cliente)');
+    sections.push('(Son el norte estratégico del cliente. Cualquier recomendación SEO/contenido DEBE referenciarlas cuando aplique — por nombre literal.)');
+
+    if (keywordStrategy) {
+      const stratParts: string[] = [];
+      if (keywordStrategy.demandType) {
+        stratParts.push(`Tipo de demanda: ${keywordStrategy.demandType === 'existing' ? 'captar demanda existente' : keywordStrategy.demandType === 'create' ? 'crear demanda nueva' : 'mezcla'}`);
+      }
+      if (keywordStrategy.focus) {
+        stratParts.push(`Foco: ${keywordStrategy.focus === 'volume' ? 'volumen' : 'cualificación'}`);
+      }
+      if (keywordStrategy.growthService) {
+        stratParts.push(`Servicio a hacer crecer: ${keywordStrategy.growthService}`);
+      }
+      if (stratParts.length) sections.push(`Estrategia declarada: ${stratParts.join(' · ')}`);
+    }
+
+    if (priorityKeywords.length > 0) {
+      sections.push(`Lista (${priorityKeywords.length} keywords):`);
+      priorityKeywords.forEach((kw: any, i: number) => {
+        const parts: string[] = [`  ${i + 1}. "${kw.keyword}"`];
+        if (kw.volume != null) parts.push(`${kw.volume} búsquedas/mes`);
+        if (kw.currentPosition != null) parts.push(`posición actual ${kw.currentPosition}`);
+        if (kw.difficulty != null) parts.push(`dificultad ${kw.difficulty}/100`);
+        if (kw.feasibility) parts.push(`factibilidad ${kw.feasibility}`);
+        if (kw.intent) parts.push(`intent ${kw.intent}`);
+        sections.push(parts[0] + ' (' + parts.slice(1).join(', ') + ')');
+      });
+    }
+  }
+
+  // ── 1e. Primary KPIs the client has chosen to track ──
+  const primaryKpis = onboarding?.primary_kpis || [];
+  if (primaryKpis.length > 0) {
+    sections.push('\n## KPIs OBJETIVO (elegidos por el cliente en ajustes)');
+    sections.push('(El cliente ya ha elegido estos KPIs como foco. Cualquier recomendación debería mover al menos uno de ellos.)');
+    primaryKpis.forEach((kpi: any) => {
+      const t = kpi.target != null ? ` · objetivo 6m: ${kpi.target}` : '';
+      sections.push(`- ${kpi.label} (key: ${kpi.key})${t}`);
+    });
   }
 
   // ── 1b. Business-type playbook ──────────────────────────────────
