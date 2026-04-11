@@ -30,17 +30,117 @@ const keywordOpportunities = hasSnapshotData
   : [];
 const autoSelectedKeywords = hasSnapshotData ? autoSelectPriorities(keywordOpportunities, 8) : [];
 
-const ALL_KPIS = [
-  { key: 'seo.keywordsTop10', label: 'Keywords Top 10', icon: 'search' },
-  { key: 'seo.traffic', label: 'Trafico Organico', icon: 'trending_up' },
-  { key: 'seo.domainRank', label: 'Domain Rank', icon: 'military_tech' },
-  { key: 'geo.mentionRate', label: 'Visibilidad en IA', icon: 'psychology' },
-  { key: 'web.mobile', label: 'PageSpeed Movil', icon: 'speed' },
-  { key: 'conversion.score', label: 'Funnel de Conversion', icon: 'conversion_path' },
-  { key: 'reputation.score', label: 'Reputacion', icon: 'star' },
-  { key: 'score', label: 'Score Global AION', icon: 'insights' },
-  { key: 'web.desktop', label: 'PageSpeed Desktop', icon: 'computer' },
+// ─── KPIs reales y medibles ──────────────────────────────────────────────
+// Each KPI resolves its current value from the latest snapshot (pipeline_output).
+// Non-measurable "scores" (conversion.score, reputation.score, Score Global) removed.
+type KpiDef = {
+  key: string;
+  label: string;
+  icon: string;
+  source: 'GSC' | 'GA4' | 'DFS' | 'PS' | 'GEO';
+  unit: '' | '%' | 'pos';
+  better: 'up' | 'down';
+  getCurrent: (r: any) => number | null;
+};
+
+// Helper: extract organic sessions from GA4 trafficSources
+function orgSessions(r: any): number | null {
+  const sources = r?.analytics?.ga4?.trafficSources;
+  if (!sources) return null;
+  return sources
+    .filter((t: any) => (t.medium || '').toLowerCase() === 'organic')
+    .reduce((sum: number, t: any) => sum + (t.sessions || 0), 0) || null;
+}
+
+const ALL_KPIS: KpiDef[] = [
+  // ─── Datos reales (GSC / GA4) ──
+  {
+    key: 'ga4.conversionRate', label: 'Tasa de Conversión', icon: 'conversion_path',
+    source: 'GA4', unit: '%', better: 'up',
+    getCurrent: (r) => {
+      const c = r?.analytics?.ga4?.conversions ?? 0;
+      const s = r?.analytics?.ga4?.sessions ?? 0;
+      return s > 0 ? Math.round((c / s) * 1000) / 10 : null;
+    },
+  },
+  {
+    key: 'ga4.organicSessions', label: 'Sesiones Orgánicas', icon: 'person_search',
+    source: 'GA4', unit: '', better: 'up',
+    getCurrent: (r) => orgSessions(r),
+  },
+  {
+    key: 'gsc.totalClicks', label: 'Clicks desde Google', icon: 'ads_click',
+    source: 'GSC', unit: '', better: 'up',
+    getCurrent: (r) => r?.analytics?.gsc?.totalClicks ?? null,
+  },
+  {
+    key: 'gsc.totalImpressions', label: 'Impresiones', icon: 'visibility',
+    source: 'GSC', unit: '', better: 'up',
+    getCurrent: (r) => r?.analytics?.gsc?.totalImpressions ?? null,
+  },
+  {
+    key: 'gsc.avgCtr', label: 'CTR Medio', icon: 'percent',
+    source: 'GSC', unit: '%', better: 'up',
+    getCurrent: (r) => r?.analytics?.gsc?.avgCtr ?? null,
+  },
+  {
+    key: 'gsc.avgPosition', label: 'Posición Media', icon: 'trending_down',
+    source: 'GSC', unit: 'pos', better: 'down',
+    getCurrent: (r) => r?.analytics?.gsc?.avgPosition ?? null,
+  },
+  // ─── Rankings y posicionamiento (DataForSEO) ──
+  {
+    key: 'seo.keywordsTop3', label: 'Keywords Top 3', icon: 'workspace_premium',
+    source: 'DFS', unit: '', better: 'up',
+    getCurrent: (r) => r?.seo?.keywordsTop3 ?? null,
+  },
+  {
+    key: 'seo.keywordsTop10', label: 'Keywords Top 10', icon: 'search',
+    source: 'DFS', unit: '', better: 'up',
+    getCurrent: (r) => r?.seo?.keywordsTop10 ?? null,
+  },
+  {
+    key: 'seo.traffic', label: 'Tráfico Orgánico (est.)', icon: 'trending_up',
+    source: 'DFS', unit: '', better: 'up',
+    getCurrent: (r) => r?.seo?.organicTrafficEstimate ?? null,
+  },
+  // ─── Visibilidad en IA ──
+  {
+    key: 'geo.mentionRate', label: 'Visibilidad en IA', icon: 'psychology',
+    source: 'GEO', unit: '%', better: 'up',
+    getCurrent: (r) => r?.geo?.mentionRate ?? null,
+  },
+  // ─── Rendimiento técnico ──
+  {
+    key: 'web.mobile', label: 'PageSpeed Móvil', icon: 'speed',
+    source: 'PS', unit: '', better: 'up',
+    getCurrent: (r) => r?.pagespeed?.mobile?.performance ?? null,
+  },
+  {
+    key: 'web.desktop', label: 'PageSpeed Desktop', icon: 'computer',
+    source: 'PS', unit: '', better: 'up',
+    getCurrent: (r) => r?.pagespeed?.desktop?.performance ?? null,
+  },
 ];
+
+const sourceColors: Record<string, { bg: string; fg: string }> = {
+  GSC: { bg: '#E1F5EE', fg: '#1D9E75' },
+  GA4: { bg: '#fef3c7', fg: '#92400e' },
+  DFS: { bg: '#EEF2FF', fg: '#4338CA' },
+  PS:  { bg: '#FEE2E2', fg: '#B91C1C' },
+  GEO: { bg: '#F3E8FF', fg: '#7C3AED' },
+};
+
+// Format helper for displaying a KPI value
+function fmtKpi(v: number | null, unit: string): string {
+  if (v == null) return '—';
+  if (unit === '%') return `${v}%`;
+  if (unit === 'pos') return v.toFixed(1);
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
+  return String(v);
+}
+
+const pipelineOutput = snapshot?.pipeline_output || {};
 const currentUserRole = Astro.locals.user?.role ?? 'viewer';
 const canManageTeam = currentUserRole === 'admin' || currentUserRole === 'superuser';
 
@@ -121,23 +221,44 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
       </div>
       <p style="font-size:13px;color:#64748b;margin-bottom:20px;">Estos KPIs aparecen como metricas principales en tu dashboard. Selecciona 3 y define tus objetivos a 6 meses.</p>
 
-      <div id="settings-kpi-list" style="display:flex;flex-direction:column;gap:8px;">
+      <div id="settings-kpi-list" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         {ALL_KPIS.map(kpi => {
           const saved = savedKpis.find((k: any) => k.key === kpi.key);
           const isSelected = !!saved;
+          const current = kpi.getCurrent(pipelineOutput);
+          const hasData = current != null;
+          const currentDisplay = fmtKpi(current, kpi.unit);
+          const srcColor = sourceColors[kpi.source];
           return (
             <div class="settings-kpi-row" data-key={kpi.key} data-label={kpi.label}
-              style={`display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid ${isSelected ? '#1A4B8C' : '#f0f0f0'};border-radius:10px;cursor:pointer;transition:all 0.15s;background:${isSelected ? '#f0f4ff' : 'white'};`}>
-              <input type="checkbox" class="kpi-cb" checked={isSelected}
-                style="accent-color:#1A4B8C;width:18px;height:18px;cursor:pointer;" />
-              <span class="material-symbols-outlined" style={`font-size:20px;color:${isSelected ? '#1A4B8C' : '#94a3b8'};`}>{kpi.icon}</span>
-              <span style={`flex:1;font-size:14px;font-weight:${isSelected ? '700' : '500'};color:#1a1a2e;`}>{kpi.label}</span>
-              <div style={`display:flex;align-items:center;gap:6px;${isSelected ? '' : 'opacity:0.3;pointer-events:none;'}`}>
-                <label style="font-size:11px;color:#94a3b8;">Objetivo:</label>
-                <input type="number" class="kpi-target-input" data-key={kpi.key}
-                  value={saved?.target ?? ''}
-                  placeholder="—"
-                  style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:right;" />
+              style={`display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:2px solid ${isSelected ? '#1A4B8C' : '#f0f0f0'};border-radius:10px;transition:all 0.15s;background:${isSelected ? '#f0f4ff' : 'white'};`}>
+
+              <!-- Row 1: checkbox + icon + label + source badge -->
+              <div class="kpi-row-header" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" class="kpi-cb" checked={isSelected}
+                  style="accent-color:#1A4B8C;width:16px;height:16px;cursor:pointer;flex-shrink:0;" />
+                <span class="material-symbols-outlined" style={`font-size:18px;color:${isSelected ? '#1A4B8C' : '#94a3b8'};flex-shrink:0;`}>{kpi.icon}</span>
+                <span style={`flex:1;font-size:13px;font-weight:${isSelected ? '700' : '600'};color:#1a1a2e;line-height:1.2;`}>{kpi.label}</span>
+                <span style={`font-size:9px;font-weight:800;padding:3px 7px;border-radius:999px;background:${srcColor.bg};color:${srcColor.fg};letter-spacing:0.05em;flex-shrink:0;`} title={`Fuente: ${kpi.source}`}>{kpi.source}</span>
+              </div>
+
+              <!-- Row 2: current → target -->
+              <div style="display:flex;align-items:center;gap:8px;padding-left:26px;">
+                <div style="flex:1;min-width:0;">
+                  <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;margin-bottom:2px;">Actual</p>
+                  <p style={`font-size:16px;font-weight:800;color:${hasData ? '#1a1a2e' : '#cbd5e1'};line-height:1;`}>{currentDisplay}</p>
+                </div>
+                <span class="material-symbols-outlined" style="font-size:16px;color:#cbd5e1;">arrow_forward</span>
+                <div style="flex:1;min-width:0;">
+                  <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;margin-bottom:2px;">Objetivo 6m</p>
+                  <div style="display:flex;align-items:center;gap:3px;">
+                    <input type="number" step="0.1" class="kpi-target-input" data-key={kpi.key}
+                      value={saved?.target ?? ''}
+                      placeholder="—"
+                      style="width:100%;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-weight:700;text-align:left;color:#1A4B8C;background:white;" />
+                    {kpi.unit && <span style="font-size:12px;color:#64748b;font-weight:600;">{kpi.unit === 'pos' ? '' : kpi.unit}</span>}
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -434,6 +555,23 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
     }
 
     // Save KPIs
+    // Toggle checkbox when clicking the header area (but NOT the target input)
+    document.querySelectorAll('.kpi-row-header').forEach(header => {
+      header.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('.kpi-target-input')) return;
+        const cb = header.querySelector('.kpi-cb') as HTMLInputElement;
+        if (e.target !== cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+        const row = header.closest('.settings-kpi-row') as HTMLElement;
+        if (cb.checked) {
+          row.style.borderColor = '#1A4B8C';
+          row.style.background = '#f0f4ff';
+        } else {
+          row.style.borderColor = '#f0f0f0';
+          row.style.background = 'white';
+        }
+      });
+    });
+
     document.getElementById('btn-save-kpis')?.addEventListener('click', async () => {
       const selected: any[] = [];
       document.querySelectorAll('.settings-kpi-row').forEach(row => {
@@ -442,8 +580,8 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
         const key = (row as HTMLElement).dataset.key!;
         const label = (row as HTMLElement).dataset.label!;
         const targetInput = row.querySelector('.kpi-target-input') as HTMLInputElement;
-        const target = targetInput?.value ? parseInt(targetInput.value, 10) : undefined;
-        selected.push({ key, label, ...(target && !isNaN(target) ? { target } : {}) });
+        const target = targetInput?.value ? parseFloat(targetInput.value) : undefined;
+        selected.push({ key, label, ...(target != null && !isNaN(target) ? { target } : {}) });
       });
 
       if (selected.length === 0 || selected.length > 3) {
