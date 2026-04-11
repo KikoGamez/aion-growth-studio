@@ -2,9 +2,12 @@ import type { APIRoute } from 'astro';
 import {
   findRecentAuditByDomain, createSnapshotFromAudit, IS_DEMO,
   getClientOnboarding, getAllSnapshots, logRecommendation,
+  getActionPlan, getCompletedActions, getRejectedRecommendations,
+  getClientById,
 } from '../../../lib/db';
 import { createAuditPage } from '../../../lib/audit/supabase-storage';
 import { generateBriefing } from '../../../lib/briefing';
+import { runGrowthAgent } from '../../../lib/ai/growth-agent';
 import { getSupabase } from '../../../lib/db';
 
 export const prerender = false;
@@ -86,8 +89,9 @@ async function seedRecommendationsFromAudit(clientId: string, clientName: string
 
   const latest = snapshots[snapshots.length - 1];
   const auditResults = latest.pipeline_output || {};
+  const priorSnapshot = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null;
 
-  // Generate briefing with Sonnet
+  // Generate briefing with Sonnet (legacy — kept until commit 3)
   const briefing = await generateBriefing({
     onboarding: onboarding || { client_id: clientId } as any,
     auditResults,
@@ -97,16 +101,49 @@ async function seedRecommendationsFromAudit(clientId: string, clientName: string
 
   console.log(`[first-run] Briefing generated: ${briefing.priorities.length} priorities, ${briefing.quickWins.length} quick wins`);
 
-  // Save briefing into the snapshot
+  // Generate Growth Agent analysis (unified, coherent narrative + actions)
+  // Runs in parallel to briefing during transition. Fails soft — won't block first-run.
+  let growthAnalysis: any = null;
   try {
-    const sb = getSupabase();
-    const updated = { ...auditResults, briefing };
-    await sb.from('snapshots').update({ pipeline_output: updated }).eq('id', latest.id);
+    const [client, inProgress, completed, rejected] = await Promise.all([
+      getClientById(clientId).catch(() => null),
+      getActionPlan(clientId).catch(() => []),
+      getCompletedActions(clientId).catch(() => []),
+      getRejectedRecommendations(clientId).catch(() => []),
+    ]);
+
+    growthAnalysis = await runGrowthAgent({
+      clientName,
+      domain,
+      sector: client?.sector,
+      tier: client?.tier,
+      onboarding,
+      pipelineOutput: auditResults,
+      priorSnapshot: priorSnapshot ? { date: priorSnapshot.date, pipeline_output: priorSnapshot.pipeline_output || {} } : null,
+      priorityKeywords: onboarding?.priority_keywords,
+      keywordStrategy: onboarding?.keyword_strategy,
+      actionHistory: {
+        completed: completed.map(a => ({ title: a.title, impact: a.impact, completedAt: a.completed_at })),
+        inProgress: inProgress.filter(a => a.status === 'in_progress').map(a => ({ title: a.title, impact: a.impact })),
+        rejected: rejected.map(r => ({ title: r.title, reason: r.rejected_reason })),
+      },
+    });
+    console.log(`[first-run] Growth Agent: ${growthAnalysis.prioritizedActions.length} actions, model=${growthAnalysis.model}`);
   } catch (e) {
-    console.error(`[first-run] Briefing save failed:`, (e as Error).message);
+    console.error(`[first-run] Growth Agent failed (non-blocking):`, (e as Error).message);
   }
 
-  // Seed recommendations from briefing priorities
+  // Save briefing + growth_analysis into the snapshot
+  try {
+    const sb = getSupabase();
+    const updated: Record<string, any> = { ...auditResults, briefing };
+    if (growthAnalysis) updated.growth_analysis = growthAnalysis;
+    await sb.from('snapshots').update({ pipeline_output: updated }).eq('id', latest.id);
+  } catch (e) {
+    console.error(`[first-run] Snapshot save failed:`, (e as Error).message);
+  }
+
+  // Seed recommendations from briefing priorities (commit 2 will switch to growth_analysis.prioritizedActions)
   for (const priority of briefing.priorities) {
     await logRecommendation({
       client_id: clientId,
