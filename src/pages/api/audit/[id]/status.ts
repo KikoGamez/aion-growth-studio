@@ -92,6 +92,65 @@ export const GET: APIRoute = async ({ params, request }) => {
     if (PHASE_ENTRY_STEPS.has(currentStep)) {
       const { moduleResults, nextStep, extraProps } = await executePhase(currentStep, audit);
 
+      // Cross-poll retry for phases: if ANY module in this phase timed out
+      // or hit a transient error AND we haven't exhausted phase-level retries,
+      // save the successful results but DON'T advance — next poll re-runs
+      // the phase, and modules that already have good data will skip fast.
+      const MAX_PHASE_RETRIES = 2;
+      const transientFailures = moduleResults.filter((r) => {
+        const reason = (r.result as any)?.reason || (r.result as any)?.error || '';
+        return ((r.result as any)?.skipped || (r.result as any)?.error) &&
+          /timed out|timeout|aborted|econn|enotfound|network|fetch failed/i.test(reason);
+      });
+      const phaseRetryKey = `_phase_retry_${currentStep}`;
+      const prevPhaseRetries = Number((audit.results as any)?.[phaseRetryKey] || 0);
+
+      if (transientFailures.length > 0 && prevPhaseRetries < MAX_PHASE_RETRIES) {
+        // Persist the successful results so we don't redo them, but stay on
+        // the same phase so the next poll retries the failed ones.
+        // Inject the retry counter into the successful results save so we
+        // know how many attempts we've made.
+        const successfulResults = moduleResults.filter((r) => !transientFailures.includes(r));
+        // Tag all transient failures with a poll retry marker so executeStepWithTimeout
+        // or the runStep logic can see the previous failure.
+        const trackedResults = [
+          ...successfulResults,
+          ...transientFailures.map((r) => ({
+            moduleKey: r.moduleKey,
+            result: { ...(r.result as any), _poll_retry: prevPhaseRetries + 1 },
+          })),
+          // Store the phase retry counter as a pseudo-module
+          { moduleKey: phaseRetryKey, result: { _count: prevPhaseRetries + 1 } as any },
+        ];
+        await savePhaseResults(id, trackedResults, currentStep, extraProps);
+        console.log(`[audit:phase ${currentStep}] ${prevPhaseRetries + 1}/${MAX_PHASE_RETRIES} phase-retry — ${transientFailures.length} modules failed: ${transientFailures.map(f => f.moduleKey).join(',')}`);
+
+        const retryProgress = STEP_PROGRESS[currentStep as AuditStep] ?? 50;
+        if (isPlatform) {
+          return new Response(
+            JSON.stringify({
+              status: 'running',
+              currentModule: currentStep,
+              completedModules: [...Object.keys(audit.results), ...successfulResults.map(r => r.moduleKey)],
+              retrying: true,
+              retryAttempt: prevPhaseRetries + 1,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            status: 'processing',
+            progress: retryProgress,
+            module_completed: successfulResults.map(r => r.moduleKey).join(','),
+            currentStep: currentStep,
+            retrying: true,
+            retryAttempt: prevPhaseRetries + 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
       await savePhaseResults(id, moduleResults, nextStep, extraProps);
 
       const isCompleted = nextStep === 'done';
@@ -122,7 +181,7 @@ export const GET: APIRoute = async ({ params, request }) => {
       );
     }
 
-    // ── Single step execution (crawl + score/insights/qa) ────────
+    // ── Single step execution (crawl + score + growth_agent) ────────
     const { result, moduleKey, nextStep } = await executeStep(currentStep, audit);
 
     const extraProps: { score?: number; sector?: string; url?: string } = {};
@@ -137,6 +196,53 @@ export const GET: APIRoute = async ({ params, request }) => {
     // from Supabase and downstream modules query the wrong domain.
     if (moduleKey === 'crawl' && (result as any)?.finalUrl && (result as any).finalUrl !== audit.url) {
       extraProps.url = (result as any).finalUrl;
+    }
+
+    // ── Cross-poll retry on timeout/transient errors ─────────────────
+    // If the step timed out or hit a transient network error, do NOT advance
+    // current_step. Save the failed attempt with a poll-retry counter and let
+    // the next HTTP poll re-run the step with a fresh Vercel 300s budget.
+    // This way there is never an "audit dies because single step exceeded
+    // function budget" scenario — each retry gets its own full budget.
+    const MAX_POLL_RETRIES = 3;
+    const resultReason = (result as any)?.reason || (result as any)?.error || '';
+    const isTransientFailure = (
+      (result as any)?.skipped === true || (result as any)?.error
+    ) && /timed out|timeout|aborted|econn|enotfound|network|fetch failed/i.test(resultReason);
+    const prevPollRetries = Number(
+      ((audit.results as any)?.[moduleKey] as any)?._poll_retry || 0,
+    );
+
+    if (isTransientFailure && prevPollRetries < MAX_POLL_RETRIES) {
+      const retryMarked: any = { ...result, _poll_retry: prevPollRetries + 1 };
+      // Keep current_step unchanged so the next poll re-runs this step
+      await saveModuleResult(id, moduleKey, retryMarked, currentStep, extraProps);
+      console.log(`[audit:${moduleKey}] ${prevPollRetries + 1}/${MAX_POLL_RETRIES} poll-retry scheduled (reason: ${resultReason.slice(0, 80)})`);
+
+      const retryProgress = STEP_PROGRESS[currentStep as AuditStep] ?? 99;
+      if (isPlatform) {
+        return new Response(
+          JSON.stringify({
+            status: 'running',
+            currentModule: currentStep,
+            completedModules: Object.keys(audit.results),
+            retrying: true,
+            retryAttempt: prevPollRetries + 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          status: 'processing',
+          progress: retryProgress,
+          module_completed: null,
+          currentStep: currentStep,
+          retrying: true,
+          retryAttempt: prevPollRetries + 1,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
     }
 
     await saveModuleResult(id, moduleKey, result, nextStep, extraProps);
@@ -203,16 +309,47 @@ export const GET: APIRoute = async ({ params, request }) => {
   } catch (err: any) {
     console.error('Audit status error:', err);
 
-    // If growth_agent step fails/timeouts, complete the audit without the unified
-    // analysis rather than marking as error. The dashboard + audit report will
-    // fall back to metric-only display. Legacy 'qa' step no longer exists.
+    // If a single-step executeStep threw (likely transient — network, LLM
+    // abort, Vercel edge error), try to bump the poll-retry counter so the
+    // next frontend poll tries again with a fresh function budget. Only if
+    // we exhaust MAX_POLL_RETRIES do we surface the failure.
     try {
       const audit = await getAuditPage(id);
-      if (audit.currentStep === 'growth_agent') {
-        console.log(`[audit] growth_agent timed out for ${id} — completing without unified analysis`);
-        await saveModuleResult(id, 'growth_agent', { skipped: true, reason: 'timeout' }, 'done', {});
+      const currentStep = audit.currentStep as string;
+      const MAX_POLL_RETRIES = 3;
+      const existing = (audit.results as any)?.[currentStep];
+      const prevPollRetries = Number(existing?._poll_retry || 0);
 
-        // Still send email + update lead with score-only summary
+      if (prevPollRetries < MAX_POLL_RETRIES) {
+        const retryMarked = {
+          ...(existing || {}),
+          skipped: true,
+          reason: `thrown: ${err?.message?.slice(0, 80) || 'unknown'}`,
+          _poll_retry: prevPollRetries + 1,
+        };
+        await saveModuleResult(id, currentStep as any, retryMarked, currentStep as any, {});
+        console.log(`[audit:${currentStep}] outer catch — poll-retry ${prevPollRetries + 1}/${MAX_POLL_RETRIES} scheduled`);
+
+        return new Response(
+          JSON.stringify({
+            status: isPlatform ? 'running' : 'processing',
+            currentStep,
+            retrying: true,
+            retryAttempt: prevPollRetries + 1,
+            progress: STEP_PROGRESS[currentStep as AuditStep] ?? 99,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      // Exhausted retries. For growth_agent specifically, gracefully complete
+      // the audit with a skipped growth_agent block so the rest of the report
+      // still renders — the deterministic fallback in growth-agent.ts produces
+      // usable (if generic) recommendations from the real pipeline data.
+      if (currentStep === 'growth_agent') {
+        console.log(`[audit] growth_agent exhausted ${MAX_POLL_RETRIES} retries for ${id} — completing with fallback`);
+        await saveModuleResult(id, 'growth_agent', { skipped: true, reason: `exhausted ${MAX_POLL_RETRIES} retries` }, 'done', {});
+
         if (audit.email) {
           const { sendPostAuditEmail } = await import('../../../../lib/email/post-audit');
           const { updateLeadStatus } = await import('../../../../lib/db');

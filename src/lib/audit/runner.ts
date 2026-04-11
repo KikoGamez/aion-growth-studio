@@ -316,9 +316,23 @@ export interface PhaseExecution {
   extraProps: { score?: number; sector?: string };
 }
 
+/** A module result counts as "good — don't re-run" unless it's a transient failure we can retry */
+function isModuleResultGood(result: ModuleResult | undefined): boolean {
+  if (!result) return false;
+  const reason = (result as any)?.reason || (result as any)?.error || '';
+  const isTransient = ((result as any)?.skipped || (result as any)?.error) &&
+    /timed out|timeout|aborted|econn|enotfound|network|fetch failed/i.test(reason);
+  if (isTransient) return false;
+  // Any other state (success, or a non-transient skip like "API key missing")
+  // counts as final and shouldn't be re-run on a phase retry.
+  return true;
+}
+
 /**
  * Run all steps in a phase in parallel (Promise.allSettled).
- * Returns all results regardless of individual failures.
+ * On a phase re-poll (cross-poll retry), skips modules that already have
+ * good results from the previous attempt — we only re-run the ones that
+ * failed transiently.
  */
 export async function executePhase(
   phaseEntry: AuditStep,
@@ -329,6 +343,11 @@ export async function executePhase(
 
   const settled = await Promise.allSettled(
     steps.map(async (step) => {
+      const existing = audit.results[step];
+      if (isModuleResultGood(existing)) {
+        // Reuse the good result from the previous phase attempt
+        return { moduleKey: step, result: existing };
+      }
       const result = await executeStepWithTimeout(step, audit);
       return { moduleKey: step, result };
     }),
