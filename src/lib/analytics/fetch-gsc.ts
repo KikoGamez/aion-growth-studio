@@ -136,7 +136,11 @@ export async function fetchGSCData(domain: string, accessToken: string): Promise
     });
     if (indexRes.ok) {
       const indexData = await indexRes.json();
-      indexedPages = (indexData.sitemap || []).reduce((s: number, sm: any) => s + (sm.contents?.[0]?.submitted || 0), 0);
+      // GSC Sitemaps API returns `submitted` as a string — parse to int before adding.
+      indexedPages = (indexData.sitemap || []).reduce(
+        (s: number, sm: any) => s + parseInt(sm.contents?.[0]?.submitted ?? '0', 10),
+        0,
+      );
     }
   } catch { /* Optional */ }
 
