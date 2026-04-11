@@ -271,7 +271,7 @@ O si hay correcciones:
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60_000);
+    const timer = setTimeout(() => controller.abort(), 40_000);
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -298,22 +298,22 @@ O si hay correcciones:
 
     const data = await res.json();
     const text = data?.content?.[0]?.text || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('[growth-agent-qa] No JSON in Opus response');
-      return { approved: true, corrections: [], summary: 'QA skipped — no JSON parseable' };
+
+    if (data.usage) {
+      console.log(`[growth-agent-qa] Opus tokens: input=${data.usage.input_tokens} out=${data.usage.output_tokens}`);
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = parseQAJson(text);
+    if (!parsed) {
+      console.error('[growth-agent-qa] Could not parse QA JSON — accepting draft as-is');
+      return { approved: true, corrections: [], summary: 'QA skipped — JSON no parseable' };
+    }
+
     const corrections: Correction[] = Array.isArray(parsed.corrections)
       ? parsed.corrections
           .filter((c: any) => c && typeof c.path === 'string' && c.newValue !== undefined)
           .slice(0, 10)
       : [];
-
-    if (data.usage) {
-      console.log(`[growth-agent-qa] Opus tokens: input=${data.usage.input_tokens} out=${data.usage.output_tokens}`);
-    }
 
     return {
       approved: corrections.length === 0 || parsed.approved === true,
@@ -324,6 +324,85 @@ O si hay correcciones:
     console.error('[growth-agent-qa] Error:', (err as Error).message);
     return { approved: true, corrections: [], summary: `QA skipped — ${(err as Error).message}` };
   }
+}
+
+// ─── Robust JSON parsing for Opus QA output ────────────────────────────
+// Opus occasionally returns JSON with trailing commas, unescaped newlines inside
+// strings, or markdown fences. Try hard to recover something parseable before
+// giving up — if we fail, the caller returns an un-corrected but valid analysis.
+function parseQAJson(rawText: string): any | null {
+  if (!rawText) return null;
+
+  // 1. Strip markdown fences if present
+  let text = rawText.trim();
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) text = fenceMatch[1].trim();
+
+  // 2. Extract outermost JSON object
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+  const candidate = jsonMatch[0];
+
+  // 3. Direct parse (happy path)
+  try { return JSON.parse(candidate); } catch { /* fall through to repair */ }
+
+  // 4. Repair attempts
+  const attempts = [
+    // 4a. strip trailing commas before } or ]
+    () => candidate.replace(/,(\s*[}\]])/g, '$1'),
+    // 4b. strip trailing commas + escape raw newlines/tabs inside string literals
+    () => {
+      let out = candidate.replace(/,(\s*[}\]])/g, '$1');
+      let inStr = false;
+      let esc = false;
+      let rebuilt = '';
+      for (let i = 0; i < out.length; i++) {
+        const ch = out[i];
+        if (esc) { rebuilt += ch; esc = false; continue; }
+        if (ch === '\\') { rebuilt += ch; esc = true; continue; }
+        if (ch === '"') { inStr = !inStr; rebuilt += ch; continue; }
+        if (inStr) {
+          if (ch === '\n') { rebuilt += '\\n'; continue; }
+          if (ch === '\r') { rebuilt += '\\r'; continue; }
+          if (ch === '\t') { rebuilt += '\\t'; continue; }
+          // strip other control chars
+          if (ch.charCodeAt(0) < 0x20) continue;
+        }
+        rebuilt += ch;
+      }
+      return rebuilt;
+    },
+    // 4c. truncate at first structural error by scanning brace balance up to last valid point
+    () => {
+      let depth = 0;
+      let inStr = false;
+      let esc = false;
+      let lastGood = -1;
+      const s = candidate;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (esc) { esc = false; continue; }
+        if (ch === '\\') { esc = true; continue; }
+        if (ch === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (ch === '{' || ch === '[') depth++;
+        else if (ch === '}' || ch === ']') {
+          depth--;
+          if (depth === 0) { lastGood = i; break; }
+        }
+      }
+      return lastGood > 0 ? s.slice(0, lastGood + 1) : s;
+    },
+  ];
+
+  for (const fix of attempts) {
+    try {
+      const repaired = fix();
+      return JSON.parse(repaired);
+    } catch { /* try next */ }
+  }
+
+  return null;
 }
 
 // ─── Apply surgical corrections to a GrowthAnalysis ────────────────────

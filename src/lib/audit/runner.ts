@@ -68,7 +68,7 @@ export const STEP_TIMEOUTS: Record<string, number> = {
   instagram: 90_000,
   linkedin: 90_000,
   reputation: 30_000,
-  growth_agent: 180_000, // Sonnet draft + structural + Opus QA + corrections — up to ~90s total in practice
+  growth_agent: 100_000, // Sonnet draft (~30s) + structural + Opus QA (~40s) + corrections — safety margin
   score: 15_000,
   competitors: 30_000,
   competitor_pagespeed: 120_000,
@@ -113,6 +113,12 @@ export async function executeStepWithTimeout(
     reason: err.message.slice(0, 120),
     _retryable: true,
   }));
+
+  // growth_agent has its own internal fallback (deterministic analysis from pipeline data).
+  // A retry would double the step budget (~200s) and push the audit past Vercel's 300s limit.
+  if (step === 'growth_agent') {
+    delete (result as any)._retryable;
+  }
 
   // Retry once on timeout or error — many modules fail intermittently
   if ((result.skipped || (result as any).error) && (result as any)._retryable) {
