@@ -5,11 +5,14 @@ import type { AuditStep, AuditStepOrDone } from '../audit/types';
 import {
   createSnapshotFromAudit, getAllSnapshots, getAllRecommendations,
   getClientOnboarding, logRecommendation, logInteraction,
+  getClientById, getActionPlan, getCompletedActions, getRejectedRecommendations,
+  getSupabase,
 } from '../db';
 import { analyzeEvolution } from './diff-engine';
 import { generateBriefing } from '../briefing';
 import { buildClientContext } from './client-context';
 import { ingestAnalytics } from '../analytics/ingest';
+import { runGrowthAgent } from '../ai/growth-agent';
 
 interface RadarClient {
   id: string;
@@ -189,6 +192,51 @@ export async function runRadarForClient(client: RadarClient): Promise<RadarRunRe
         }
       }
       result.newRecommendations = newCount;
+
+      // 5b. Growth Agent — unified weekly narrative (executive summary,
+      // pillar analyses, prioritized actions). Fails soft: non-blocking.
+      try {
+        const [clientRow, inProgress, completed, rejected] = await Promise.all([
+          getClientById(client.id).catch(() => null),
+          getActionPlan(client.id).catch(() => []),
+          getCompletedActions(client.id).catch(() => []),
+          getRejectedRecommendations(client.id).catch(() => []),
+        ]);
+        const priorSnapshot = snapshots.length >= 2 ? snapshots[snapshots.length - 2] : null;
+        const growthAnalysis = await runGrowthAgent({
+          clientName: client.name,
+          domain: client.domain,
+          sector: clientRow?.sector,
+          tier: clientRow?.tier,
+          onboarding,
+          pipelineOutput: latestSnapshot.pipeline_output,
+          priorSnapshot: priorSnapshot
+            ? { date: priorSnapshot.date, pipeline_output: priorSnapshot.pipeline_output || {} }
+            : null,
+          priorityKeywords: onboarding?.priority_keywords,
+          keywordStrategy: onboarding?.keyword_strategy,
+          actionHistory: {
+            completed: completed.map((a: any) => ({ title: a.title, impact: a.impact, completedAt: a.completed_at })),
+            inProgress: inProgress.filter((a: any) => a.status === 'in_progress').map((a: any) => ({ title: a.title, impact: a.impact })),
+            rejected: rejected.map((r: any) => ({ title: r.title, reason: r.rejected_reason })),
+          },
+        });
+        console.log(`[radar] Growth Agent: ${growthAnalysis.prioritizedActions.length} actions for ${client.domain}`);
+
+        // Persist growth_analysis into the snapshot's pipeline_output
+        const sb = getSupabase();
+        const { data: snapData } = await sb
+          .from('snapshots')
+          .select('pipeline_output')
+          .eq('id', snapshotId)
+          .single();
+        if (snapData) {
+          const updated = { ...snapData.pipeline_output, growth_analysis: growthAnalysis };
+          await sb.from('snapshots').update({ pipeline_output: updated }).eq('id', snapshotId);
+        }
+      } catch (err) {
+        console.error(`[radar] Growth Agent failed (non-blocking) for ${client.domain}:`, (err as Error).message);
+      }
     }
 
     // 6. Log interaction
