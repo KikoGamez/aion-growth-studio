@@ -143,17 +143,44 @@ async function seedRecommendationsFromAudit(clientId: string, clientName: string
     console.error(`[first-run] Snapshot save failed:`, (e as Error).message);
   }
 
-  // Seed recommendations from briefing priorities (commit 2 will switch to growth_analysis.prioritizedActions)
-  for (const priority of briefing.priorities) {
-    await logRecommendation({
-      client_id: clientId,
-      source: 'radar',
-      title: priority.title,
-      description: priority.description,
-      impact: priority.impact || 'high',
-      status: 'pending',
-    });
-  }
+  // Seed recommendations — prefer Growth Agent prioritizedActions, fall back to briefing.priorities
+  const actionsToSeed = growthAnalysis?.prioritizedActions?.length
+    ? growthAnalysis.prioritizedActions
+    : null;
 
-  console.log(`[first-run] Seeded ${briefing.priorities.length} recommendations for ${domain}`);
+  if (actionsToSeed) {
+    for (const action of actionsToSeed) {
+      await logRecommendation({
+        client_id: clientId,
+        source: 'growth_agent',
+        pillar: action.pillar,
+        title: action.title,
+        description: action.description,
+        impact: action.businessImpact || 'high',
+        status: 'pending',
+        data: {
+          rank: action.rank,
+          detail: action.detail,
+          expectedOutcome: action.expectedOutcome,
+          effort: action.effort,
+          timeframe: action.timeframe,
+          rationale: action.rationale,
+          linkedGap: action.linkedGap,
+        },
+      });
+    }
+    console.log(`[first-run] Seeded ${actionsToSeed.length} Growth Agent actions for ${domain}`);
+  } else {
+    for (const priority of briefing.priorities) {
+      await logRecommendation({
+        client_id: clientId,
+        source: 'radar',
+        title: priority.title,
+        description: priority.description,
+        impact: priority.impact || 'high',
+        status: 'pending',
+      });
+    }
+    console.log(`[first-run] Seeded ${briefing.priorities.length} briefing priorities (fallback) for ${domain}`);
+  }
 }

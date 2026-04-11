@@ -339,10 +339,14 @@ const sevIcon: Record<string, { icon: string; color: string; bg: string }> = {
   good: { icon: 'check_circle', color: '#1D9E75', bg: '#E1F5EE' },
 };
 
-// Qualitative assessment
+// Qualitative assessment — prefer Growth Agent narrative, fall back to template.
 const seoScore = scoreBreakdown.seo ?? 0;
+const growthAnalysis = r.growth_analysis;
+const seoAgentNarrative = growthAnalysis?.pillarAnalysis?.seo;
 let assessment = '';
-if (seoSkipped) {
+if (seoAgentNarrative?.assessment) {
+  assessment = seoAgentNarrative.assessment;
+} else if (seoSkipped) {
   assessment = `${client.name} aún no tiene presencia medible en buscadores — no se detectan keywords posicionadas ni tráfico orgánico. ${criticals.length > 0 ? `Hay ${criticals.length} problema${criticals.length > 1 ? 's' : ''} crítico${criticals.length > 1 ? 's' : ''} de SEO on-page que resolver primero.` : ''} ${(crawl.wordCount as number) > 500 ? `La buena noticia: tu web tiene ${crawl.wordCount} palabras de contenido, ${ssl.valid ? 'SSL activo' : ''} y ${crawl.hasSitemap ? 'sitemap' : ''} — hay base para trabajar.` : ''}`;
 } else if (seoScore < 30) {
   assessment = `Visibilidad SEO crítica (${seoScore}/100). Con ${seo.keywordsTop10 || 0} keywords en top 10 y ~${seo.organicTrafficEstimate || 0} visitas orgánicas, la web está prácticamente invisible en Google.`;
@@ -351,6 +355,7 @@ if (seoSkipped) {
 } else {
   assessment = `SEO competitivo (${seoScore}/100). ${seo.keywordsTop10 || 0} keywords en top 10 con ~${(seo.organicTrafficEstimate || 0).toLocaleString()} visitas.`;
 }
+const seoKeyFinding = seoAgentNarrative?.keyFinding;
 ---
 
 <DashboardLayout title="SEO" currentPath="/dashboard/pillar/seo" tier={tier} clientName={client.name} domain={client.domain} lastReportMonth={snapshot.month} lastReportDate={snapshot.date}>
@@ -546,6 +551,15 @@ if (seoSkipped) {
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#69ff87;">Diagnóstico AION</span>
     </div>
     <p style="font-size:15px;line-height:1.7;color:#e2e8f0;">{assessment}</p>
+    {seoKeyFinding && (
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(105,255,135,0.25);">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span class="material-symbols-outlined" style="font-size:14px;color:#69ff87;">priority_high</span>
+          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#69ff87;">Lo que más importa</span>
+        </div>
+        <p style="font-size:14px;line-height:1.6;color:white;font-weight:600;">{seoKeyFinding}</p>
+      </div>
+    )}
   </section>
 
   <!-- ══ Auditoría SEO On-Page ══ -->

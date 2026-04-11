@@ -99,6 +99,12 @@ if (queryGroups.length === 0 && queries.length > 0) {
   queryGroups.push({ stage: 'all', label: 'Todas las consultas', queries });
 }
 
+// ─── Growth Agent narrative (unified — replaces geo.executiveNarrative) ─
+const growthAnalysis = r.growth_analysis;
+const geoAgentNarrative = growthAnalysis?.pillarAnalysis?.geo;
+const geoAssessment = geoAgentNarrative?.assessment || geo.executiveNarrative;
+const geoKeyFinding = geoAgentNarrative?.keyFinding;
+
 // ─── GEO Recommendations (centralized system) ──────────────────────────
 const geoRecs = await getRecommendationsByPillar(client.id, 'geo');
 
@@ -236,13 +242,22 @@ function buildDonut(score: number, radius: number, stroke: number) {
   <!-- ══════════════════════════════════════════════════════════════════════ -->
   <!-- EXECUTIVE NARRATIVE                                                  -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  {geo.executiveNarrative && (
+  {geoAssessment && (
     <section style={`background:white;border-radius:16px;padding:24px 28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:4px solid ${GEO_COLOR};`}>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <span class="material-symbols-outlined" style={`font-size:18px;color:${GEO_COLOR};`}>auto_awesome</span>
         <p style={`font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${GEO_COLOR};`}>Análisis del Agente IA</p>
       </div>
-      <p style="font-size:14px;color:#1a1a2e;line-height:1.7;">{geo.executiveNarrative}</p>
+      <p style="font-size:14px;color:#1a1a2e;line-height:1.7;">{geoAssessment}</p>
+      {geoKeyFinding && (
+        <div style={`margin-top:14px;padding-top:14px;border-top:1px solid ${GEO_COLOR}20;`}>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span class="material-symbols-outlined" style={`font-size:14px;color:${GEO_COLOR};`}>priority_high</span>
+            <span style={`font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${GEO_COLOR};`}>Lo que más importa</span>
+          </div>
+          <p style="font-size:14px;line-height:1.6;color:#1a1a2e;font-weight:600;">{geoKeyFinding}</p>
+        </div>
+      )}
     </section>
   )}
 

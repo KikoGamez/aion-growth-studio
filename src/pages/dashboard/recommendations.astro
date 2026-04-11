@@ -9,12 +9,24 @@ const tier: Tier = client.tier;
 const snapshot = await getLatestSnapshot(client.id);
 const hasData = snapshot.id !== 'empty';
 
-const [proposed, rejected, actionPlan, completed] = hasData ? await Promise.all([
+const [proposedRaw, rejected, actionPlan, completed] = hasData ? await Promise.all([
   getProposedRecommendations(client.id),
   getRejectedRecommendations(client.id),
   getActionPlan(client.id),
   getCompletedActions(client.id),
 ]) : [[], [], [], []];
+
+// Sort proposed recommendations by Growth Agent rank when present, else by impact.
+// Growth Agent actions store rank in data.rank; legacy briefing priorities don't.
+const impactOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+const proposed = [...proposedRaw].sort((a: any, b: any) => {
+  const rankA = a.data?.rank;
+  const rankB = b.data?.rank;
+  if (rankA != null && rankB != null) return rankA - rankB;
+  if (rankA != null) return -1;
+  if (rankB != null) return 1;
+  return (impactOrder[a.impact] ?? 1) - (impactOrder[b.impact] ?? 1);
+});
 
 const inProgress = actionPlan.filter(a => a.status === 'in_progress');
 const pending = actionPlan.filter(a => a.status === 'pending');
@@ -23,6 +35,15 @@ const impactColor: Record<string, { bg: string; fg: string; label: string }> = {
   high: { bg: '#d6e3ff', fg: '#124687', label: 'Alto' },
   medium: { bg: '#e8e5ff', fg: '#434750', label: 'Medio' },
   low: { bg: '#f0f0f0', fg: '#888', label: 'Bajo' },
+};
+
+const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = {
+  seo: { label: 'SEO', bg: '#d6e3ff', fg: '#1A4B8C' },
+  geo: { label: 'Visibilidad IA', bg: '#f3e8ff', fg: '#7C3AED' },
+  web: { label: 'Web', bg: '#fef3c7', fg: '#92400e' },
+  conversion: { label: 'Conversión', bg: '#fed7aa', fg: '#9a3412' },
+  content: { label: 'Contenido', bg: '#d1fae5', fg: '#065f46' },
+  reputation: { label: 'Reputación', bg: '#fee2e2', fg: '#991b1b' },
 };
 ---
 
@@ -66,31 +87,63 @@ const impactColor: Record<string, { bg: string; fg: string; label: string }> = {
       <div style="display:flex;flex-direction:column;gap:12px;">
         {proposed.map(rec => {
           const impact = impactColor[(rec as any).impact || 'medium'];
+          const recData = (rec.data as any) || {};
+          const rank = recData.rank;
+          const expectedOutcome = recData.expectedOutcome;
+          const effort = recData.effort;
+          const timeframe = recData.timeframe;
+          const rationale = recData.rationale;
+          const pillar = (rec as any).pillar;
+          const pillarBadge = pillar ? pillarLabels[pillar] : null;
           return (
             <div class="rec-card" style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:16px;align-items:flex-start;">
-              <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:#FFF8EE;display:flex;align-items:center;justify-content:center;">
+              <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:#FFF8EE;display:flex;align-items:center;justify-content:center;position:relative;">
                 <span class="material-symbols-outlined" style="font-size:20px;color:#BA7517;">auto_awesome</span>
+                {rank != null && (
+                  <span style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#1A4B8C;color:white;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.15);">{rank}</span>
+                )}
               </div>
-              <div style="flex:1;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                  {pillarBadge && (
+                    <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${pillarBadge.bg};color:${pillarBadge.fg};`}>
+                      {pillarBadge.label}
+                    </span>
+                  )}
                   <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>
                     Impacto {impact.label}
                   </span>
-                  <span style="font-size:10px;color:#94a3b8;font-weight:600;">{rec.source}</span>
+                  {effort && (
+                    <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:#f1f5f9;color:#475569;">
+                      Esfuerzo {effort === 'high' ? 'alto' : effort === 'medium' ? 'medio' : 'bajo'}
+                    </span>
+                  )}
+                  {timeframe && (
+                    <span style="font-size:10px;color:#94a3b8;font-weight:600;">· {timeframe}</span>
+                  )}
                   {(rec.times_proposed ?? 1) > 1 && (
                     <span style="font-size:10px;color:#BA7517;font-weight:600;">Propuesta {rec.times_proposed}x</span>
                   )}
                 </div>
                 <h4 id={`detail-${rec.id}`} style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{rec.title}</h4>
                 {rec.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{rec.description}</p>}
-                {(rec.data as any)?.detail && (
+                {expectedOutcome && (
+                  <p style="font-size:12px;color:#1D9E75;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>
+                    Resultado esperado: {expectedOutcome}
+                  </p>
+                )}
+                {rationale && (
+                  <p style="font-size:11px;color:#94a3b8;margin-top:4px;font-style:italic;">↳ {rationale}</p>
+                )}
+                {recData?.detail && (
                   <details class="rec-detail" style="margin-top:10px;cursor:pointer;">
                     <summary style="font-size:12px;font-weight:700;color:#1A4B8C;display:flex;align-items:center;gap:4px;list-style:none;">
                       <span class="material-symbols-outlined" style="font-size:16px;">info</span>
                       Saber más — guía paso a paso
                     </summary>
                     <div style="margin-top:12px;padding:16px;background:#f7f9ff;border-radius:10px;font-size:13px;color:#434750;line-height:1.7;white-space:pre-line;">
-                      {(rec.data as any).detail.replace(/\*\*(.*?)\*\*/g, '$1')}
+                      {recData.detail.replace(/\*\*(.*?)\*\*/g, '$1')}
                     </div>
                   </details>
                 )}

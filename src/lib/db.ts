@@ -451,7 +451,35 @@ export async function logRecommendation(rec: Omit<Recommendation, 'status'>): Pr
 
 /** Get proposed recommendations (not yet accepted/rejected) */
 export async function getProposedRecommendations(clientId: string): Promise<Recommendation[]> {
-  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => r.status === 'pending') as Recommendation[];
+  if (IS_DEMO) {
+    // Derive from the latest snapshot's Growth Agent analysis so the demo
+    // reflects the coherent, ranked plan from the unified agent.
+    // Fall back to any hardcoded pending DEMO_RECOMMENDATIONS (legacy demo data).
+    const latest = DEMO_SNAPSHOTS[DEMO_SNAPSHOTS.length - 1];
+    const ga = latest?.pipeline_output?.growth_analysis;
+    if (ga?.prioritizedActions?.length) {
+      return ga.prioritizedActions.map((a: any, i: number): Recommendation => ({
+        id: `demo-ga-${a.rank ?? i + 1}`,
+        client_id: clientId,
+        source: 'growth_agent',
+        pillar: a.pillar,
+        title: a.title,
+        description: a.description,
+        impact: a.businessImpact || 'medium',
+        status: 'pending',
+        data: {
+          rank: a.rank,
+          detail: a.detail,
+          expectedOutcome: a.expectedOutcome,
+          effort: a.effort,
+          timeframe: a.timeframe,
+          rationale: a.rationale,
+          linkedGap: a.linkedGap,
+        },
+      }));
+    }
+    return DEMO_RECOMMENDATIONS.filter(r => r.status === 'pending') as Recommendation[];
+  }
   const sb = getSupabase();
   const { data } = await sb
     .from('recommendations')
@@ -489,7 +517,13 @@ export async function getAllRecommendations(clientId: string): Promise<Recommend
 
 /** Get proposed recommendations filtered by pillar */
 export async function getRecommendationsByPillar(clientId: string, pillar: string): Promise<Recommendation[]> {
-  if (IS_DEMO) return DEMO_RECOMMENDATIONS.filter(r => r.status === 'pending' && r.pillar === pillar) as Recommendation[];
+  if (IS_DEMO) {
+    // Prefer Growth Agent actions filtered by pillar, fall back to legacy DEMO_RECOMMENDATIONS
+    const all = await getProposedRecommendations(clientId);
+    const filtered = all.filter(r => r.pillar === pillar);
+    if (filtered.length > 0) return filtered;
+    return DEMO_RECOMMENDATIONS.filter(r => r.status === 'pending' && r.pillar === pillar) as Recommendation[];
+  }
   const sb = getSupabase();
   const { data } = await sb
     .from('recommendations')
