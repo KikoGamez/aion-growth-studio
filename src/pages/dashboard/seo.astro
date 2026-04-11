@@ -440,76 +440,6 @@ const seoKeyFinding = seoAgentNarrative?.keyFinding;
     </div>
   </div>
 
-  <!-- ══ Priority Keywords: CTA (if none) or display (if saved) ══ -->
-  {!hasPriorityKeywords ? (
-    <section style="background:linear-gradient(135deg,#1A4B8C 0%,#2d5ca0 100%);border-radius:16px;padding:28px 32px;color:white;box-shadow:0 4px 20px rgba(26,75,140,0.25);">
-      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
-        <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span class="material-symbols-outlined" style="font-size:28px;color:white;">target</span>
-        </div>
-        <div style="flex:1;min-width:280px;">
-          <h2 style="font-size:18px;font-weight:900;margin-bottom:4px;letter-spacing:-0.01em;">Configura tus keywords prioritarias</h2>
-          <p style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">
-            Nosotros te ayudamos a elegir las mejores para tu negocio. Analizamos tu web, tu sector y la competencia para proponer keywords con oportunidad real de llegar al TOP 10.
-          </p>
-        </div>
-        <button id="open-keyword-modal" style="background:white;color:#1A4B8C;border:none;border-radius:10px;padding:14px 24px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-          <span class="material-symbols-outlined" style="font-size:18px;">auto_awesome</span>
-          Configurar ahora
-        </button>
-      </div>
-    </section>
-  ) : (
-    <section style="background:white;border-radius:16px;padding:28px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#1A4B8C15;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <span class="material-symbols-outlined" style="font-size:22px;color:#1A4B8C;">target</span>
-          </div>
-          <div>
-            <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;">Tus keywords prioritarias</h2>
-            <p style="font-size:12px;color:#64748b;">{priorityKeywords.length} keyword{priorityKeywords.length !== 1 ? 's' : ''} elegidas como foco estratégico</p>
-          </div>
-        </div>
-        <button id="open-keyword-modal" style="background:#f0f4ff;color:#1A4B8C;border:1px solid #cbd8ee;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
-          <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
-          Modificar
-        </button>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        {priorityKeywords.map((pk) => {
-          const feasColor = pk.feasibility === 'high' ? '#1D9E75' : pk.feasibility === 'medium' ? '#BA7517' : '#E24B4A';
-          const feasBg = pk.feasibility === 'high' ? '#d1fae5' : pk.feasibility === 'medium' ? '#fef3c7' : '#fee2e2';
-          return (
-            <div style={`background:${feasBg};border:1px solid ${feasColor}40;border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;min-width:160px;`}>
-              <span style="font-size:13px;font-weight:700;color:#1a1a2e;">{pk.keyword}</span>
-              <div style="display:flex;gap:8px;font-size:10px;color:#64748b;">
-                {pk.volume != null && <span>{pk.volume.toLocaleString()} vol</span>}
-                {pk.currentPosition != null && <span>· pos {pk.currentPosition}</span>}
-                {pk.feasibility && <span style={`color:${feasColor};font-weight:700;text-transform:uppercase;`}>· {pk.feasibility === 'high' ? 'alta' : pk.feasibility === 'medium' ? 'media' : 'baja'}</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {keywordStrategy && (keywordStrategy.demandType || keywordStrategy.focus || keywordStrategy.growthService) && (
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0;display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#64748b;">
-          {keywordStrategy.demandType && <span><strong style="color:#1a1a2e;">Estrategia:</strong> {keywordStrategy.demandType === 'existing' ? 'captar demanda existente' : keywordStrategy.demandType === 'create' ? 'crear demanda' : 'mixta'}</span>}
-          {keywordStrategy.focus && <span>· {keywordStrategy.focus === 'volume' ? 'foco en volumen' : 'foco en cualificación'}</span>}
-          {keywordStrategy.growthService && <span>· servicio prioritario: <strong style="color:#1a1a2e;">{keywordStrategy.growthService}</strong></span>}
-        </div>
-      )}
-    </section>
-  )}
-
-  <!-- Keyword configurator modal (hidden by default, triggered by #open-keyword-modal) -->
-  <KeywordConfigurator
-    opportunities={keywordOpportunities}
-    autoSelected={autoSelectedKeywords}
-    currentKeywords={priorityKeywords}
-    currentStrategy={keywordStrategy}
-  />
-
   <!-- ══ HERO: Score + Key metrics + Trend ══ -->
   <section style="background:white;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
     <div style="display:flex;gap:40px;align-items:center;flex-wrap:wrap;">
@@ -621,6 +551,76 @@ const seoKeyFinding = seoAgentNarrative?.keyFinding;
       </div>
     )}
   </section>
+
+  <!-- ══ Priority Keywords: CTA (if none) or display (if saved) ══ -->
+  {!hasPriorityKeywords ? (
+    <section style="background:linear-gradient(135deg,#1A4B8C 0%,#2d5ca0 100%);border-radius:16px;padding:28px 32px;color:white;box-shadow:0 4px 20px rgba(26,75,140,0.25);">
+      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+        <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span class="material-symbols-outlined" style="font-size:28px;color:white;">target</span>
+        </div>
+        <div style="flex:1;min-width:280px;">
+          <h2 style="font-size:18px;font-weight:900;margin-bottom:4px;letter-spacing:-0.01em;">Configura tus keywords prioritarias</h2>
+          <p style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">
+            Nosotros te ayudamos a elegir las mejores para tu negocio. Analizamos tu web, tu sector y la competencia para proponer keywords con oportunidad real de llegar al TOP 10.
+          </p>
+        </div>
+        <button id="open-keyword-modal" style="background:white;color:#1A4B8C;border:none;border-radius:10px;padding:14px 24px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+          <span class="material-symbols-outlined" style="font-size:18px;">auto_awesome</span>
+          Configurar ahora
+        </button>
+      </div>
+    </section>
+  ) : (
+    <section style="background:white;border-radius:16px;padding:28px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#1A4B8C15;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span class="material-symbols-outlined" style="font-size:22px;color:#1A4B8C;">target</span>
+          </div>
+          <div>
+            <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;">Tus keywords prioritarias</h2>
+            <p style="font-size:12px;color:#64748b;">{priorityKeywords.length} keyword{priorityKeywords.length !== 1 ? 's' : ''} elegidas como foco estratégico</p>
+          </div>
+        </div>
+        <button id="open-keyword-modal" style="background:#f0f4ff;color:#1A4B8C;border:1px solid #cbd8ee;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
+          Modificar
+        </button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        {priorityKeywords.map((pk) => {
+          const feasColor = pk.feasibility === 'high' ? '#1D9E75' : pk.feasibility === 'medium' ? '#BA7517' : '#E24B4A';
+          const feasBg = pk.feasibility === 'high' ? '#d1fae5' : pk.feasibility === 'medium' ? '#fef3c7' : '#fee2e2';
+          return (
+            <div style={`background:${feasBg};border:1px solid ${feasColor}40;border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;min-width:160px;`}>
+              <span style="font-size:13px;font-weight:700;color:#1a1a2e;">{pk.keyword}</span>
+              <div style="display:flex;gap:8px;font-size:10px;color:#64748b;">
+                {pk.volume != null && <span>{pk.volume.toLocaleString()} vol</span>}
+                {pk.currentPosition != null && <span>· pos {pk.currentPosition}</span>}
+                {pk.feasibility && <span style={`color:${feasColor};font-weight:700;text-transform:uppercase;`}>· {pk.feasibility === 'high' ? 'alta' : pk.feasibility === 'medium' ? 'media' : 'baja'}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {keywordStrategy && (keywordStrategy.demandType || keywordStrategy.focus || keywordStrategy.growthService) && (
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0;display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#64748b;">
+          {keywordStrategy.demandType && <span><strong style="color:#1a1a2e;">Estrategia:</strong> {keywordStrategy.demandType === 'existing' ? 'captar demanda existente' : keywordStrategy.demandType === 'create' ? 'crear demanda' : 'mixta'}</span>}
+          {keywordStrategy.focus && <span>· {keywordStrategy.focus === 'volume' ? 'foco en volumen' : 'foco en cualificación'}</span>}
+          {keywordStrategy.growthService && <span>· servicio prioritario: <strong style="color:#1a1a2e;">{keywordStrategy.growthService}</strong></span>}
+        </div>
+      )}
+    </section>
+  )}
+
+  <!-- Keyword configurator modal (hidden by default, triggered by #open-keyword-modal) -->
+  <KeywordConfigurator
+    opportunities={keywordOpportunities}
+    autoSelected={autoSelectedKeywords}
+    currentKeywords={priorityKeywords}
+    currentStrategy={keywordStrategy}
+  />
 
   <!-- ══ Auditoría SEO On-Page ══ -->
   <section style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
