@@ -235,6 +235,19 @@ Las acciones prioritarias DEBEN adaptarse al sector. Usa estas reglas:
 - BIEN (acción): "Optimizar las 37 keywords en posición 4-10 para doblar el tráfico orgánico en 6-8 semanas"
 Cada título empieza por verbo imperativo. Cada descripción: problema con dato → cómo hacerlo → resultado esperado con timeline.
 
+**R11 — Formato estricto del resumen ejecutivo**
+El bloque \`executiveSummary\` se lee como si fuera lo primero que ve un CEO en su dashboard. Estructura obligatoria:
+- \`headline\` = **1 sola frase** contundente. Nunca 2. Nunca media. Una frase que resuma el titular.
+- \`situation\` = **exactamente 3 o 4 frases** que desarrollan el headline. Cada frase cubre un pilar clave (SEO, GEO, Web/Conversión, Reputación si aplica) con al menos 1 dato numérico real. Es una mini-narrativa coherente, no una lista de bullets.
+
+MAL:
+> headline: "${'${name}'} tiene un score de 28/100."
+> situation: "Análisis automático no disponible."
+
+BIEN:
+> headline: "Kikogamez está en fase inicial de construcción de presencia digital con un score AION de 28/100 y la visibilidad SEO como punto más débil."
+> situation: "En SEO orgánico solo hay 3 keywords en top 10 y ~620 visitas orgánicas estimadas al mes, con un Domain Rank de 14/100. En visibilidad IA la marca aparece en el 10% de las consultas analizadas, concentradas en consultas de decisión de compra pero ausente en descubrimiento. La web carga razonablemente en móvil (68/100 en Google PageSpeed) pero el embudo de conversión es débil (35/100) con un único formulario genérico sin CTAs claros. La reputación pública es sólida (4.6★ con 18 reseñas) — es el único pilar que no frena el crecimiento."
+
 ---
 
 ## Ejemplo de veredicto CORRECTO (shot learning)
@@ -280,8 +293,8 @@ Responde con JSON válido siguiendo EXACTAMENTE este schema (sin texto adicional
 \`\`\`json
 {
   "executiveSummary": {
-    "headline": "1 frase describiendo el estado general",
-    "situation": "2-3 frases con contexto específico (datos concretos)",
+    "headline": "EXACTAMENTE 1 frase contundente que resuma el estado general del cliente con el dato más relevante. NO más de 1 frase. Tono consultor ejecutivo. Debe poderse leer sola y transmitir el titular.",
+    "situation": "EXACTAMENTE 3 o 4 frases de desarrollo (ni menos ni más) que expanden el headline con datos concretos: una frase por pilar clave (SEO, GEO, Web/Conversión, Reputación si aplica). Cada frase debe tener al menos 1 dato numérico real del audit. Cuenta una historia coherente, no listes bullets. Este bloque es lo que lee un CEO en 10 segundos para tomar una decisión.",
     "strengths": ["2-3 cosas que están funcionando bien"],
     "criticalGaps": ["2-3 problemas más urgentes — cada uno DEBE tener acción correspondiente"],
     "upsidePotential": {
@@ -764,28 +777,172 @@ function validateAndNormalize(parsed: any, input: GrowthAgentInput): GrowthAnaly
 }
 
 // ─── Fallback (when no API key or call fails) ──────────────────────────
+// Builds a deterministic executive summary from the real audit data — NO
+// invention, only numbers pulled directly from pipeline_output. Used when
+// the LLM call fails or ANTHROPIC_API_KEY is missing. Written in the same
+// consultor-executive tone as the real agent so the client sees something
+// useful instead of a placeholder. Strengths and criticalGaps are detected
+// with simple heuristics from the breakdown values.
 
 function fallbackAnalysis(input: GrowthAgentInput): GrowthAnalysis {
   const r = input.pipelineOutput || {};
-  const score = r.score?.total ?? 0;
+  const name = input.clientName || input.domain || 'tu web';
+  const score: number = r.score?.total ?? 0;
+  const breakdown = r.score?.breakdown || {};
+
+  // Pull real data points
+  const seo = r.seo || {};
+  const geo = r.geo || {};
+  const ps = r.pagespeed || {};
+  const conv = r.conversion || {};
+  const gbp = r.gbp || {};
+  const rep = r.reputation || {};
+  const crawl = r.crawl || {};
+  const ssl = r.ssl || {};
+  const cc = r.content_cadence || {};
+
+  const kwTop10 = seo.keywordsTop10 ?? 0;
+  const traffic = seo.organicTrafficEstimate ?? 0;
+  const mentionRate = geo.mentionRate;
+  const mobilePS = ps.mobile?.performance;
+  const lcpS = ps.mobile?.lcp ? (ps.mobile.lcp / 1000).toFixed(1) : null;
+  const funnel = conv.funnelScore;
+  const rating = gbp.rating ?? rep.combinedRating;
+  const reviews = gbp.reviewCount ?? rep.totalReviews ?? 0;
+
+  // Headline — 1 sentence based on score severity and the weakest pillar
+  const weakest = (() => {
+    const entries = Object.entries(breakdown).filter(([, v]) => typeof v === 'number') as Array<[string, number]>;
+    if (entries.length === 0) return null;
+    return entries.sort((a, b) => a[1] - b[1])[0];
+  })();
+  const weakestLabel: Record<string, string> = {
+    seo: 'visibilidad SEO', geo: 'visibilidad en IAs', web: 'rendimiento web',
+    conversion: 'conversión', content: 'contenido', reputation: 'reputación',
+  };
+
+  let headline: string;
+  if (score >= 70) {
+    headline = `${name} tiene una presencia digital sólida con un score global de ${score}/100.`;
+  } else if (score >= 50) {
+    headline = `${name} tiene una presencia digital en desarrollo con un score global de ${score}/100 y margen claro de mejora.`;
+  } else if (score >= 30) {
+    headline = `${name} está en fase inicial de construcción de presencia digital, con un score global de ${score}/100${weakest ? ` y ${weakestLabel[weakest[0]] || weakest[0]} como punto más débil` : ''}.`;
+  } else {
+    headline = `${name} tiene una presencia digital muy baja con un score global de ${score}/100 — hay trabajo fundamental por delante.`;
+  }
+
+  // Situation — 3-4 sentences with real numbers per pillar
+  const situationParts: string[] = [];
+
+  // SEO sentence
+  if (!seo.skipped && (kwTop10 > 0 || traffic > 0)) {
+    situationParts.push(
+      `En SEO orgánico tienes ${kwTop10} keywords en top 10 y unas ${traffic.toLocaleString('es-ES')} visitas orgánicas estimadas al mes${seo.domainRank != null ? `, con un Domain Rank de ${seo.domainRank}/100` : ''}.`
+    );
+  } else if (seo.skipped) {
+    situationParts.push('En SEO orgánico no hay datos disponibles todavía — probablemente el dominio aún no está indexado en los rankings de Google.');
+  }
+
+  // GEO sentence
+  if (mentionRate != null) {
+    if (mentionRate === 0) {
+      situationParts.push(`En visibilidad IA (ChatGPT, Claude, Perplexity, Gemini) tu marca no aparece en ninguna de las consultas analizadas — no estás en el radar de los modelos generativos.`);
+    } else if (mentionRate < 20) {
+      situationParts.push(`En visibilidad IA tu marca aparece solo en el ${mentionRate}% de las consultas analizadas — presencia muy baja.`);
+    } else {
+      situationParts.push(`En visibilidad IA tu marca aparece en el ${mentionRate}% de las consultas analizadas.`);
+    }
+  }
+
+  // Web sentence
+  if (mobilePS != null && mobilePS > 0) {
+    const speedLabel = mobilePS >= 90 ? 'rendimiento excelente' : mobilePS >= 50 ? 'rendimiento mejorable' : 'rendimiento muy bajo';
+    situationParts.push(`Tu web carga con ${speedLabel} en móvil (${mobilePS}/100 según Google PageSpeed${lcpS ? `, LCP ${lcpS}s` : ''}).`);
+  }
+
+  // Conversion sentence
+  if (funnel != null) {
+    if (funnel >= 60) {
+      situationParts.push(`El embudo de conversión está sólidamente configurado (${funnel}/100) con formularios y CTAs claros.`);
+    } else if (funnel >= 30) {
+      situationParts.push(`El embudo de conversión tiene base pero margen amplio (${funnel}/100) — hay ${conv.formCount ?? 0} formularios y ${conv.ctaCount ?? 0} CTAs detectados.`);
+    } else {
+      situationParts.push(`El embudo de conversión es muy débil (${funnel}/100) con apenas ${conv.formCount ?? 0} formularios y ${conv.ctaCount ?? 0} CTAs — visitantes entran pero no tienen por dónde convertir.`);
+    }
+  }
+
+  // Take the first 3-4 sentences that fit
+  const situation = situationParts.slice(0, 4).join(' ');
+
+  // Strengths — things that work (detected heuristically)
+  const strengths: string[] = [];
+  if (ssl.valid) strengths.push(`SSL válido${ssl.daysUntilExpiry ? ` (expira en ${ssl.daysUntilExpiry} días)` : ''}`);
+  if (crawl.hasSitemap) strengths.push('sitemap.xml detectado — Google puede descubrir todas tus páginas');
+  if (crawl.hasSchemaMarkup) strengths.push(`datos estructurados presentes${Array.isArray(crawl.schemaTypes) && crawl.schemaTypes.length ? ` (${crawl.schemaTypes.slice(0, 2).join(', ')})` : ''}`);
+  if (rating && rating >= 4) strengths.push(`reputación en Google sólida con ${rating}★ y ${reviews} reseñas`);
+  if (mobilePS != null && mobilePS >= 80) strengths.push(`rendimiento móvil alto (${mobilePS}/100)`);
+  if (kwTop10 >= 10) strengths.push(`${kwTop10} keywords ya en top 10 de Google`);
+  if (cc.postsLast90Days && cc.postsLast90Days >= 3) strengths.push(`blog activo con ${cc.postsLast90Days} posts en los últimos 90 días`);
+
+  // Critical gaps — things that fail (heuristic detection)
+  const criticalGaps: string[] = [];
+  if (!ssl.valid) criticalGaps.push('Sin SSL válido — Chrome marca tu web como "no segura"');
+  if (!crawl.hasSchemaMarkup) criticalGaps.push('Sin datos estructurados (schema markup) — Google y las IAs no entienden bien qué vende tu web');
+  if (!crawl.description) criticalGaps.push('Sin meta description — pierdes clicks desde los resultados de Google');
+  if (mobilePS != null && mobilePS < 50) criticalGaps.push(`Rendimiento móvil crítico (${mobilePS}/100) — cada segundo extra de carga reduce conversión un 10-20%`);
+  if (kwTop10 === 0) criticalGaps.push('0 keywords en top 10 de Google — tu web no aparece en búsquedas orgánicas relevantes');
+  if (mentionRate != null && mentionRate < 10) criticalGaps.push('Sin presencia en IAs generativas — ChatGPT y similares no mencionan tu marca');
+  if (funnel != null && funnel < 30) criticalGaps.push(`Conversión muy débil (${funnel}/100) — el tráfico entra pero no encuentra por dónde contactarte`);
+
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
     model: 'fallback',
     executiveSummary: {
-      headline: `${input.clientName} tiene un score de ${score}/100.`,
-      situation: 'Análisis automático no disponible — completa el audit para obtener un diagnóstico personalizado.',
-      strengths: [],
-      criticalGaps: [],
+      headline,
+      situation: situation || 'Datos del análisis insuficientes para generar un resumen detallado.',
+      strengths: strengths.slice(0, 3),
+      criticalGaps: criticalGaps.slice(0, 3),
       upsidePotential: null,
     },
     pillarAnalysis: {
-      seo: { assessment: 'Análisis no disponible.', keyFinding: '' },
-      geo: { assessment: 'Análisis no disponible.', keyFinding: '' },
-      web: { assessment: 'Análisis no disponible.', keyFinding: '' },
-      conversion: { assessment: 'Análisis no disponible.', keyFinding: '' },
-      content: { assessment: 'Análisis no disponible.', keyFinding: '' },
-      reputation: { assessment: 'Análisis no disponible.', keyFinding: '' },
+      seo: {
+        assessment: !seo.skipped && kwTop10 > 0
+          ? `${kwTop10} keywords en top 10, tráfico orgánico estimado ~${traffic.toLocaleString('es-ES')} visitas/mes${seo.domainRank ? `, Domain Rank ${seo.domainRank}/100` : ''}.`
+          : 'Sin datos SEO suficientes para generar análisis.',
+        keyFinding: '',
+      },
+      geo: {
+        assessment: mentionRate != null
+          ? `Mention rate ${mentionRate}% — ${mentionRate < 20 ? 'presencia muy baja en IAs generativas' : mentionRate < 50 ? 'presencia moderada' : 'presencia sólida'}.`
+          : 'Sin datos de visibilidad en IA.',
+        keyFinding: '',
+      },
+      web: {
+        assessment: mobilePS != null
+          ? `PageSpeed móvil ${mobilePS}/100${lcpS ? `, LCP ${lcpS}s` : ''}.`
+          : 'Sin datos de rendimiento web.',
+        keyFinding: '',
+      },
+      conversion: {
+        assessment: funnel != null
+          ? `Funnel score ${funnel}/100, ${conv.formCount ?? 0} formularios, ${conv.ctaCount ?? 0} CTAs.`
+          : 'Sin datos de conversión.',
+        keyFinding: '',
+      },
+      content: {
+        assessment: cc.totalPosts
+          ? `${cc.totalPosts} posts publicados, ${cc.postsLast90Days ?? 0} en los últimos 90 días.`
+          : 'Blog no detectado o sin actividad reciente.',
+        keyFinding: '',
+      },
+      reputation: {
+        assessment: rating
+          ? `${rating}★ con ${reviews} reseñas${(rep.newsCount ?? 0) > 0 ? `, ${rep.newsCount} menciones en prensa` : ''}.`
+          : 'Sin rating público detectado.',
+        keyFinding: '',
+      },
     },
     prioritizedActions: [],
   };

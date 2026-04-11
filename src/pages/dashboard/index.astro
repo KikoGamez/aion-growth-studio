@@ -222,6 +222,7 @@ if (prevSnap) {
 // Growth Agent analysis (single unified source — replaces briefing).
 // Falls back to legacy briefing when not yet generated.
 const growthAnalysis = r.growth_analysis;
+const isFallbackAnalysis = growthAnalysis?.model === 'fallback';
 const execHeadline = growthAnalysis?.executiveSummary?.headline;
 const execSituation = growthAnalysis?.executiveSummary?.situation;
 const execStrengths: string[] = growthAnalysis?.executiveSummary?.strengths || [];
@@ -466,6 +467,21 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
 
       </div>
     </section>
+
+    <!-- ══ Banner: fallback detected → regenerate with LLM ══ -->
+    {isFallbackAnalysis && (
+      <section id="regen-banner" style="background:linear-gradient(135deg,#FAEEDA,#fff5e0);border-left:3px solid #BA7517;border-radius:14px;padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span class="material-symbols-outlined" style="font-size:22px;color:#BA7517;flex-shrink:0;">auto_awesome</span>
+        <div style="flex:1;min-width:260px;">
+          <p style="font-size:13px;font-weight:800;color:#7a5a1a;margin:0;">Este resumen está generado con datos directos, no con el agente IA.</p>
+          <p style="font-size:12px;color:#7a5a1a;margin:2px 0 0;line-height:1.5;">El agente unificado no pudo completar el análisis la última vez (timeout, API, u otro motivo). Regenerarlo ahora te dará un análisis con razonamiento, contexto competitivo y plan priorizado.</p>
+        </div>
+        <button id="regen-btn" style="background:#BA7517;color:white;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;">
+          <span class="material-symbols-outlined" style="font-size:16px;">refresh</span>
+          Regenerar con IA
+        </button>
+      </section>
+    )}
 
     <!-- ══ BLOQUE 1b: Growth Agent executive breakdown (strengths + gaps + upside) ══ -->
     {growthAnalysis && (execStrengths.length > 0 || execCriticalGaps.length > 0 || upside) && (
@@ -1133,6 +1149,32 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
         window.location.reload();
       });
     });
+
+    // Regenerate Growth Agent analysis when current one is a fallback
+    const regenBtn = document.getElementById('regen-btn');
+    if (regenBtn) {
+      regenBtn.addEventListener('click', async () => {
+        const originalHtml = regenBtn.innerHTML;
+        (regenBtn as HTMLButtonElement).disabled = true;
+        regenBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">hourglass_empty</span> Regenerando... (30-60s)';
+        try {
+          const res = await fetch('/api/dashboard/generate-briefing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+            throw new Error(body.error || 'Error desconocido');
+          }
+          window.location.reload();
+        } catch (err) {
+          (regenBtn as HTMLButtonElement).disabled = false;
+          regenBtn.innerHTML = originalHtml;
+          const errMsg = (err as Error).message || 'Error';
+          alert('No se pudo regenerar: ' + errMsg);
+        }
+      });
+    }
   </script>
 )}
 </DashboardLayout>
