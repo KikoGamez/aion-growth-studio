@@ -71,14 +71,27 @@ const auditSummariesGA = growthAnalysis.auditSummaries || {};
 const upsidePotentialGA = execSummary?.upsidePotential || null;
 
 // Synthesize the legacy-shaped insights object from growth_analysis so the
-// existing template slots (summary, bullets, initiatives, visibility/benchmark/experience summaries)
-// keep working with zero visual changes. If growth_analysis is missing,
-// fall back to any legacy insights that might exist in old audits.
+// existing template slots keep working. Only populate bullets/initiatives
+// when the Growth Agent actually produced prioritizedActions — otherwise
+// leave empty so the informe falls back to its rich heuristic quickWins
+// (which have real descriptions, not placeholders).
 const legacyInsights = (r.insights || {}) as any;
-const insights: any = execSummary ? {
+const gaHasRealActions = prioritizedActionsGA.length > 0;
+const insights: any = (execSummary && gaHasRealActions) ? {
   summary: [execSummary.headline, execSummary.situation].filter(Boolean).join(' '),
-  bullets: (execSummary.criticalGaps || []).slice(0, 3),
-  initiatives: prioritizedActionsGA.slice(0, 4).map((a: any) => ({ title: a.title, description: a.description })),
+  // Bullets: use prioritizedActions descriptions (rich, with data) instead of
+  // criticalGaps (short strings). Much better UX than 3 short labels.
+  bullets: prioritizedActionsGA.slice(0, 6).map((a: any) => {
+    // Compose a rich bullet: title + description if present. Keep under ~300 chars.
+    const title = a.title || '';
+    const desc = a.description || '';
+    const outcome = a.expectedOutcome ? ` — ${a.expectedOutcome}` : '';
+    return desc ? `${title}. ${desc}${outcome}` : title;
+  }),
+  initiatives: prioritizedActionsGA.slice(0, 4).map((a: any) => ({
+    title: a.title,
+    description: a.description + (a.expectedOutcome ? ` Resultado esperado: ${a.expectedOutcome}.` : ''),
+  })),
   visibilitySummary: pillarAnalysisGA.seo?.assessment || null,
   benchmarkSummary: auditSummariesGA.benchmark || null,
   experienceSummary: auditSummariesGA.experience || null,
@@ -1133,7 +1146,7 @@ const donutSVG = buildDonutSVG();
         </a>
         <a href="#plan" data-section="plan">
           <span class="material-symbols-outlined">checklist</span>
-          Plan de Accion
+          Recomendaciones
         </a>
         <div class="sidebar-divider"></div>
         <a href="#plan" data-section="plan" style="font-size:0.75rem;">
@@ -2979,14 +2992,16 @@ const donutSVG = buildDonutSVG();
         <div class="section-sep"></div>
 
         <!-- ================================================================
-             BLOCK 5 - #plan - Plan de Accion
+             BLOCK 5 - #plan - Recomendaciones (AION propone, cliente decide)
+             Nota: lo que el cliente confirma es su "Plan de Acción". Aquí
+             listamos las recomendaciones previas a esa decisión.
         ================================================================ -->
         <div id="plan" class="reveal" style="margin-bottom:2.5rem;">
           <!-- Gradient top band -->
           <div style="background:linear-gradient(135deg,rgba(105,255,135,0.08) 0%,rgba(170,199,255,0.06) 100%);border-radius:16px 16px 0 0;padding:2rem 2rem 1.5rem;">
-            <div class="section-label">PLAN DE ACCION</div>
-            <h2 class="section-title">Plan de Accion</h2>
-            <p class="section-subtitle" style="margin-bottom:0;">¿Que hacer primero?</p>
+            <div class="section-label">RECOMENDACIONES</div>
+            <h2 class="section-title">Recomendaciones</h2>
+            <p class="section-subtitle" style="margin-bottom:0;">Lo que nosotros haríamos primero — tú decides qué incluir en tu plan</p>
           </div>
           <div class="surface-card" style="border-radius:0 0 16px 16px;padding:2rem;">
 

@@ -902,6 +902,106 @@ function fallbackAnalysis(input: GrowthAgentInput): GrowthAnalysis {
   if (mentionRate != null && mentionRate < 10) criticalGaps.push('Sin presencia en IAs generativas — ChatGPT y similares no mencionan tu marca');
   if (funnel != null && funnel < 30) criticalGaps.push(`Conversión muy débil (${funnel}/100) — el tráfico entra pero no encuentra por dónde contactarte`);
 
+  // ── Prioritized actions (deterministic) ────────────────────────────
+  // When the LLM can't run, still produce a rich action plan from the real data.
+  // Each action has title + description (problem+why) + detail (step-by-step) +
+  // expectedOutcome + effort + timeframe. Not as good as the LLM version but
+  // dramatically better than an empty array, which was causing the audit report
+  // to show zero strategic initiatives.
+  const fallbackActions: PrioritizedAction[] = [];
+  let rank = 1;
+
+  if (!crawl.hasSchemaMarkup) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'seo',
+      title: 'Añadir schema.org Organization en el <head> de todas las páginas',
+      description: `Tu web no tiene datos estructurados detectados. Sin schema.org, Google no puede mostrar rich snippets (estrellas, precios, FAQ) y las IAs generativas no pueden identificar con precisión qué vende ${name}. Añadir schema Organization es una de las acciones de mayor ROI que existen — cuesta ~30 minutos y puede aumentar el CTR en SERPs un 15-25%.`,
+      detail: '1. Genera el JSON-LD en https://technicalseo.com/tools/schema-markup-generator/ con los campos: name, url, logo, sameAs (redes sociales), contactPoint.\n2. Pégalo en el <head> de tu layout principal dentro de <script type="application/ld+json">.\n3. Valida con https://validator.schema.org que no hay errores.\n4. Si eres local business, añade también schema LocalBusiness con dirección y horarios.\n5. Si tienes FAQ en alguna página, añade schema FAQPage.',
+      businessImpact: 'high',
+      expectedOutcome: 'Rich snippets visibles en Google en 2-4 semanas + mejor comprensión de tu negocio por las IAs',
+      effort: 'low', timeframe: '1-2 horas',
+      rationale: 'Coste mínimo + impacto alto y directo en SERP',
+    });
+  }
+
+  if (!crawl.description || (crawl.description && crawl.description.length < 70)) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'seo',
+      title: 'Escribir meta descriptions únicas de 140-155 caracteres en las 5 páginas con más tráfico',
+      description: `${!crawl.description ? 'Tu web no tiene meta description' : `Tu meta description actual es demasiado corta (${crawl.description.length} caracteres)`}. Google genera una automática extraída del contenido — casi siempre subóptima — lo que reduce el CTR desde los resultados de búsqueda entre un 10% y un 30%. Cada página con tráfico debería tener su propia meta description optimizada.`,
+      detail: '1. Abre Google Search Console y ordena las páginas por impresiones totales en los últimos 90 días.\n2. Para las 5 primeras, escribe una meta description nueva de 140-155 caracteres que incluya: keyword principal + propuesta de valor + CTA implícito ("descubre", "solicita", "prueba").\n3. Pégalas en el CMS (si usas WordPress, en el plugin de SEO como Yoast/RankMath).\n4. Vuelve a indexar las páginas en Search Console con la herramienta "Inspeccionar URL".\n5. Mide CTR 14 días después en Search Console y compara.',
+      businessImpact: 'medium',
+      expectedOutcome: '+15-30% de CTR desde Google en esas páginas en 2-4 semanas',
+      effort: 'low', timeframe: '2-3 horas',
+      rationale: 'Trabajo puntual con impacto medible',
+    });
+  }
+
+  if (mobilePS != null && mobilePS < 50) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'web',
+      title: `Reducir el LCP móvil desde ${lcpS ? lcpS + 's' : 'actual'} a < 2.5s`,
+      description: `Tu PageSpeed móvil está en ${mobilePS}/100${lcpS ? ` con un LCP de ${lcpS}s` : ''}. Google recomienda < 2.5s y cada segundo adicional en móvil reduce la conversión entre un 10% y un 20%. En móvil esto afecta al 60%+ del tráfico actual. Además Google usa el LCP como factor directo de ranking desde 2021.`,
+      detail: '1. Optimiza imágenes: conviértelas a WebP con herramientas como Squoosh o TinyPNG, objetivo <100KB por imagen.\n2. Añade loading="lazy" a todas las imágenes que no estén en el viewport inicial.\n3. Difiere JavaScript no crítico: mueve scripts de analytics y chat al final del <body> con defer.\n4. Minifica CSS y JS (la mayoría de CMS tienen plugins de cache con compresión).\n5. Verifica el resultado en https://pagespeed.web.dev tras cada cambio hasta llegar a >70.',
+      businessImpact: 'high',
+      expectedOutcome: `Pasar de ${mobilePS}/100 a 70+/100 en 2-3 semanas, con impacto directo en conversión móvil`,
+      effort: 'medium', timeframe: '1-2 semanas',
+      rationale: 'PageSpeed móvil es factor de ranking + afecta conversión directa',
+    });
+  }
+
+  if (funnel != null && funnel < 50) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'conversion',
+      title: 'Añadir formularios de contacto específicos en cada página de servicio',
+      description: `Tu funnel score es ${funnel}/100 con solo ${conv.formCount ?? 0} formularios detectados y ${conv.ctaCount ?? 0} CTAs. Cada página de servicio es una oportunidad perdida de captar leads cualificados. Un formulario corto (nombre + email + empresa) con CTA contextual puede multiplicar la conversión por 2-3x sin aumentar el tráfico.`,
+      detail: '1. Lista tus páginas de servicio/producto principales.\n2. Para cada una, diseña un formulario corto (3-4 campos máximo) con CTA específico: "Solicitar demo de X" en vez de "Contactar".\n3. Colócalo above the fold si es posible, o justo después del primer bloque descriptivo.\n4. Añade tracking de conversión (Google Analytics 4 + Google Tag Manager) para medir cuántos leads genera cada página.\n5. A/B testea el copy del CTA durante 2 semanas.',
+      businessImpact: 'high',
+      expectedOutcome: 'Pasar de ~X leads/mes a 2-3x en 6-8 semanas sin aumentar tráfico',
+      effort: 'medium', timeframe: '2 semanas',
+      rationale: 'Funnel score bajo = cuello de botella del negocio',
+    });
+  }
+
+  if (mentionRate != null && mentionRate < 20) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'geo',
+      title: 'Publicar 1 guía larga de 2.000+ palabras optimizada para consultas de descubrimiento del sector',
+      description: `Las IAs generativas (ChatGPT, Perplexity, Claude, Gemini) mencionan tu marca solo en el ${mentionRate}% de las consultas analizadas. Las menciones en consultas donde preguntan tu nombre no cuentan como ventaja competitiva — eso es reconocimiento de entidad. Lo que importa es aparecer cuando alguien busca "mejores opciones de [tu sector]" sin conocerte todavía.`,
+      detail: '1. Identifica 3 consultas TOFU típicas de tu sector ("mejores empresas de X en [ciudad]", "cómo elegir Y", "comparativa Z 2026").\n2. Escribe un artículo de 2.000+ palabras que responda UNA de esas consultas con datos, ejemplos y fuentes citables.\n3. Estructura con H2/H3 claros y añade schema FAQPage con las 5 preguntas más importantes.\n4. Publícalo en tu blog y compártelo en LinkedIn + 2 comunidades de tu sector.\n5. En 2-3 semanas, repite la consulta en ChatGPT y Perplexity para verificar si empiezan a citarte.',
+      businessImpact: 'medium',
+      expectedOutcome: `Pasar de ${mentionRate}% a 25-35% de mention rate en 2-3 meses`,
+      effort: 'medium', timeframe: '3 semanas',
+      rationale: 'Visibilidad IA es diferenciador competitivo creciente',
+    });
+  }
+
+  if (!rating || reviews < 10) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'reputation',
+      title: `Pedir reseña en Google Business Profile a 5 clientes actuales${reviews > 0 ? ' para doblar tu total' : ''}`,
+      description: `${reviews > 0 ? `Tienes ${reviews} reseñas públicas` : 'No se detectan reseñas públicas en Google Business Profile'}. Las reseñas son señal de confianza directa para buscadores y para las IAs (que priorizan negocios con rating verificable). Un negocio con <10 reseñas pierde frente a competidores con 30+ incluso con mejor producto.`,
+      detail: '1. Selecciona 5 clientes satisfechos recientes con los que tengas buena relación.\n2. Envía un email personalizado (no masivo) con el enlace directo a dejar reseña en Google.\n3. Sugiere 2-3 puntos clave que les invite a mencionar: servicio concreto, resultado, trato recibido.\n4. Follow-up por WhatsApp/teléfono a los 3 días con los que no respondan.\n5. Responde a cada reseña nueva en menos de 48 horas con mensaje personalizado de agradecimiento.',
+      businessImpact: 'medium',
+      expectedOutcome: `Pasar de ${reviews} a ${reviews + 5}+ reseñas en 2 semanas`,
+      effort: 'low', timeframe: '2 semanas',
+      rationale: 'Señal de confianza con el menor esfuerzo del plan',
+    });
+  }
+
+  if (kwTop10 > 0 && kwTop10 < 15) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'seo',
+      title: `Optimizar las keywords en posición 4-10 para empujarlas a top 3`,
+      description: `Tienes ${kwTop10} keywords en top 10 — una base pequeña pero real. Las keywords en posición 4-10 son fruta madura: están a 1-3 posiciones del top 3 donde el CTR se multiplica por 5-10x. Un contenido actualizado sobre esas páginas concretas es la acción de mejor ROI SEO que existe: no necesita nuevo contenido, solo mejora el que ya posiciona.`,
+      detail: '1. Abre Google Search Console → Rendimiento → Ordena keywords por posición promedio descendente y filtra posiciones 4-10.\n2. Identifica las 5-10 keywords con más impresiones en esa franja.\n3. Para cada una, entra en la página que las posiciona y: añade 500-1.000 palabras de contenido complementario, incluye la keyword en H2, añade imágenes con alt text, internaliza con otras páginas relacionadas.\n4. Solicita reindexación en Search Console.\n5. Mide impresiones/clicks 3 semanas después.',
+      businessImpact: 'high',
+      expectedOutcome: `Pasar de ${kwTop10} a ${kwTop10 + 5}-${kwTop10 + 10} keywords en top 3 en 4-6 semanas`,
+      effort: 'medium', timeframe: '2-3 semanas',
+      rationale: 'Las keywords en 4-10 ya tienen tracción — mover al top 3 es la acción más rentable',
+    });
+  }
+
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
@@ -951,7 +1051,7 @@ function fallbackAnalysis(input: GrowthAgentInput): GrowthAnalysis {
         keyFinding: '',
       },
     },
-    prioritizedActions: [],
+    prioritizedActions: fallbackActions.slice(0, 6),
   };
 }
 
