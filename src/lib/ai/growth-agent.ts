@@ -18,6 +18,7 @@
 import { AION_SYSTEM_PROMPT } from './system-prompt';
 import type { ClientOnboarding, PriorityKeyword, KeywordStrategy } from '../db';
 import { computeOnPageIssues } from '../audit/on-page-issues';
+import { logAiGeneration, estimateAiCost } from '../data/ai-log';
 
 const ANTHROPIC_API_KEY = import.meta.env?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
 const MODEL = 'claude-sonnet-4-6';
@@ -816,8 +817,15 @@ async function generateSonnetDraft(
 // step of this function, not a separate pipeline step.
 
 export async function runGrowthAgent(input: GrowthAgentInput): Promise<GrowthAnalysis> {
+  const t0 = Date.now();
+  const clientId = input.onboarding?.client_id;
+  let layer = 1;
+  let structuralErrors: string[] = [];
+  let qaCorrections = 0;
+
   if (!ANTHROPIC_API_KEY) {
     console.warn('[growth-agent] No ANTHROPIC_API_KEY — returning fallback');
+    logAiGeneration({ client_id: clientId, agent: 'growth_agent', model: 'none', layer: 4, success: false, latency_ms: 0, error_message: 'No API key' }).catch(() => {});
     return fallbackAnalysis(input);
   }
 
@@ -827,13 +835,16 @@ export async function runGrowthAgent(input: GrowthAgentInput): Promise<GrowthAna
   let draft = await generateSonnetDraft(input);
   if (!draft) {
     console.warn('[growth-agent] Sonnet draft failed — using fallback');
+    logAiGeneration({ client_id: clientId, agent: 'growth_agent', model: MODEL, layer: 4, success: false, latency_ms: Date.now() - t0, error_message: 'Sonnet draft returned null' }).catch(() => {});
     return fallbackAnalysis(input);
   }
 
   // ── Step 2: Structural validation (free, deterministic) ──────
   let structural = validateStructural(draft);
   if (!structural.valid) {
+    structuralErrors = structural.errors;
     console.warn(`[growth-agent] Structural validation failed (attempt 1): ${structural.errors.join(' | ')}`);
+    layer = 2;
     // Retry once with feedback about what to fix
     const retry = await generateSonnetDraft(input, structural.errors.join('\n- '));
     if (retry) {
@@ -842,6 +853,7 @@ export async function runGrowthAgent(input: GrowthAgentInput): Promise<GrowthAna
     }
     if (!structural.valid) {
       console.error(`[growth-agent] Structural validation still failing after retry: ${structural.errors.join(' | ')} — returning fallback`);
+      logAiGeneration({ client_id: clientId, agent: 'growth_agent', model: MODEL, layer: 4, success: false, latency_ms: Date.now() - t0, structural_errors: structural.errors, error_message: 'Structural validation failed after retry' }).catch(() => {});
       return fallbackAnalysis(input);
     }
   }
@@ -856,14 +868,29 @@ export async function runGrowthAgent(input: GrowthAgentInput): Promise<GrowthAna
   }
 
   // ── Step 4: Apply corrections surgically ───────────────────────
-  if (qa.approved && qa.corrections.length === 0) {
+  qaCorrections = qa.corrections?.length || 0;
+  let result: GrowthAnalysis;
+  if (qa.approved && qaCorrections === 0) {
     console.log(`[growth-agent] QA ${qa.summary}`);
-    return { ...draft, qaPassed: true, qaNotes: [qa.summary] };
+    result = { ...draft, qaPassed: true, qaNotes: [qa.summary] };
+  } else {
+    result = applyCorrections(draft, qa.corrections);
+    console.log(`[growth-agent] QA applied ${qaCorrections} corrections: ${qa.summary}`);
   }
 
-  const final = applyCorrections(draft, qa.corrections);
-  console.log(`[growth-agent] QA applied ${qa.corrections.length} corrections: ${qa.summary}`);
-  return final;
+  // ── Log to ai_generation_log ──────────────────────────────────
+  logAiGeneration({
+    client_id: clientId,
+    agent: 'growth_agent',
+    model: MODEL,
+    layer,
+    success: true,
+    latency_ms: Date.now() - t0,
+    qa_corrections: qaCorrections,
+    structural_errors: structuralErrors.length > 0 ? structuralErrors : undefined,
+  }).catch(() => {});
+
+  return result;
 }
 
 // ─── Validation & normalization ─────────────────────────────────────────

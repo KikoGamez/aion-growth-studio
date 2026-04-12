@@ -8,6 +8,7 @@ import {
   checkBudget, recordUsage, saveLearnings,
 } from '../../../lib/advisor/db';
 import { logRecommendation } from '../../../lib/db';
+import { logAiGeneration, estimateAiCost } from '../../../lib/data/ai-log';
 
 const ANTHROPIC_KEY = import.meta.env?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
 
@@ -114,6 +115,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // 1. Forwards SSE chunks to the client
   // 2. Accumulates the full response text
   // 3. After stream ends: save message, extract actions/learnings, record usage
+  const streamT0 = Date.now();
   let fullText = '';
   let inputTokens = 0;
   let outputTokens = 0;
@@ -214,6 +216,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
       })}\n\n`));
 
       controller.close();
+
+      // Log AI call for observability
+      logAiGeneration({
+        client_id: client.id,
+        agent: 'advisor_chat',
+        model: 'claude-sonnet-4-6',
+        layer: 1,
+        success: true,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cost_cents: estimateAiCost('claude-sonnet-4-6', inputTokens, outputTokens),
+        latency_ms: Date.now() - streamT0,
+      }).catch(() => {});
 
       // Fire-and-forget: save message, learnings, record usage, auto-title
       processPostStream(

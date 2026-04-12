@@ -240,7 +240,19 @@ export async function createSnapshotFromAudit(auditId: string, clientId: string)
     .select('id')
     .single();
   if (snapErr) throw new Error(`Failed to create snapshot: ${snapErr.message}`);
-  return snap?.id ?? 'created';
+
+  const snapshotId = snap?.id ?? 'created';
+
+  // Write KPI time-series + materialized columns (fire-and-forget, non-blocking)
+  if (snapshotId !== 'created') {
+    const { writeKpiSeries, materializeSnapshotColumns } = await import('./data/kpi-extract');
+    Promise.all([
+      writeKpiSeries(clientId, snapshotId, dateStr, audit.results || {}),
+      materializeSnapshotColumns(snapshotId, audit.results || {}),
+    ]).catch(err => console.error('[snapshot] KPI/materialize failed:', (err as Error).message));
+  }
+
+  return snapshotId;
 }
 
 /**

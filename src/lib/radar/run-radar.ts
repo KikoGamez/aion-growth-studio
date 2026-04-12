@@ -109,11 +109,16 @@ export async function runRadarForClient(client: RadarClient): Promise<RadarRunRe
         // Append analytics to the snapshot's pipeline_output
         const { getSupabase } = await import('../db');
         const sb = getSupabase();
-        const { data: snapData } = await sb.from('snapshots').select('pipeline_output').eq('id', snapshotId).single();
+        const { data: snapData } = await sb.from('snapshots').select('pipeline_output, date').eq('id', snapshotId).single();
         if (snapData) {
           const updated = { ...snapData.pipeline_output, analytics: analyticsData };
           await sb.from('snapshots').update({ pipeline_output: updated }).eq('id', snapshotId);
           console.log(`[radar] Analytics ingested for ${client.domain}: GA4=${!!analyticsData.ga4} GSC=${!!analyticsData.gsc} quality=${analyticsData.dataQualityScore}`);
+
+          // Re-extract KPIs now that analytics are included (adds GSC/GA4 series)
+          const { writeKpiSeries, materializeSnapshotColumns } = await import('../data/kpi-extract');
+          writeKpiSeries(client.id, snapshotId, snapData.date, updated).catch(() => {});
+          materializeSnapshotColumns(snapshotId, updated).catch(() => {});
 
           // Update integration quality score
           if (analyticsData.dataQualityScore != null) {
@@ -160,6 +165,35 @@ export async function runRadarForClient(client: RadarClient): Promise<RadarRunRe
         'radar',
       ).catch(err => console.error('[radar] Failed to save correlation learnings:', err.message));
       console.log(`[radar] Saved ${meaningfulCorrelations.length} action→KPI correlations as learnings`);
+
+      // 4c. Write structured action_outcomes for cross-client analytics
+      try {
+        const sb = getSupabase();
+        const onboarding = await getClientOnboarding(client.id);
+        const outcomeRows = meaningfulCorrelations.map(c => ({
+          client_id: client.id,
+          action_title: c.actionTitle || 'Unknown action',
+          action_completed_at: c.actionDate || null,
+          pillar: c.pillar || null,
+          kpi_key: c.kpiKey,
+          kpi_before: c.deltaBefore ?? null,
+          kpi_after: c.deltaAfter ?? null,
+          delta_abs: c.deltaAfter != null && c.deltaBefore != null ? c.deltaAfter - c.deltaBefore : null,
+          delta_pct: c.deltaAfter != null && c.deltaBefore != null && c.deltaBefore !== 0
+            ? Math.round(((c.deltaAfter - c.deltaBefore) / Math.abs(c.deltaBefore)) * 100)
+            : null,
+          correlation_type: c.correlationType,
+          confidence: c.correlationType === 'probable_cause' ? 0.8 : 0.5,
+          days_measured: 7,  // weekly radar cadence
+          sector: onboarding?.sector || null,
+        }));
+        if (outcomeRows.length > 0) {
+          await sb.from('action_outcomes').insert(outcomeRows);
+          console.log(`[radar] Wrote ${outcomeRows.length} action_outcomes for ${client.domain}`);
+        }
+      } catch (err) {
+        console.error('[radar] action_outcomes write failed:', (err as Error).message);
+      }
     }
 
     // 5. Regenerate Growth Agent analysis with enriched client context.
