@@ -453,6 +453,7 @@ export interface TechStackResult extends ModuleResult {
 
 // ── New: Pilar 5 — Conversion ─────────────────────────────────────
 export interface ConversionResult extends ModuleResult {
+  // Lead-gen signals (B2B / services)
   hasContactForm?: boolean;
   formCount?: number;
   formFieldCount?: number;
@@ -463,7 +464,18 @@ export interface ConversionResult extends ModuleResult {
   hasPricing?: boolean;
   hasVideo?: boolean;
   hasChatWidget?: boolean;
+  // Commerce signals (ecommerce / retail)
+  hasCart?: boolean;
+  hasAddToCart?: boolean;
+  hasCheckout?: boolean;
+  hasProductPrices?: boolean;
+  hasNewsletter?: boolean;
+  hasWishlist?: boolean;
+  hasProductFilters?: boolean;
+  productCount?: number;
+  // Aggregated
   funnelScore?: number;   // 0-100
+  detectedModel?: 'ecommerce' | 'lead_gen' | 'hybrid' | 'informational';
   summary?: string;
   strengths?: string[];
   weaknesses?: string[];

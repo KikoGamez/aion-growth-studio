@@ -198,7 +198,12 @@ Si un pilar no tiene datos (ej: no hay audit GEO), los pesos se redistribuyen en
 
 **Pilar Conversión (15%)**:
 - \`conversionScore = conversion.funnelScore\` (default 20 si no hay datos).
-- Se calcula en el módulo conversion a partir de: formularios, CTAs, lead magnet, claridad del hero, prueba social, jerarquía visual. No tienes la fórmula exacta pero sabes los inputs.
+- Se calcula desde señales de captación de leads (formularios, CTAs, lead magnet, chat) Y señales de comercio electrónico (carrito, checkout, fichas de producto, filtros, wishlist, newsletter). No todas las señales son relevantes para todos los modelos — el contexto incluye \`detectedModel\` que te dice qué tipo de conversión domina:
+  - **ecommerce**: lo que importa es el flujo de compra (fichas de producto → carrito → checkout) y la captación de email (newsletter). Un formulario de contacto existe pero no es el punto fuerte.
+  - **lead_gen**: lo que importa es la captación de leads (formularios, CTAs, lead magnet). Un carrito de compra no es relevante.
+  - **hybrid**: ambos importan — tienda + servicio/consultoría (ej: agencia que vende cursos online + consultoría).
+  - **informational**: ni vende ni captura leads bien — la web es una tarjeta de visita. El diagnóstico debería señalarlo como carencia.
+- En el contexto también recibirás datos de **Google Shopping**: si el cliente o sus competidores aparecen en resultados de Shopping. Si la competencia invierte en Shopping y el cliente no, eso puede ser una oportunidad. Si ni el cliente ni la competencia usan Shopping, no lo recomiendes — el mercado no lo demanda.
 
 **Pilar Reputación (10%)** — composite de señales disponibles, pesos renormalizados según cuáles existen:
 - GBP rating (33%): \`((gbp.rating - 2) / 3) × 100\` + bonus por reviewCount. Rating 4.0 = 67 puntos. 4.5 = 83. 5.0 = 100.
@@ -624,10 +629,11 @@ ${scoreTrace.length > 0 ? `\nCómo se ha calculado cada score (fórmula real con
 - Enlaces internos: ${crawl.internalLinks ?? '?'}
 
 ### Conversión
+- Modelo detectado: ${conv.detectedModel ?? 'desconocido'} (ecommerce / lead_gen / hybrid / informational)
 - Funnel score: ${conv.funnelScore ?? conv.score ?? '?'}/100
-- Formularios de contacto: ${conv.formCount ?? 0}
-- CTAs detectados: ${conv.ctaCount ?? 0}
-- Lead magnet: ${conv.hasLeadMagnet ? 'sí' : 'NO'}
+- Señales de captación de leads: formularios(${conv.formCount ?? 0}), CTAs(${conv.ctaCount ?? 0}), lead magnet(${conv.hasLeadMagnet ? 'sí' : 'no'}), chat(${conv.hasChatWidget ? 'sí' : 'no'})
+- Señales de comercio: carrito(${conv.hasCart ? 'sí' : 'no'}), añadir al carrito(${conv.hasAddToCart ? 'sí' : 'no'}), checkout(${conv.hasCheckout ? 'sí' : 'no'}), precios de producto(${conv.hasProductPrices ? 'sí' : 'no'}), fichas de producto(${conv.productCount ?? 0}), filtros(${conv.hasProductFilters ? 'sí' : 'no'}), lista de deseos(${conv.hasWishlist ? 'sí' : 'no'})
+- Señales compartidas: newsletter(${conv.hasNewsletter ? 'sí' : 'no'}), testimonios(${conv.hasTestimonials ? 'sí' : 'no'}), precios(${conv.hasPricing ? 'sí' : 'no'}), vídeo(${conv.hasVideo ? 'sí' : 'no'})
 
 ### Contenido
 - Blog: cadencia ${cc.cadenceLevel || 'no detectado'} (${cc.totalPosts ?? 0} posts, ${cc.postsLast90Days ?? 0} en últimos 90 días)
@@ -639,7 +645,23 @@ ${scoreTrace.length > 0 ? `\nCómo se ha calculado cada score (fórmula real con
 - Reputación general: ${rep.score ?? '?'}/100
 
 ### Competencia
-${comps.slice(0, 3).map((c: any) => `- ${c.name || c.url}${c.domain ? ' ('+c.domain+')' : ''}`).join('\n') || 'sin competidores detectados'}`);
+${comps.slice(0, 3).map((c: any) => `- ${c.name || c.url}${c.domain ? ' ('+c.domain+')' : ''}`).join('\n') || 'sin competidores detectados'}
+
+### Google Shopping
+${(() => {
+  const gs = r.google_shopping as any;
+  if (!gs || gs.skipped) return '- No se ha podido analizar Google Shopping (datos insuficientes o API no disponible)';
+  const lines: string[] = [];
+  lines.push(`- Queries buscadas: ${gs.queriesSearched ?? 0}`);
+  lines.push(`- Total resultados Shopping: ${gs.totalShoppingResults ?? 0}`);
+  lines.push(`- Cliente aparece en Shopping: ${gs.clientFound ? 'SÍ' : 'NO'}`);
+  if ((gs.advertisers || []).length > 0) {
+    lines.push(`- Top anunciantes Shopping: ${gs.advertisers.slice(0, 5).map((a: any) => `${a.name} (${a.appearances} apariciones)`).join(', ')}`);
+  } else {
+    lines.push('- No se han detectado anunciantes Shopping para estas keywords');
+  }
+  return lines.join('\n');
+})()}`);
 
   // ─── Trend context from prior snapshot ──────────────────────────────
   if (priorSnapshot) {
