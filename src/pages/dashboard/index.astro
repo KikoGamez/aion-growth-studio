@@ -578,10 +578,12 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
     <!-- ══ BLOQUE 2: 6 Pillar Cards ══ -->
     <section style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;">
       {pillars.map(p => {
-        const delta = p.value - p.prev;
+        const hasPrev = allSnapshots.length >= 2 && p.prev > 0;
+        const delta = hasPrev ? p.value - p.prev : 0;
         const pColor = p.value >= 70 ? '#1D9E75' : p.value >= 40 ? '#BA7517' : '#E24B4A';
         const deltaColor = delta > 0 ? '#1D9E75' : delta < 0 ? '#E24B4A' : '#94a3b8';
         const deltaText = delta > 0 ? `+${delta}` : delta < 0 ? String(delta) : '=';
+        const hasSparkline = p.sparkline.length >= 3;
         const max = Math.max(...p.sparkline, 1);
         return (
           <a href={`/dashboard/pillar/${p.key}`} style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:8px;text-decoration:none;transition:box-shadow 0.15s,transform 0.15s;cursor:pointer;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';this.style.transform='none'">
@@ -591,9 +593,10 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
             </div>
             <div style="display:flex;align-items:baseline;gap:6px;">
               <span style={`font-size:28px;font-weight:900;color:${pColor};letter-spacing:-0.03em;`}>{p.value}</span>
-              {!isFirstWeek && <span style={`font-size:12px;font-weight:700;color:${deltaColor};`}>{deltaText}</span>}
+              <span style="font-size:11px;font-weight:600;color:#94a3b8;">/100</span>
+              {hasPrev && delta !== 0 && <span style={`font-size:12px;font-weight:700;color:${deltaColor};`}>{deltaText}</span>}
             </div>
-            {!isFirstWeek ? (
+            {hasSparkline ? (
               <div style="display:flex;align-items:flex-end;gap:2px;height:24px;">
                 {p.sparkline.map((v, i) => {
                   const h = Math.max(2, Math.round((v / max) * 24));
@@ -602,8 +605,8 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
                 })}
               </div>
             ) : (
-              <div style="height:24px;display:flex;align-items:center;">
-                <span style="font-size:10px;color:#cbd5e1;">Punto de partida</span>
+              <div style="height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;">
+                <div style={`height:100%;width:${p.value}%;background:${pColor};border-radius:3px;`}></div>
               </div>
             )}
           </a>
