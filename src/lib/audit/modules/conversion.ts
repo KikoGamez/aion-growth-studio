@@ -194,6 +194,20 @@ function mergeSignals(a: SignalSet, b: SignalSet | null): SignalSet {
 // ─── Main entry point ───────────────────────────────────────────────────
 
 export async function runConversion(url: string, crawlData: CrawlResult): Promise<ConversionResult> {
+  // If the crawler was blocked, we cannot analyze the real page content.
+  // Return "not measurable" instead of scoring an error page.
+  if (crawlData.crawlerBlocked) {
+    return {
+      skipped: false, // not skipped — we ran but the data is unreliable
+      crawlerBlocked: true,
+      funnelScore: undefined,
+      detectedModel: undefined,
+      summary: `No medible — ${crawlData.crawlerBlockedReason || 'sitio bloqueado al crawler'}. Los datos de conversion requieren acceso al HTML real del sitio.`,
+      strengths: [],
+      weaknesses: ['Sitio bloqueado al crawler — pendiente de verificar una vez resuelto el bloqueo'],
+    } as any;
+  }
+
   try {
     const res = await axios.get(url, {
       timeout: 120_000,

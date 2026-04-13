@@ -30,6 +30,7 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
   const conversion = (results.conversion || {}) as ConversionResult;
   const reputation = (results.reputation || {}) as any;
   const cc         = (results.content_cadence || {}) as any;
+  const isCrawlerBlocked = !!(crawl as any).crawlerBlocked;
 
   // Computation trace — captured alongside every pillar calc below so the
   // Growth Agent can explain the number to the client with real values.
@@ -101,14 +102,23 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
   // ── Pilar 3: Web & técnico (15%) ─────────────────────────────────
   // PageSpeed is the dominant signal — users experience it directly.
   // Technical checks (SSL, schema, sitemap, canonical) add reliability bonus.
+  // When crawler is blocked, techChecks (canonical, schema, robots meta) are unreliable
+  // because they were detected on the error page. Only SSL and sitemap/robots.txt
+  // (checked via direct HTTP HEAD) are valid. PageSpeed uses Google's API — always valid.
   const psScore = pagespeed.mobile?.performance ?? 0;
-  const techCheckDefs = [
-    { label: 'SSL válido', points: 25, applied: !ssl.skipped && !!ssl.valid },
-    { label: 'Canonical tags', points: 20, applied: !!crawl.hasCanonical },
-    { label: 'Schema markup', points: 30, applied: !!crawl.hasSchemaMarkup },
-    { label: 'Sitemap.xml', points: 20, applied: !!crawl.hasSitemap },
-    { label: 'Robots.txt', points: 5, applied: !!crawl.hasRobots },
-  ];
+  const techCheckDefs = isCrawlerBlocked
+    ? [
+        { label: 'SSL válido', points: 50, applied: !ssl.skipped && !!ssl.valid },
+        { label: 'Sitemap.xml', points: 30, applied: !!crawl.hasSitemap },
+        { label: 'Robots.txt', points: 20, applied: !!crawl.hasRobotsTxt },
+      ]
+    : [
+        { label: 'SSL válido', points: 25, applied: !ssl.skipped && !!ssl.valid },
+        { label: 'Canonical tags', points: 20, applied: !!crawl.hasCanonical },
+        { label: 'Schema markup', points: 30, applied: !!crawl.hasSchemaMarkup },
+        { label: 'Sitemap.xml', points: 20, applied: !!crawl.hasSitemap },
+        { label: 'Robots.txt', points: 5, applied: !!crawl.hasRobots },
+      ];
   const techChecks = techCheckDefs.reduce((s, c) => s + (c.applied ? c.points : 0), 0);
   // PageSpeed 70% + technical checks 30%
   const webScore = Math.min(100, Math.round(psScore * 0.7 + techChecks * 0.3));
@@ -116,15 +126,17 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
     pagespeedMobile: psScore,
     techChecks: techCheckDefs,
     techChecksTotal: techChecks,
-    formula: `pagespeed(${psScore}) × 0.7 + techChecks(${techChecks}/100) × 0.3 = ${webScore}`,
+    formula: `pagespeed(${psScore}) × 0.7 + techChecks(${techChecks}/100) × 0.3 = ${webScore}${isCrawlerBlocked ? ' [checks limitados: crawler bloqueado]' : ''}`,
     final: webScore,
   };
 
   // ── Pilar 4: Conversión (15%) ────────────────────────────────────
-  const conversionScore = Math.min(100, conversion.funnelScore ?? 20);
+  // When crawler is blocked, funnelScore is unreliable (error page has 0 CTAs, 0 forms)
+  // → exclude from scoring by setting to null so the weight redistributes.
+  const conversionScore = isCrawlerBlocked ? null : Math.min(100, conversion.funnelScore ?? 20);
   computation.conversion = {
-    funnelScore: conversion.funnelScore ?? 20,
-    final: conversionScore,
+    funnelScore: isCrawlerBlocked ? 0 : (conversion.funnelScore ?? 20),
+    final: conversionScore ?? 0,
   };
 
   // ── Pilar 5: Reputación (10%) ─────────────────────────────────────
@@ -192,8 +204,8 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
   const pillars: { key: keyof typeof BASE_WEIGHTS; value: number | null }[] = [
     { key: 'seo',        value: seoScore },
     { key: 'geo',        value: geoScore },
-    { key: 'web',        value: webScore },          // always present
-    { key: 'conversion', value: conversionScore },   // always present (defaults to 20)
+    { key: 'web',        value: webScore },          // always present (PageSpeed is API-based)
+    { key: 'conversion', value: conversionScore },   // null when crawler blocked
     { key: 'reputation', value: reputationScore },
   ];
 
@@ -242,9 +254,20 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
     seo:        seoScore ?? 0,
     geo:        geoScore ?? 0,
     web:        webScore,
-    conversion: conversionScore,
+    conversion: conversionScore ?? 0,
     reputation: reputationScore ?? 0,
   };
 
-  return { total, breakdown, content: contentScore, computation };
+  const activePillarCount = active.length;
+  const totalPillarCount = pillars.length;
+
+  const result: ScoreResult = { total, breakdown, content: contentScore, computation };
+
+  // When crawler was blocked, annotate so the Growth Agent and report know
+  if (isCrawlerBlocked) {
+    (result as any).crawlerBlocked = true;
+    (result as any).crawlerNote = `Score calculado sobre ${activePillarCount} de ${totalPillarCount} pilares — las secciones que dependen del HTML (${pillars.filter(p => p.value === null).map(p => p.key).join(', ') || 'ninguna'}) no se incluyen porque el sitio bloqueo el acceso al crawler.`;
+  }
+
+  return result;
 }

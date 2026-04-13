@@ -260,7 +260,7 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
     }
 
     case 'techstack':
-      return runTechStack(url);
+      return runTechStack(url, results.crawl);
 
     case 'conversion':
       return runConversion(url, results.crawl || {});

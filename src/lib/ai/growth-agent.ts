@@ -594,14 +594,43 @@ ${onPageIssues.map(i => {
     if (comp.totalFormula) scoreTrace.push(`  • Total: ${comp.totalFormula}`);
   }
 
+  // Crawler blocked detection
+  const isCrawlerBlocked = !!(crawl as any).crawlerBlocked;
+  const crawlerNote = (r.score as any)?.crawlerNote || '';
+
+  if (isCrawlerBlocked) {
+    sections.push(`## ⚠️ CRAWLER BLOQUEADO — INFORME PARCIAL
+
+ATENCIÓN: ${domain} bloqueó el acceso automático al HTML del sitio (${(crawl as any).crawlerBlockedReason || 'acceso denegado'}).
+
+DATOS FIABLES (APIs externas, no dependen del crawler):
+- PageSpeed / Core Web Vitals ✓
+- SEO orgánico (DataForSEO) ✓
+- Visibilidad en IA (GEO) ✓
+- Reputación / reviews (APIs externas) ✓
+
+DATOS NO MEDIBLES (dependen del HTML real):
+- Funnel de conversión (CTAs, formularios, carrito) ❌
+- Detección de analytics/GTM ❌
+- Schema markup, canonical tags ❌
+- SEO on-page (title, meta description, H1) ❌
+
+REGLAS PARA TU ANÁLISIS:
+1. El veredicto ejecutivo DEBE abrir con: "Este informe está parcialmente limitado porque [dominio] bloqueó el acceso automático."
+2. ${crawlerNote || `Score calculado solo sobre los pilares con datos reales.`}
+3. La PRIMERA acción del plan SIEMPRE debe ser "Resolver el bloqueo del crawler" con explicación técnica.
+4. Las recomendaciones de secciones bloqueadas (ej: "instalar GA4", "añadir CTAs") deben condicionarse con: "Pendiente de verificar una vez resuelto el bloqueo — puede que ya exista."
+5. NUNCA digas "no tiene formulario de contacto" o "no tiene analytics" si el crawler fue bloqueado — di "no verificable por bloqueo del crawler".`);
+  }
+
   sections.push(`## DATOS DE LA AUDITORÍA (snapshot actual)
 
-Score global: ${r.score?.total ?? '?'}/100
+Score global: ${r.score?.total ?? '?'}/100${isCrawlerBlocked ? ' (parcial — secciones bloqueadas excluidas)' : ''}
 Desglose por pilar:
 - SEO: ${r.score?.breakdown?.seo ?? '?'}/100
 - GEO: ${r.score?.breakdown?.geo ?? '?'}/100
-- Web: ${r.score?.breakdown?.web ?? '?'}/100
-- Conversión: ${r.score?.breakdown?.conversion ?? '?'}/100
+- Web: ${r.score?.breakdown?.web ?? '?'}/100${isCrawlerBlocked ? ' (solo PageSpeed + SSL/sitemap/robots, sin checks on-page)' : ''}
+- Conversión: ${isCrawlerBlocked ? 'NO MEDIBLE (crawler bloqueado)' : `${r.score?.breakdown?.conversion ?? '?'}/100`}
 - Contenido: ${r.score?.breakdown?.content ?? '?'}/100
 - Reputación: ${r.score?.breakdown?.reputation ?? '?'}/100
 ${scoreTrace.length > 0 ? `\nCómo se ha calculado cada score (fórmula real con valores del audit):\n${scoreTrace.join('\n')}\n` : ''}

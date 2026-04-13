@@ -107,7 +107,24 @@ const CMS_SIGNATURES: Array<{ name: string; patterns: string[] }> = [
   { name: 'Joomla',       patterns: ['/media/jui/', 'joomla'] },
 ];
 
-export async function runTechStack(url: string): Promise<TechStackResult> {
+export async function runTechStack(url: string, crawlData?: any): Promise<TechStackResult> {
+  // If the crawler was blocked, we cannot detect tools from the HTML.
+  // Return "not measurable" with a clear reason.
+  if (crawlData?.crawlerBlocked) {
+    return {
+      skipped: false,
+      crawlerBlocked: true,
+      analytics: [],
+      tagManager: [],
+      conversionPixels: [],
+      crmAutomation: [],
+      chatSupport: [],
+      heatmaps: [],
+      maturityScore: undefined,
+      _log: `blocked: ${crawlData.crawlerBlockedReason || 'crawler blocked'}`,
+    } as any;
+  }
+
   try {
     let res;
     const axiosCfg = {

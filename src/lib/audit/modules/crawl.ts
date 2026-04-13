@@ -312,10 +312,35 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       console.log(`[crawl] Redirect detected: ${url} → ${finalUrl}`);
     }
 
+    const httpStatus = response.status;
     const html = String(response.data);
     const $ = cheerio.load(html);
 
     const title = $('title').first().text().trim().slice(0, 100);
+
+    // ── Crawler block detection ────────────────────────────────────
+    // Detect via HTTP status (403/401) OR page content (WAF challenge pages).
+    // When blocked, downstream modules that depend on HTML (conversion,
+    // techstack, on-page audit) must not score based on the error page.
+    const ACCESS_DENIED_BODY_RE = /access.denied|just.a.moment|attention.required|captcha.required|cloudflare|checking.your.browser|ddos.protection|security.check|pardon.our.interruption|please.verify|enable.javascript.and.cookies/i;
+    let crawlerBlocked = false;
+    let crawlerBlockedReason = '';
+
+    if (httpStatus === 403 || httpStatus === 401) {
+      crawlerBlocked = true;
+      crawlerBlockedReason = `HTTP ${httpStatus}`;
+    } else if (BLOCKED_TITLE_RE.test(title)) {
+      crawlerBlocked = true;
+      crawlerBlockedReason = `Pagina de bloqueo detectada: "${title.slice(0, 40)}"`;
+    } else if (ACCESS_DENIED_BODY_RE.test(html.slice(0, 5000)) && html.length < 20000) {
+      // Short pages with WAF/challenge content
+      crawlerBlocked = true;
+      crawlerBlockedReason = 'WAF/challenge page (contenido corto con marcadores de bloqueo)';
+    }
+
+    if (crawlerBlocked) {
+      console.log(`[crawl] CRAWLER BLOCKED: ${crawlerBlockedReason} for ${url}`);
+    }
     let description = ($('meta[name="description"]').attr('content') || '').trim().slice(0, 200);
     const h1s = $('h1')
       .map((_, el) => $(el).text().trim())
@@ -452,15 +477,17 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       h2Count,
       imageCount,
       imagesWithAlt,
-      hasCanonical,
-      hasRobots,
-      hasSitemap,
-      hasRobotsTxt,
-      hasSchemaMarkup,
-      ...(uniqueSchemaTypes.length > 0 && { schemaTypes: uniqueSchemaTypes }),
-      internalLinks,
-      wordCount,
-      loadedOk: true,
+      // When crawler is blocked, on-page signals are from the error page — unreliable
+      hasCanonical: crawlerBlocked ? undefined : hasCanonical,
+      hasRobots: crawlerBlocked ? undefined : hasRobots,
+      hasSitemap,       // checked via direct /sitemap.xml HEAD — independent of crawler
+      hasRobotsTxt,     // checked via direct /robots.txt HEAD — independent of crawler
+      hasSchemaMarkup: crawlerBlocked ? undefined : hasSchemaMarkup,
+      ...(uniqueSchemaTypes.length > 0 && !crawlerBlocked && { schemaTypes: uniqueSchemaTypes }),
+      internalLinks: crawlerBlocked ? undefined : internalLinks,
+      wordCount: crawlerBlocked ? undefined : wordCount,
+      loadedOk: !crawlerBlocked,
+      ...(crawlerBlocked && { crawlerBlocked, crawlerBlockedReason }),
       ...(redirected && { finalUrl }),
       businessType,
       companyName,

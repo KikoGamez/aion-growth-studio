@@ -125,12 +125,20 @@ export interface CrawlResult extends ModuleResult {
   internalLinks?: number;
   wordCount?: number;
   loadedOk?: boolean;
+  /** True when the site returned 403/401/Access Denied or a WAF challenge page.
+   *  Downstream modules that depend on HTML content (conversion, techstack, on-page
+   *  audit) must treat their results as "no medible" when this is true. Modules
+   *  that use external APIs (PageSpeed, DataForSEO, GEO) are NOT affected. */
+  crawlerBlocked?: boolean;
+  crawlerBlockedReason?: string;  // e.g. "HTTP 403", "Access Denied page", "Cloudflare challenge"
   instagramHandle?: string;
   twitterHandle?: string;
   linkedinUrl?: string;
   hreflangAlternates?: HreflangAlternate[];
   businessType?: BusinessType;
   companyName?: string;     // Cleaned brand name (not generic titles like "Inicio")
+  companyNameConfidence?: number;
+  companyNameSource?: string;
   locationHint?: string;    // City/region extracted from schema/HTML/domain
   hasBlog?: boolean;        // Blog section detected in nav/links
   blogUrl?: string;         // URL of the blog section root
