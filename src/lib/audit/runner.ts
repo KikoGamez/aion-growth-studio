@@ -187,7 +187,7 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
       const sector = (results.sector as any)?.sector || 'business services';
       const comps: Array<{ name: string; url: string }> =
         (results.competitors as any)?.competitors || [];
-      return runGEO(url, sector, results.crawl || {}, comps);
+      return runGEO(url, sector, results.crawl || {}, comps, audit.geoSamples ?? 1);
     }
 
     case 'competitor_pagespeed': {

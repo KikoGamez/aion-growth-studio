@@ -100,6 +100,8 @@ export async function runRadarForClient(client: RadarClient, options?: RadarRunO
       }
 
       const audit = await getAuditPage(auditId);
+      // Radar uses multi-sampling for GEO (3 samples per query×engine for stability)
+      audit.geoSamples = 3;
 
       if (PHASE_ENTRY_STEPS.has(currentStep as AuditStep)) {
         // Phase execution (parallel steps)

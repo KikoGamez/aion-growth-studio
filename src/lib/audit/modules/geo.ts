@@ -344,11 +344,18 @@ async function generateQueries(
 
 // ── Main export ───────────────────────────────────────────────────
 
+/**
+ * @param samples Number of times to query each engine per prompt.
+ *   1 = single-shot (audit gratis, fast, cheap)
+ *   3 = multi-sampling (Radar, stable, ~3× cost)
+ *   The `mentioned` flag uses majority vote when samples > 1.
+ */
 export async function runGEO(
   url: string,
   sector: string,
   crawl: CrawlResult,
   competitors?: Array<{ name: string; url: string }>,
+  samples: number = 1,
 ): Promise<GeoResult> {
   if (!OPENAI_KEY) {
     return { skipped: true, reason: 'OPENAI_API_KEY not configured' };
@@ -414,35 +421,56 @@ export async function runGEO(
     sector, valueProposition, keywords, brandName, domain, locationHint, OPENAI_KEY,
   );
   const querySpecs = deduplicateQuerySpecs(rawQuerySpecs);
-  console.log(`[geo] queries generated: ${querySpecs.length} (${Date.now() - t0}ms) | engines: ${engines.map(e => e.name).join(',')}`);
+  const effectiveSamples = Math.max(1, Math.min(5, samples));
+  console.log(`[geo] queries generated: ${querySpecs.length} (${Date.now() - t0}ms) | engines: ${engines.map(e => e.name).join(',')} | samples: ${effectiveSamples}`);
 
   try {
-    // Run ALL queries × ALL engines in parallel
+    // Run ALL queries × ALL engines × N samples in parallel.
+    // For samples=1 (audit), this is identical to before.
+    // For samples=3 (Radar), each query×engine runs 3 times and we
+    // use majority vote — mentioned if ≥50% of samples detected the brand.
     const t1 = Date.now();
     const runResults = await Promise.all(
       querySpecs.map(async (spec) => {
         const settled = await Promise.allSettled(
           engines.map(async (engine) => {
-            const answer = await askEngine(spec.query, engine);
-            const isMentioned = detectMention(answer, domain, brandName);
-            const mentioned = isMentioned
-              ? (spec.isBrandQuery ? !hasDenialNearBrand(answer, domain, brandName) : true)
-              : false;
-            return { engineName: engine.name, answer, mentioned };
+            // Run N samples for this query×engine
+            let mentionedCount = 0;
+            let lastAnswer = '';
+            for (let s = 0; s < effectiveSamples; s++) {
+              const answer = await askEngine(spec.query, engine);
+              if (!answer) continue;
+              lastAnswer = answer;
+              const isMentioned = detectMention(answer, domain, brandName);
+              const confirmed = isMentioned
+                ? (spec.isBrandQuery ? !hasDenialNearBrand(answer, domain, brandName) : true)
+                : false;
+              if (confirmed) mentionedCount++;
+            }
+            // Majority vote: mentioned if ≥50% of samples detected the brand
+            const mentioned = mentionedCount >= Math.ceil(effectiveSamples / 2);
+            const stabilityRate = effectiveSamples > 0
+              ? Math.round((mentionedCount / effectiveSamples) * 100)
+              : 0;
+            return { engineName: engine.name, answer: lastAnswer, mentioned, stabilityRate };
           }),
         );
         const engineOutputs = settled.map((s, i) =>
           s.status === 'fulfilled'
             ? s.value
-            : { engineName: engines[i].name, answer: '', mentioned: false },
+            : { engineName: engines[i].name, answer: '', mentioned: false, stabilityRate: 0 },
         );
-        // Union: mentioned if ANY engine mentions it
+        // Union: mentioned if ANY engine's majority vote says yes
         const mentioned = engineOutputs.some((e) => e.mentioned);
-        return { spec, engineOutputs, mentioned };
+        // Overall stability for this query: average across engines
+        const avgStability = engineOutputs.length > 0
+          ? Math.round(engineOutputs.reduce((s, e) => s + e.stabilityRate, 0) / engineOutputs.length)
+          : 0;
+        return { spec, engineOutputs, mentioned, stabilityRate: avgStability };
       }),
     );
 
-    console.log(`[geo] all queries executed: ${runResults.length} results (${Date.now() - t1}ms)`);
+    console.log(`[geo] all queries executed: ${runResults.length} results × ${effectiveSamples} samples (${Date.now() - t1}ms)`);
 
     // If ALL answers are empty → API down or all timed out
     const perEngineEmpty = engines.map((e) => ({
@@ -484,7 +512,7 @@ export async function runGEO(
       };
     });
 
-    // Build GeoQuery objects — keep queries short to help Notion's 2000-char limit
+    // Build GeoQuery objects
     const queries: GeoQuery[] = runResults.map((r) => ({
       query: r.spec.query.slice(0, 80),
       mentioned: r.mentioned,
@@ -492,6 +520,8 @@ export async function runGEO(
       category: r.spec.category,
       isBrandQuery: r.spec.isBrandQuery,
       engines: r.engineOutputs.map((e) => ({ name: e.engineName, mentioned: e.mentioned })),
+      stabilityRate: r.stabilityRate,
+      samplesRun: effectiveSamples,
     }));
 
     const total        = queries.length;

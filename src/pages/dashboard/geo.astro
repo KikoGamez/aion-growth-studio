@@ -400,6 +400,9 @@ function buildDonut(score: number, radius: number, stroke: number) {
               <th style="text-align:center;padding:10px 6px;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid #e2e8f0;white-space:nowrap;">{name}</th>
             ))}
             <th style="text-align:center;padding:10px 8px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #e2e8f0;">Total</th>
+            {queries[0]?.samplesRun > 1 && (
+              <th style="text-align:center;padding:10px 8px;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #e2e8f0;" title="Estabilidad: % de muestras donde la marca aparece. Mas alto = mas fiable.">Estabilidad</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -436,6 +439,13 @@ function buildDonut(score: number, radius: number, stroke: number) {
                     <td style="text-align:center;padding:8px;">
                       <span style={`font-size:12px;font-weight:700;color:${enginesHit > 0 ? GREEN : '#94a3b8'};`}>{enginesHit}/{engineNames.length}</span>
                     </td>
+                    {q.samplesRun > 1 && (
+                      <td style="text-align:center;padding:8px;">
+                        <span style={`font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:${(q.stabilityRate || 0) >= 67 ? GREEN_BG : (q.stabilityRate || 0) >= 34 ? '#fef9c3' : '#fef2f2'};color:${(q.stabilityRate || 0) >= 67 ? GREEN : (q.stabilityRate || 0) >= 34 ? '#a16207' : '#dc2626'};`}>
+                          {q.stabilityRate ?? 0}%
+                        </span>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

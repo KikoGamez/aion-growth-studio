@@ -198,6 +198,9 @@ export interface GeoQuery {
   levelLabel?: string;
   pts?: number;
   engines?: Array<{ name: string; mentioned: boolean; context?: string }>;
+  // Multi-sampling fields (Radar only — audit uses samples=1)
+  stabilityRate?: number;       // 0-100: % of samples where brand was mentioned (majority vote)
+  samplesRun?: number;          // how many samples were taken per engine
 }
 
 export interface GeoCompetitorMention {
@@ -629,4 +632,6 @@ export interface AuditPageData {
   userLinkedin?: string;
   userCompetitors?: string[];
   results: Record<string, ModuleResult>;
+  /** Radar sets this to 3 for multi-sampling GEO queries (audit uses 1) */
+  geoSamples?: number;
 }
