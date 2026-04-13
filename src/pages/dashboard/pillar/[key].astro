@@ -87,15 +87,56 @@ function getKPIs(): KPI[] {
       return kpis;
     }
     case 'reputation': {
+      // Merge data from reputation module + gbp module + instagram + linkedin
       const rep = r.reputation || {};
       const prep = pr.reputation || {};
+      const gbp = r.gbp || {};
+      const pgbp = pr.gbp || {};
+      const ig = r.instagram || {};
+      const pig = pr.instagram || {};
+      const li = r.linkedin || {};
+      const pli = pr.linkedin || {};
+      const cc = r.content_cadence || {};
+      const pcc = pr.content_cadence || {};
       const kpis: KPI[] = [];
-      if (rep.gbpRating != null) kpis.push({ label: 'Google Rating', current: `${rep.gbpRating}★`, prev: prep.gbpRating ? `${prep.gbpRating}★` : null, better: 'up' });
-      if (rep.totalReviews != null) kpis.push({ label: 'Total Reseñas', current: rep.totalReviews, prev: prep.totalReviews, better: 'up' });
+
+      // GBP — merge from gbp module (primary) OR reputation module (fallback)
+      const rating = gbp.rating ?? rep.gbpRating ?? rep.combinedRating;
+      const prevRating = pgbp.rating ?? prep.gbpRating ?? prep.combinedRating;
+      if (rating != null) kpis.push({ label: 'Google Rating', current: `${rating}★`, prev: prevRating ? `${prevRating}★` : null, better: 'up' });
+
+      const reviews = gbp.reviewCount ?? rep.totalReviews ?? 0;
+      const prevReviews = pgbp.reviewCount ?? prep.totalReviews;
+      if (reviews > 0 || (gbp.found)) kpis.push({ label: 'Reseñas Google', current: reviews, prev: prevReviews, better: 'up' });
+
+      // Trustpilot
       if (rep.trustpilotRating != null) kpis.push({ label: 'Trustpilot', current: `${rep.trustpilotRating}★`, prev: prep.trustpilotRating ? `${prep.trustpilotRating}★` : null, better: 'up' });
-      if (rep.combinedRating != null) kpis.push({ label: 'Rating combinado', current: `${rep.combinedRating}★`, prev: prep.combinedRating ? `${prep.combinedRating}★` : null, better: 'up' });
-      kpis.push({ label: 'Menciones prensa', current: rep.newsCount || 0, prev: prep.newsCount, better: 'up' });
-      if (rep.reputationLevel) kpis.push({ label: 'Nivel reputación', current: rep.reputationLevel, prev: prep.reputationLevel, better: 'up' });
+
+      // Press mentions
+      kpis.push({ label: 'Menciones en prensa', current: rep.newsCount || 0, prev: prep.newsCount, better: 'up' });
+
+      // Instagram
+      if (ig.found && ig.followers) {
+        kpis.push(
+          { label: 'Instagram Followers', current: ig.followers, prev: pig.followers, better: 'up' },
+          { label: 'IG Engagement Rate', current: `${ig.engagementRate || 0}%`, prev: pig.engagementRate != null ? `${pig.engagementRate}%` : null, better: 'up' },
+          { label: 'IG Posts', current: ig.posts || 0, prev: pig.posts, better: 'up' },
+        );
+      }
+
+      // LinkedIn
+      if (li.found && li.followers) {
+        kpis.push({ label: 'LinkedIn Followers', current: li.followers, prev: pli.followers, better: 'up' });
+      }
+
+      // Content cadence (contributes to reputation/authority)
+      if (cc.totalPosts != null) {
+        kpis.push(
+          { label: 'Blog posts (90 días)', current: cc.postsLast90Days || 0, prev: pcc.postsLast90Days, better: 'up' },
+          { label: 'Cadencia blog', current: cc.cadenceLevel || 'inactive', prev: pcc.cadenceLevel, better: 'up' },
+        );
+      }
+
       return kpis;
     }
     default: return [];
@@ -153,7 +194,9 @@ const improvements = changes.filter(c => c.type === 'improvement');
 const deteriorations = changes.filter(c => c.type === 'deterioration');
 const neutrals = changes.filter(c => c.type === 'neutral');
 
-// Executive summary from briefing
+// Growth Agent pillar narrative (preferred) or legacy briefing fallback
+const growthAnalysis = r.growth_analysis;
+const pillarNarrative = growthAnalysis?.pillarAnalysis?.[key];
 const briefing = r.briefing;
 ---
 
@@ -185,6 +228,26 @@ const briefing = r.briefing;
       <p style="font-size:14px;color:#64748b;">Detalle semanal — {snapshot.date}</p>
     </div>
   </div>
+
+  <!-- Growth Agent diagnostic for this pillar -->
+  {pillarNarrative?.assessment && (
+    <section style={`background:linear-gradient(135deg, #000e41, #001f70);border-radius:16px;padding:24px 28px;color:white;`}>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:#69ff87;">auto_awesome</span>
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#69ff87;">Diagnóstico AION — {meta.label}</span>
+      </div>
+      <p style="font-size:15px;line-height:1.7;color:#e2e8f0;">{pillarNarrative.assessment}</p>
+      {pillarNarrative.keyFinding && (
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(105,255,135,0.25);">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span class="material-symbols-outlined" style="font-size:14px;color:#69ff87;">priority_high</span>
+            <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#69ff87;">Lo que más importa</span>
+          </div>
+          <p style="font-size:14px;line-height:1.6;color:white;font-weight:600;">{pillarNarrative.keyFinding}</p>
+        </div>
+      )}
+    </section>
+  )}
 
   <!-- Score evolution sparkline — only show with 3+ data points (a real trend) -->
   {sparkline.length >= 3 ? (
