@@ -58,7 +58,10 @@ const prevGa4 = prevAnalytics.ga4;
 const prevGsc = prevAnalytics.gsc;
 const hasAnalytics = !!(ga4 || gsc);
 const scoreHistory = allSnapshots.map(s => s.score || 0);
-const isFirstWeek = allSnapshots.length <= 1;
+// Only show "first week" welcome when there's truly no analysis yet.
+// Even with 1 snapshot, if the Growth Agent ran we have real content to show.
+const hasGrowthAnalysis = !!r.growth_analysis?.executiveSummary?.headline;
+const isFirstWeek = allSnapshots.length <= 1 && !hasGrowthAnalysis;
 
 // ─── Donut SVG builder (same visual language as GEO/SEO pillar pages) ────
 function buildDonut(value: number, radius: number, stroke: number): string {

@@ -754,10 +754,10 @@ async function generateSonnetDraft(
 
   try {
     const controller = new AbortController();
-    // 180s timeout: with max_tokens=16384 the full analysis generation can
-    // take 90-150s. 85s was too tight and aborted mid-generation. Vercel
-    // Function timeout on Pro is 300s so we stay well within budget.
-    const timer = setTimeout(() => controller.abort(), 180_000);
+    // 250s timeout: real-world Sonnet generation takes 180-220s for the full
+    // analysis (6 pillars + 8 actions with step-by-step). 180s was cutting off
+    // successful runs that needed 200s+. Vercel Function limit is 300s.
+    const timer = setTimeout(() => controller.abort(), 250_000);
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -1254,6 +1254,51 @@ function fallbackAnalysis(input: GrowthAgentInput): GrowthAnalysis {
       expectedOutcome: `Pasar de ${kwTop10} a ${kwTop10 + 5}-${kwTop10 + 10} keywords en top 3 en 4-6 semanas`,
       effort: 'medium', timeframe: '2-3 semanas',
       rationale: 'Las keywords en 4-10 ya tienen tracción — mover al top 3 es la acción más rentable',
+    });
+  }
+
+  // ── Universal actions: always relevant, fill gaps when few conditions match ──
+  if (fallbackActions.length < 5 && kwTop10 >= 15) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'seo',
+      title: 'Crear contenido cluster para consolidar autoridad temática',
+      description: `Con ${kwTop10} keywords en top 10, ya tienes autoridad de dominio. El siguiente nivel es crear clusters de contenido alrededor de tus temas principales — esto multiplica la visibilidad a largo plazo y es la señal más fuerte para aparecer en IAs generativas.`,
+      detail: '1. Agrupa tus top keywords por tema (3-4 clusters).\n2. Para cada cluster, identifica 5 subtemas que aún no cubres.\n3. Crea 1 página pilar de 3.000+ palabras por cluster.\n4. Enlaza las subpáginas existentes a la página pilar.\n5. Publica 1 subtema nuevo por semana.',
+      businessImpact: 'high', expectedOutcome: '+30-50% de tráfico orgánico en 3 meses',
+      effort: 'medium', timeframe: '4-6 semanas', rationale: 'Escalado natural del SEO existente',
+    });
+  }
+
+  if (fallbackActions.length < 5 && conv.formCount != null && conv.formCount > 0 && conv.ctaCount != null && conv.ctaCount > 0) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'conversion',
+      title: 'Configurar eventos de conversión en Google Analytics 4',
+      description: `Tu web tiene ${conv.formCount} formularios y ${conv.ctaCount} CTAs, pero sin eventos de conversión configurados en GA4 no puedes saber cuántos visitantes realmente convierten. Estás tomando decisiones a ciegas.`,
+      detail: '1. Abre GA4 → Admin → Events → Create event.\n2. Crea evento "form_submit" basado en el evento genérico form_submit o con GTM trigger.\n3. Crea evento "cta_click" para tus botones principales.\n4. Marca ambos como conversiones en GA4.\n5. En 2 semanas tendrás datos reales de tu tasa de conversión.',
+      businessImpact: 'high', expectedOutcome: 'Visibilidad de conversión real en 2 semanas',
+      effort: 'low', timeframe: '1-2 horas', rationale: 'Sin medición no hay mejora posible',
+    });
+  }
+
+  if (fallbackActions.length < 5 && !cc.postsLast90Days) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'content',
+      title: 'Lanzar blog con 1 artículo al mes optimizado para las keywords con más potencial',
+      description: 'No se detecta actividad de blog. El contenido regular es el motor principal de crecimiento orgánico a medio plazo — cada artículo bien optimizado es una nueva puerta de entrada desde Google y las IAs.',
+      detail: '1. Identifica 3 keywords transaccionales de tu sector con volumen >500 y dificultad <40.\n2. Escribe 1 artículo de 1.500+ palabras por mes cubriendo esa keyword.\n3. Estructura con H2/H3 claros, incluye datos propios o estadísticas, y añade CTA al final.\n4. Comparte en LinkedIn y envía a tu lista de email.\n5. Mide tráfico orgánico al artículo en 30/60/90 días.',
+      businessImpact: 'medium', expectedOutcome: '+20-40 keywords indexadas en 3 meses',
+      effort: 'medium', timeframe: '1 artículo cada 2-4 semanas', rationale: 'Contenido es el combustible del SEO y la visibilidad IA',
+    });
+  }
+
+  if (fallbackActions.length < 5) {
+    fallbackActions.push({
+      rank: rank++, pillar: 'seo',
+      title: 'Auditar y corregir los 5 problemas técnicos SEO de mayor impacto',
+      description: 'Los errores técnicos (títulos duplicados, páginas sin indexar, canonical incorrectos) son frenos invisibles al crecimiento. Corregirlos tiene coste bajo e impacto inmediato en indexación y ranking.',
+      detail: '1. Ejecuta un crawl con Screaming Frog o Sitebulb (versión gratuita para <500 URLs).\n2. Ordena errores por impacto: títulos duplicados, meta descriptions vacías, H1 ausentes, páginas con noindex accidental, redirects encadenados.\n3. Corrige los 5 más graves primero.\n4. Reindexar las páginas corregidas en Search Console.\n5. Repite el crawl en 2 semanas para verificar.',
+      businessImpact: 'medium', expectedOutcome: 'Mejora de indexación y posiciones en 2-4 semanas',
+      effort: 'low', timeframe: '1 semana', rationale: 'Quick wins técnicos con impacto directo',
     });
   }
 
