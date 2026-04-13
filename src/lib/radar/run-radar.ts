@@ -268,11 +268,11 @@ export async function runRadarForClient(client: RadarClient, options?: RadarRunO
       console.error(`[radar] Diff engine failed (non-fatal):`, (err as Error).message);
     }
 
-    // 6. Log interaction
+    // 8. Log interaction
     await logInteraction(client.id, 'radar_run', {
       auditId,
       snapshotId,
-      correlations: diff.correlations.length,
+      correlations: result.correlationsFound,
       newRecommendations: result.newRecommendations,
       durationMs: Date.now() - t0,
     });
