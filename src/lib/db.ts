@@ -825,10 +825,13 @@ export interface ClientDocument {
   file_path: string;
   file_type?: string;
   file_size_bytes?: number;
-  status?: string;
+  status?: 'uploading' | 'processing' | 'ready' | 'error';
   extracted_text?: string;
   summary?: string;
   category?: string;
+  entities?: string[];
+  key_facts?: string[];
+  error_message?: string;
 }
 
 export async function getClientDocuments(clientId: string): Promise<ClientDocument[]> {

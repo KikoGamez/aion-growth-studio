@@ -307,13 +307,32 @@ export async function buildAdvisorContext(clientId: string, domain: string): Pro
   }
 
   // ── 6. Documents ───────────────────────────────────────────────
+  // Use Haiku-generated summaries (more token-efficient than raw text).
+  // Fall back to truncated extracted_text for older docs without summary.
   if (documents.length) {
-    const withText = documents.filter((d: any) => d.extracted_text);
-    if (withText.length) {
+    const usable = documents.filter((d: any) => d.summary || d.extracted_text);
+    if (usable.length) {
       sections.push('\n## DOCUMENTOS DEL CLIENTE');
-      for (const doc of withText.slice(0, 5)) {
-        const text = (doc.extracted_text || '').slice(0, 2000);
-        sections.push(`### ${doc.filename}\n${text}`);
+      sections.push('(El cliente ha subido estos documentos para enriquecer el análisis. Refléjalos en tus recomendaciones cuando sean relevantes.)');
+      for (const doc of usable.slice(0, 5)) {
+        const catLabel: Record<string, string> = {
+          strategy: 'Estrategia', historical: 'Histórico', brand: 'Marca',
+          financial: 'Financiero', competitive: 'Competencia', other: 'Otro',
+        };
+        const cat = catLabel[doc.category] || doc.category || 'Documento';
+        if (doc.summary) {
+          sections.push(`### ${doc.filename} [${cat}]`);
+          sections.push(`**Resumen:** ${doc.summary}`);
+          // key_facts may not be in the select — use entities as fallback
+          const entities = Array.isArray(doc.entities) ? doc.entities : [];
+          if (entities.length > 0) {
+            sections.push(`**Entidades:** ${entities.join(', ')}`);
+          }
+        } else {
+          // Legacy fallback: raw text truncated
+          const text = (doc.extracted_text || '').slice(0, 1500);
+          sections.push(`### ${doc.filename}\n${text}`);
+        }
       }
     }
   }

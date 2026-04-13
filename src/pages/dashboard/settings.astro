@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getClient, IS_DEMO, listClientUsers, getClientOnboarding, getLatestSnapshot } from '../../lib/db';
+import { getClient, IS_DEMO, listClientUsers, getClientOnboarding, getLatestSnapshot, getClientDocuments } from '../../lib/db';
 import { getIntegration, isConfigured as isGoogleConfigured } from '../../lib/integrations';
 import type { Tier } from '../../lib/demo-data';
 import { computeKeywordOpportunities, autoSelectPriorities } from '../../lib/seo/keyword-opportunities';
@@ -9,10 +9,11 @@ import KeywordConfigurator from '../../components/dashboard/KeywordConfigurator.
 
 const client = Astro.locals.client ?? await getClient();
 const tier: Tier = client.tier;
-const [users, onboarding, snapshot] = await Promise.all([
+const [users, onboarding, snapshot, clientDocs] = await Promise.all([
   listClientUsers(client.id),
   getClientOnboarding(client.id),
   getLatestSnapshot(client.id),
+  getClientDocuments(client.id),
 ]);
 const savedKpis = onboarding?.primary_kpis || [];
 const priorityKeywords = onboarding?.priority_keywords || [];
@@ -613,6 +614,146 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
         btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">save</span> Guardar indicadores';
         btn.disabled = false;
       }
+    });
+  </script>
+
+  <!-- ══ Documentos del negocio ══ -->
+  <div style="background:#ffffff;padding:32px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="material-symbols-outlined" style="font-size:22px;color:#1A4B8C;">description</span>
+        <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;margin:0;">Documentos del negocio</h2>
+      </div>
+      <span style="font-size:12px;color:#64748b;" id="doc-counter">{clientDocs.length}/10 documentos</span>
+    </div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:20px;">Sube planes estrategicos, informes de agencias anteriores, historicos de ventas o brand guidelines. El advisor IA los usara para personalizar sus recomendaciones.</p>
+
+    <!-- Upload area -->
+    <div id="doc-dropzone" style="border:2px dashed #e2e8f0;border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:20px;" data-count={clientDocs.length}>
+      <span class="material-symbols-outlined" style="font-size:36px;color:#94a3b8;">cloud_upload</span>
+      <p style="font-size:14px;font-weight:600;color:#1a1a2e;margin:8px 0 4px;">Arrastra un archivo o haz clic para seleccionar</p>
+      <p style="font-size:12px;color:#94a3b8;">PDF, DOCX, TXT, CSV — maximo 25MB</p>
+      <input type="file" id="doc-file-input" accept=".pdf,.docx,.txt,.csv,.png,.jpg,.jpeg" style="display:none;" />
+    </div>
+
+    <!-- Upload status -->
+    <div id="doc-upload-status" style="display:none;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;"></div>
+
+    <!-- Document list -->
+    <div id="doc-list" style="display:flex;flex-direction:column;gap:8px;">
+      {clientDocs.map((doc: any) => {
+        const catLabels = { strategy: 'Estrategia', historical: 'Historico', brand: 'Marca', financial: 'Financiero', competitive: 'Competencia', other: 'Otro' } as any;
+        const catColors = { strategy: '#1A4B8C', historical: '#7c3aed', brand: '#D85A30', financial: '#1D9E75', competitive: '#BA7517', other: '#64748b' } as any;
+        const cat = doc.category || 'other';
+        const size = doc.file_size_bytes ? `${Math.round(doc.file_size_bytes / 1024)}KB` : '';
+        const statusIcon = doc.status === 'ready' ? 'check_circle' : doc.status === 'error' ? 'error' : 'hourglass_top';
+        const statusColor = doc.status === 'ready' ? '#1D9E75' : doc.status === 'error' ? '#E24B4A' : '#BA7517';
+        return (
+          <div class="doc-row" data-id={doc.id} style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f8fafc;border-radius:8px;transition:all 0.15s;">
+            <span class="material-symbols-outlined" style={`font-size:18px;color:${statusColor};flex-shrink:0;`}>{statusIcon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:13px;font-weight:600;color:#1a1a2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{doc.filename}</span>
+                <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:${catColors[cat]}15;color:${catColors[cat]};text-transform:uppercase;letter-spacing:0.04em;`}>{catLabels[cat] || cat}</span>
+                {size && <span style="font-size:11px;color:#94a3b8;">{size}</span>}
+              </div>
+              {doc.summary && (
+                <p style="font-size:12px;color:#64748b;margin:4px 0 0;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{doc.summary.slice(0, 120)}...</p>
+              )}
+            </div>
+            <button class="doc-delete-btn" data-id={doc.id} style="background:none;border:none;cursor:pointer;padding:4px;" title="Eliminar documento">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#94a3b8;">delete</span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+
+    {clientDocs.length === 0 && (
+      <div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">
+        <span class="material-symbols-outlined" style="font-size:28px;display:block;margin-bottom:4px;">folder_open</span>
+        No has subido documentos todavia. Sube tu plan estrategico o el informe de tu agencia anterior para que el advisor los tenga en cuenta.
+      </div>
+    )}
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('doc-dropzone')!;
+    const fileInput = document.getElementById('doc-file-input') as HTMLInputElement;
+    const statusEl = document.getElementById('doc-upload-status')!;
+    const docList = document.getElementById('doc-list')!;
+    const counter = document.getElementById('doc-counter')!;
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = '#1A4B8C'; dropzone.style.background = '#f0f4ff'; });
+    dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = '#e2e8f0'; dropzone.style.background = ''; });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#e2e8f0'; dropzone.style.background = '';
+      if (e.dataTransfer?.files?.[0]) uploadFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files?.[0]) uploadFile(fileInput.files[0]); });
+
+    async function uploadFile(file: File) {
+      const count = parseInt(dropzone.getAttribute('data-count') || '0');
+      if (count >= 10) { showStatus('Maximo 10 documentos. Elimina alguno primero.', true); return; }
+
+      statusEl.style.display = 'block';
+      statusEl.style.background = '#f0f4ff';
+      statusEl.style.color = '#1A4B8C';
+      statusEl.textContent = `Subiendo y analizando "${file.name}"...`;
+
+      const fd = new FormData();
+      fd.append('file', file);
+
+      try {
+        const res = await fetch('/api/dashboard/upload-document', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+          showStatus(data.error || 'Error al subir el archivo', true);
+          return;
+        }
+
+        showStatus(`"${file.name}" procesado correctamente`, false);
+        dropzone.setAttribute('data-count', String(count + 1));
+        counter.textContent = `${count + 1}/10 documentos`;
+        // Reload to show new document
+        setTimeout(() => window.location.reload(), 1000);
+      } catch {
+        showStatus('Error de conexion. Intentalo de nuevo.', true);
+      }
+    }
+
+    function showStatus(msg: string, isError: boolean) {
+      statusEl.style.display = 'block';
+      statusEl.style.background = isError ? '#fef2f2' : '#f0fdf4';
+      statusEl.style.color = isError ? '#E24B4A' : '#1D9E75';
+      statusEl.textContent = msg;
+      setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+    }
+
+    // Delete handlers
+    document.querySelectorAll('.doc-delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.id;
+        if (!confirm('Eliminar este documento?')) return;
+
+        try {
+          const res = await fetch('/api/dashboard/delete-document', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documentId: id }),
+          });
+          if (res.ok) {
+            const row = btn.closest('.doc-row');
+            if (row) row.remove();
+            const count = parseInt(dropzone.getAttribute('data-count') || '1') - 1;
+            dropzone.setAttribute('data-count', String(count));
+            counter.textContent = `${count}/10 documentos`;
+          }
+        } catch { /* ignore */ }
+      });
     });
   </script>
 

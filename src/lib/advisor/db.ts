@@ -239,8 +239,9 @@ export async function getLearnings(clientId: string, limit = 50) {
 export async function getDocuments(clientId: string) {
   const sb = getSupabase();
   const { data } = await sb.from('client_documents')
-    .select('id, filename, extracted_text, created_at')
+    .select('id, filename, summary, category, entities, extracted_text, status, created_at')
     .eq('client_id', clientId)
+    .eq('status', 'ready')
     .order('created_at', { ascending: false });
   return data || [];
 }
