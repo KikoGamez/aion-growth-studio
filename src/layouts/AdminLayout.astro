@@ -1,0 +1,191 @@
+---
+export const prerender = false;
+
+interface Props {
+  title: string;
+  currentPath: string;
+}
+
+const { title, currentPath } = Astro.props;
+const user = (Astro.locals as any).user;
+if (!user || user.role !== 'superuser') return Astro.redirect('/dashboard');
+
+interface NavItem {
+  label: string;
+  icon: string;
+  path: string;
+  children?: { label: string; path: string; icon: string }[];
+}
+
+const nav: NavItem[] = [
+  { label: 'Metricas', icon: 'analytics', path: '/admin' },
+  {
+    label: 'CRM', icon: 'group', path: '/admin/crm',
+    children: [
+      { label: 'Leads', path: '/admin/crm/leads', icon: 'person_search' },
+      { label: 'Clientes', path: '/admin/crm/clients', icon: 'business' },
+    ],
+  },
+  { label: 'Marketing', icon: 'campaign', path: '/admin/marketing' },
+  { label: 'Usuarios', icon: 'admin_panel_settings', path: '/admin/users' },
+  { label: 'QA Engine', icon: 'verified', path: '/admin/qa' },
+  { label: 'Diagnosticos', icon: 'monitor_heart', path: '/admin/diagnostics' },
+];
+
+function isActive(itemPath: string): boolean {
+  if (itemPath === '/admin') return currentPath === '/admin';
+  return currentPath.startsWith(itemPath);
+}
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} — AION Admin</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; color: #1a1a2e; min-height: 100vh; display: flex; }
+    .admin-sidebar {
+      width: 240px; background: #0f172a; color: white; position: fixed; top: 0; left: 0; bottom: 0;
+      display: flex; flex-direction: column; z-index: 50;
+    }
+    .admin-sidebar .logo { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .admin-sidebar .logo h1 { font-size: 16px; font-weight: 900; letter-spacing: -0.02em; }
+    .admin-sidebar .logo span { font-size: 11px; color: #64748b; font-weight: 500; }
+    .admin-sidebar nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px;
+      color: #94a3b8; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.15s;
+      cursor: pointer; margin-bottom: 2px;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+    .nav-item.active { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+    .nav-item .material-symbols-outlined { font-size: 20px; }
+    .nav-children { padding-left: 18px; }
+    .nav-children .nav-item { font-size: 12px; padding: 8px 14px; }
+    .admin-sidebar .user-info {
+      padding: 14px 16px; border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px; color: #64748b;
+    }
+    .admin-main { margin-left: 240px; flex: 1; min-height: 100vh; }
+    .admin-topbar {
+      position: sticky; top: 0; z-index: 40; background: white; border-bottom: 1px solid #e2e8f0;
+      padding: 16px 32px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .admin-topbar h2 { font-size: 18px; font-weight: 800; color: #1a1a2e; }
+    .admin-content { padding: 24px 32px; }
+    .stat-card {
+      background: white; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      border: 1px solid #f0f0f0;
+    }
+    .stat-card .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 6px; }
+    .stat-card .value { font-size: 28px; font-weight: 900; color: #1a1a2e; letter-spacing: -0.02em; }
+    .stat-card .delta { font-size: 12px; font-weight: 700; margin-top: 4px; }
+    .stat-card .delta.up { color: #10b981; }
+    .stat-card .delta.down { color: #ef4444; }
+    table.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.admin-table th {
+      text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: #64748b;
+      border-bottom: 2px solid #e2e8f0; background: #fafbfc;
+    }
+    table.admin-table td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; color: #334155; }
+    table.admin-table tr:hover td { background: #f8fafc; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .badge.new { background: #dbeafe; color: #1e40af; }
+    .badge.audit_started { background: #fef3c7; color: #92400e; }
+    .badge.audit_completed { background: #d1fae5; color: #065f46; }
+    .badge.registered { background: #e0e7ff; color: #3730a3; }
+    .badge.paying { background: #dcfce7; color: #166534; }
+    .badge.churned { background: #fee2e2; color: #991b1b; }
+    .badge.active { background: #dcfce7; color: #166534; }
+    .badge.inactive { background: #f1f5f9; color: #64748b; }
+    .filter-bar {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 8px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px;
+      font-family: inherit; background: white; color: #1a1a2e;
+    }
+    .filter-bar input:focus, .filter-bar select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 700; border: none; cursor: pointer; transition: all 0.15s;
+      font-family: inherit; text-decoration: none;
+    }
+    .btn-primary { background: #6366f1; color: white; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-ghost { background: transparent; color: #64748b; border: 1px solid #e2e8f0; }
+    .btn-ghost:hover { background: #f8fafc; }
+    @media (max-width: 768px) {
+      .admin-sidebar { width: 60px; }
+      .admin-sidebar .logo h1, .admin-sidebar .logo span, .admin-sidebar .nav-item span:not(.material-symbols-outlined), .admin-sidebar .user-info { display: none; }
+      .admin-sidebar .nav-item { justify-content: center; padding: 12px; }
+      .nav-children { padding-left: 0; }
+      .admin-main { margin-left: 60px; }
+      .admin-content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="admin-sidebar">
+    <div class="logo">
+      <h1>AION Admin</h1>
+      <span>Panel de gestion</span>
+    </div>
+    <nav>
+      {nav.map((item) => (
+        <>
+          {item.children ? (
+            <>
+              <div class={`nav-item ${isActive(item.path) ? 'active' : ''}`}>
+                <span class="material-symbols-outlined">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+              <div class="nav-children">
+                {item.children.map((child) => (
+                  <a href={child.path} class={`nav-item ${currentPath === child.path ? 'active' : ''}`}>
+                    <span class="material-symbols-outlined">{child.icon}</span>
+                    <span>{child.label}</span>
+                  </a>
+                ))}
+              </div>
+            </>
+          ) : (
+            <a href={item.path} class={`nav-item ${isActive(item.path) ? 'active' : ''}`}>
+              <span class="material-symbols-outlined">{item.icon}</span>
+              <span>{item.label}</span>
+            </a>
+          )}
+        </>
+      ))}
+    </nav>
+    <div class="user-info">
+      {user.email}<br/>
+      <a href="/api/auth/logout" style="color:#6366f1;text-decoration:none;font-weight:600;margin-top:6px;display:inline-block;">Cerrar sesion</a>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <h2>{title}</h2>
+      <div style="display:flex;gap:8px;">
+        <a href="/admin/crm/clients" class="btn btn-ghost">
+          <span class="material-symbols-outlined" style="font-size:16px;">person_add</span>
+          Nuevo cliente
+        </a>
+      </div>
+    </header>
+    <main class="admin-content">
+      <slot />
+    </main>
+  </div>
+</body>
+</html>

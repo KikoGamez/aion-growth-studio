@@ -1,0 +1,151 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { listAllClients, IS_DEMO, getSupabase } from '../../../lib/db';
+
+const user = (Astro.locals as any).user;
+if (!user || user.role !== 'superuser') return Astro.redirect('/dashboard');
+
+const clients = await listAllClients();
+
+// Enrich with latest snapshot + audit count
+let enriched: any[] = [];
+if (!IS_DEMO) {
+  const sb = getSupabase();
+  enriched = await Promise.all(clients.map(async (c: any) => {
+    const { data: snaps } = await sb.from('snapshots').select('id, date, score').eq('client_id', c.id).order('date', { ascending: false }).limit(1);
+    const { count: auditCount } = await sb.from('audits').select('id', { count: 'exact', head: true }).ilike('url', `%${c.domain}%`);
+    const { count: snapCount } = await sb.from('snapshots').select('id', { count: 'exact', head: true }).eq('client_id', c.id);
+    return {
+      ...c,
+      lastSnapshot: snaps?.[0] || null,
+      auditCount: auditCount || 0,
+      snapCount: snapCount || 0,
+    };
+  }));
+} else {
+  enriched = clients.map((c: any) => ({ ...c, lastSnapshot: null, auditCount: 0, snapCount: 0 }));
+}
+
+// Filter
+const search = Astro.url.searchParams.get('q') || '';
+const tierFilter = Astro.url.searchParams.get('tier') || '';
+let filtered = enriched;
+if (search) filtered = filtered.filter((c: any) => (c.name || '').toLowerCase().includes(search.toLowerCase()) || (c.domain || '').toLowerCase().includes(search.toLowerCase()));
+if (tierFilter) filtered = filtered.filter((c: any) => c.tier === tierFilter);
+
+const tierLabels: any = { radar: 'Radar', señales: 'Senales', palancas: 'Palancas', free: 'Free' };
+const tierColors: any = { radar: '#6366f1', señales: '#3b82f6', palancas: '#8b5cf6', free: '#94a3b8' };
+---
+
+<AdminLayout title="CRM — Clientes" currentPath="/admin/crm/clients">
+  <!-- Filters -->
+  <div class="filter-bar">
+    <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;">
+      <input type="text" name="q" placeholder="Buscar nombre o dominio..." value={search} style="flex:1;min-width:200px;" />
+      <select name="tier">
+        <option value="">Todos los planes</option>
+        <option value="radar" selected={tierFilter === 'radar'}>Radar</option>
+        <option value="señales" selected={tierFilter === 'señales'}>Senales</option>
+        <option value="palancas" selected={tierFilter === 'palancas'}>Palancas</option>
+        <option value="free" selected={tierFilter === 'free'}>Free</option>
+      </select>
+      <button type="submit" class="btn btn-primary">
+        <span class="material-symbols-outlined" style="font-size:16px;">filter_list</span>
+        Filtrar
+      </button>
+      {(search || tierFilter) && (
+        <a href="/admin/crm/clients" class="btn btn-ghost">Limpiar</a>
+      )}
+    </form>
+  </div>
+
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+    <div class="stat-card" style="padding:14px 18px;">
+      <div class="label">Total</div>
+      <div class="value" style="font-size:22px;">{enriched.length}</div>
+    </div>
+    <div class="stat-card" style="padding:14px 18px;">
+      <div class="label">Radar activo</div>
+      <div class="value" style="font-size:22px;color:#6366f1;">{enriched.filter((c: any) => c.tier === 'radar').length}</div>
+    </div>
+    <div class="stat-card" style="padding:14px 18px;">
+      <div class="label">Con snapshots</div>
+      <div class="value" style="font-size:22px;color:#10b981;">{enriched.filter((c: any) => c.snapCount > 0).length}</div>
+    </div>
+    <div class="stat-card" style="padding:14px 18px;">
+      <div class="label">Sin actividad</div>
+      <div class="value" style="font-size:22px;color:#ef4444;">{enriched.filter((c: any) => c.snapCount === 0).length}</div>
+    </div>
+  </div>
+
+  <!-- Client table -->
+  <div class="stat-card" style="padding:0;overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Dominio</th>
+          <th>Plan</th>
+          <th>Score</th>
+          <th>Snapshots</th>
+          <th>Auditorias</th>
+          <th>Ultimo analisis</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {filtered.length === 0 ? (
+          <tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8;">No se han encontrado clientes</td></tr>
+        ) : filtered.map((c: any) => {
+          const score = c.lastSnapshot?.score ?? null;
+          const scoreColor = score != null ? (score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444') : '#94a3b8';
+          return (
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#e2e0fc;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#325ea0;flex-shrink:0;">
+                  {(c.name || '?').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style="font-weight:700;font-size:13px;">{c.name || '—'}</div>
+                  {c.sector && <div style="font-size:11px;color:#64748b;">{c.sector}</div>}
+                </div>
+              </div>
+            </td>
+            <td><a href={`https://${c.domain}`} target="_blank" style="color:#6366f1;text-decoration:none;font-size:12px;">{c.domain}</a></td>
+            <td>
+              <span class={`badge ${c.tier === 'radar' ? 'paying' : c.tier ? 'registered' : 'inactive'}`} style={c.tier ? `background:${tierColors[c.tier]}15;color:${tierColors[c.tier]};` : ''}>
+                {tierLabels[c.tier] || c.tier || 'Sin plan'}
+              </span>
+            </td>
+            <td><span style={`font-weight:800;color:${scoreColor};`}>{score ?? '—'}</span></td>
+            <td style="text-align:center;">{c.snapCount}</td>
+            <td style="text-align:center;">{c.auditCount}</td>
+            <td style="font-size:12px;color:#64748b;">{c.lastSnapshot?.date || '—'}</td>
+            <td>
+              <div style="display:flex;gap:6px;">
+                <form method="post" action="/api/auth/switch-client">
+                  <input type="hidden" name="clientId" value={c.id} />
+                  <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" title="Ver como este cliente">
+                    <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- New client -->
+  <div style="margin-top:20px;">
+    <a href="/admin/clients/new" class="btn btn-primary">
+      <span class="material-symbols-outlined" style="font-size:16px;">person_add</span>
+      Nuevo cliente
+    </a>
+  </div>
+</AdminLayout>

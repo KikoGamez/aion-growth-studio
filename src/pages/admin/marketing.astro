@@ -1,0 +1,125 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const user = (Astro.locals as any).user;
+if (!user || user.role !== 'superuser') return Astro.redirect('/dashboard');
+
+// Nurturing sequences definition
+const sequences = [
+  {
+    id: 'post_audit',
+    name: 'Post-Auditoria',
+    trigger: 'Audit completado',
+    status: 'active',
+    emails: [
+      { delay: '0h', subject: 'Tu diagnostico de {domain} esta listo', type: 'transactional', openRate: null },
+      { delay: '24h', subject: 'Un dato sobre tu web que puede sorprenderte', type: 'nurturing', openRate: null },
+      { delay: '3d', subject: 'Lo que hacen tus competidores esta semana', type: 'nurturing', openRate: null },
+      { delay: '7d', subject: '{domain}: oportunidades que se estan escapando', type: 'cta', openRate: null },
+    ],
+  },
+  {
+    id: 'onboarding_radar',
+    name: 'Onboarding Radar',
+    trigger: 'Suscripcion Radar',
+    status: 'draft',
+    emails: [
+      { delay: '0h', subject: 'Bienvenido a Radar — tu primer informe esta listo', type: 'transactional', openRate: null },
+      { delay: '2d', subject: 'Tu advisor IA ya te conoce — preguntale lo que quieras', type: 'education', openRate: null },
+      { delay: '7d', subject: 'Tu primer informe semanal de {domain}', type: 'delivery', openRate: null },
+    ],
+  },
+  {
+    id: 'churn_prevention',
+    name: 'Prevencion de churn',
+    trigger: 'Sin login en 14 dias',
+    status: 'draft',
+    emails: [
+      { delay: '14d', subject: 'Han cambiado cosas en tu sector esta semana', type: 'reengagement', openRate: null },
+      { delay: '21d', subject: 'Tu competencia ha mejorado — mira los datos', type: 'urgency', openRate: null },
+      { delay: '28d', subject: 'Nos echamos de menos? Tu score ha bajado', type: 'win-back', openRate: null },
+    ],
+  },
+  {
+    id: 'newsletter',
+    name: 'Newsletter mensual',
+    trigger: 'Primer lunes del mes',
+    status: 'draft',
+    emails: [
+      { delay: '—', subject: 'Tendencias de visibilidad digital — {month} 2026', type: 'content', openRate: null },
+    ],
+  },
+];
+
+const typeColors: any = {
+  transactional: '#3b82f6', nurturing: '#8b5cf6', cta: '#f59e0b',
+  education: '#06b6d4', delivery: '#10b981', reengagement: '#f97316',
+  urgency: '#ef4444', 'win-back': '#ec4899', content: '#6366f1',
+};
+---
+
+<AdminLayout title="Marketing Automation" currentPath="/admin/marketing">
+  <p style="font-size:14px;color:#64748b;margin-bottom:24px;">Define las secuencias de email para cada momento del ciclo de vida del cliente. Cada secuencia se activa por un evento y envia emails automaticos en los intervalos definidos.</p>
+
+  <div style="display:flex;flex-direction:column;gap:20px;">
+    {sequences.map((seq) => (
+      <div class="stat-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="material-symbols-outlined" style={`font-size:24px;color:${seq.status === 'active' ? '#10b981' : '#94a3b8'};`}>
+              {seq.status === 'active' ? 'play_circle' : 'edit_note'}
+            </span>
+            <div>
+              <div style="font-size:15px;font-weight:800;color:#1a1a2e;">{seq.name}</div>
+              <div style="font-size:12px;color:#64748b;">Trigger: {seq.trigger}</div>
+            </div>
+          </div>
+          <span class={`badge ${seq.status === 'active' ? 'paying' : 'inactive'}`}>
+            {seq.status === 'active' ? 'Activa' : 'Borrador'}
+          </span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          {seq.emails.map((email, idx) => (
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8fafc;border-radius:8px;border-left:3px solid ${typeColors[email.type] || '#94a3b8'};">
+              <div style="min-width:50px;text-align:center;">
+                <span style="font-size:12px;font-weight:700;color:#64748b;">{email.delay}</span>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#1a1a2e;">{email.subject}</div>
+              </div>
+              <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:${typeColors[email.type]}15;color:${typeColors[email.type]};text-transform:uppercase;`}>
+                {email.type}
+              </span>
+              {email.openRate != null && (
+                <span style="font-size:12px;color:#64748b;">{email.openRate}% open</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="font-size:12px;" disabled>
+            <span class="material-symbols-outlined" style="font-size:14px;">edit</span>
+            Editar secuencia
+          </button>
+          {seq.status === 'draft' && (
+            <button class="btn btn-primary" style="font-size:12px;" disabled>
+              <span class="material-symbols-outlined" style="font-size:14px;">play_arrow</span>
+              Activar
+            </button>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <div style="margin-top:24px;padding:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">info</span>
+      <span style="font-size:13px;font-weight:700;color:#92400e;">Dominio pendiente de verificar</span>
+    </div>
+    <p style="font-size:13px;color:#78350f;line-height:1.5;">Para activar el envio de emails, verifica el dominio <strong>aiongrowth.studio</strong> en <a href="https://resend.com/domains" target="_blank" style="color:#6366f1;">Resend</a>. Sin verificacion, los emails no se enviaran.</p>
+  </div>
+</AdminLayout>

@@ -1,0 +1,113 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { IS_DEMO, getSupabase } from '../../lib/db';
+
+const user = (Astro.locals as any).user;
+if (!user || user.role !== 'superuser') return Astro.redirect('/dashboard');
+
+let users: any[] = [];
+let clients: any[] = [];
+
+if (!IS_DEMO) {
+  const sb = getSupabase();
+
+  // Get all client_users with their client info
+  const { data: cuData } = await sb
+    .from('client_users')
+    .select('user_id, role, client_id, clients(name, domain, tier)')
+    .order('created_at', { ascending: false });
+
+  // Get user emails from auth (Supabase admin API)
+  const { data: authData } = await sb.auth.admin.listUsers();
+  const userMap = new Map<string, any>();
+  for (const u of (authData?.users || [])) {
+    userMap.set(u.id, { email: u.email, lastSignIn: u.last_sign_in_at, created: u.created_at });
+  }
+
+  users = (cuData || []).map((cu: any) => ({
+    userId: cu.user_id,
+    role: cu.role,
+    clientId: cu.client_id,
+    clientName: cu.clients?.name || '—',
+    clientDomain: cu.clients?.domain || '—',
+    clientTier: cu.clients?.tier || 'free',
+    email: userMap.get(cu.user_id)?.email || '—',
+    lastSignIn: userMap.get(cu.user_id)?.lastSignIn,
+    created: userMap.get(cu.user_id)?.created,
+  }));
+
+  const { data: clientData } = await sb.from('clients').select('id, name, domain').order('name');
+  clients = clientData || [];
+}
+
+const SUPERUSER_EMAILS = (import.meta.env?.SUPERUSER_EMAILS || process.env.SUPERUSER_EMAILS || '').split(',').filter(Boolean);
+---
+
+<AdminLayout title="Usuarios y autorizaciones" currentPath="/admin/users">
+  <!-- Superusers -->
+  <div class="stat-card" style="margin-bottom:20px;">
+    <div class="label" style="margin-bottom:12px;">Superusuarios (acceso admin)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      {SUPERUSER_EMAILS.map((email: string) => (
+        <span class="badge paying" style="font-size:12px;padding:6px 14px;">
+          <span class="material-symbols-outlined" style="font-size:14px;">shield</span>
+          {email.trim()}
+        </span>
+      ))}
+      <span class="badge inactive" style="font-size:12px;padding:6px 14px;">
+        <span class="material-symbols-outlined" style="font-size:14px;">shield</span>
+        *@aiongrowth.studio
+      </span>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;margin-top:8px;">Configurados via env var SUPERUSER_EMAILS</p>
+  </div>
+
+  <!-- User table -->
+  <div class="stat-card" style="padding:0;overflow-x:auto;">
+    <div style="padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;">
+      <div class="label" style="margin:0;">Usuarios del sistema ({users.length})</div>
+      <a href="/admin/clients/new" class="btn btn-primary" style="font-size:12px;">
+        <span class="material-symbols-outlined" style="font-size:14px;">person_add</span>
+        Invitar usuario
+      </a>
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Cliente</th>
+          <th>Plan</th>
+          <th>Ultimo login</th>
+          <th>Creado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {users.length === 0 ? (
+          <tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8;">No hay usuarios registrados</td></tr>
+        ) : users.map((u: any) => (
+          <tr>
+            <td style="font-weight:600;">{u.email}</td>
+            <td>
+              <span class={`badge ${u.role === 'admin' ? 'paying' : 'registered'}`}>
+                {u.role}
+              </span>
+            </td>
+            <td>
+              <div style="font-size:13px;font-weight:500;">{u.clientName}</div>
+              <div style="font-size:11px;color:#64748b;">{u.clientDomain}</div>
+            </td>
+            <td><span class="badge inactive">{u.clientTier}</span></td>
+            <td style="font-size:12px;color:#64748b;">
+              {u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : 'Nunca'}
+            </td>
+            <td style="font-size:12px;color:#64748b;">
+              {u.created ? new Date(u.created).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>
