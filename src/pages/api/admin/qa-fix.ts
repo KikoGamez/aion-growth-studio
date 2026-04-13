@@ -1,13 +1,13 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
+import { createClient } from '@supabase/supabase-js';
 
 function getSupabase() {
   const url = import.meta.env?.SUPABASE_URL || process.env.SUPABASE_URL;
   const key = import.meta.env?.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
     || import.meta.env?.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) throw new Error('Supabase not configured');
-  const { createClient } = require('@supabase/supabase-js');
   return createClient(url, key);
 }
 
@@ -82,7 +82,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400 });
   } catch (err) {
-    console.error('[qa-fix]', (err as Error).message);
-    return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 });
+    const msg = (err as Error).message || 'Unknown error';
+    console.error('[qa-fix]', msg);
+    // Surface the real error so the admin UI can show it
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
   }
 };

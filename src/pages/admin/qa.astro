@@ -330,10 +330,10 @@ function fmtDate(iso: string) {
         if (data.ok) {
           btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">check_circle</span> Aplicado';
           btn.style.background = '#ecfdf5';
-          btn.style.color = '#10b981';
-          btn.style.borderColor = '#10b981';
+          btn.style.color = '#003d27';
         } else {
-          btn.innerHTML = 'Error';
+          btn.innerHTML = 'Error: ' + (data.error || 'desconocido');
+          btn.style.color = '#ba1a1a';
           btn.disabled = false;
         }
       }).catch(function() {
