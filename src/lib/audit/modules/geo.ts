@@ -177,6 +177,36 @@ async function askEngine(query: string, engine: Engine, timeout = 120_000): Prom
   }
 }
 
+// ── Snippet extraction + sentiment ────────────────────────────────
+
+/** Extract the sentence(s) where the brand is mentioned from an AI answer */
+function extractSnippet(answer: string, domain: string, brandName: string): string {
+  const lower = answer.toLowerCase();
+  const domainBase = domain.replace(/\.[a-z]{2,6}$/i, '').toLowerCase();
+  // Find the position of the brand mention
+  let pos = lower.indexOf(brandName.toLowerCase());
+  if (pos === -1 && domainBase.length >= 4) pos = lower.indexOf(domainBase);
+  if (pos === -1) pos = lower.indexOf(domain.toLowerCase());
+  if (pos === -1) return '';
+
+  // Extract ~200 chars around the mention, trimmed to sentence boundaries
+  const start = Math.max(0, answer.lastIndexOf('.', Math.max(0, pos - 20)) + 1);
+  const end = Math.min(answer.length, answer.indexOf('.', pos + 10) + 1 || pos + 200);
+  return answer.slice(start, end).trim().slice(0, 250);
+}
+
+/** Simple keyword-based sentiment detection on the snippet */
+function detectSentiment(snippet: string): 'positive' | 'neutral' | 'negative' {
+  const lower = snippet.toLowerCase();
+  const POS = /\b(recomend|excelente|líder|destaca|mejor|fiable|confianza|reconocid|sólid|referent|prestigio|innovador|calidad|premium|profesional|eficaz|eficiente|strong|leading|trusted|excellent|reliable|top|best)\b/i;
+  const NEG = /\b(problema|crítica|queja|negativ|mal|peor|caro|lento|falta|débil|limita|riesgo|deficient|obsolet|poor|bad|worst|expensive|slow|weak|issue|complaint|lacks)\b/i;
+  const posCount = (lower.match(POS) || []).length;
+  const negCount = (lower.match(NEG) || []).length;
+  if (posCount > negCount) return 'positive';
+  if (negCount > posCount) return 'negative';
+  return 'neutral';
+}
+
 // ── Query deduplication ───────────────────────────────────────────
 
 /**
@@ -538,7 +568,12 @@ export async function runGEO(
       stage: r.spec.stage,
       category: r.spec.category,
       isBrandQuery: r.spec.isBrandQuery,
-      engines: r.engineOutputs.map((e) => ({ name: e.engineName, mentioned: e.mentioned })),
+      engines: r.engineOutputs.map((e) => {
+        if (!e.mentioned || !e.answer) return { name: e.engineName, mentioned: e.mentioned };
+        const snippet = extractSnippet(e.answer, domain, brandName);
+        const sentiment = snippet ? detectSentiment(snippet) : 'neutral';
+        return { name: e.engineName, mentioned: e.mentioned, snippet, sentiment };
+      }),
       stabilityRate: r.stabilityRate,
       samplesRun: effectiveSamples,
     }));

@@ -205,7 +205,7 @@ export interface GeoQuery {
   level?: number;
   levelLabel?: string;
   pts?: number;
-  engines?: Array<{ name: string; mentioned: boolean; context?: string }>;
+  engines?: Array<{ name: string; mentioned: boolean; context?: string; snippet?: string; sentiment?: 'positive' | 'neutral' | 'negative' }>;
   // Multi-sampling fields (Radar only — audit uses samples=1)
   stabilityRate?: number;       // 0-100: % of samples where brand was mentioned (majority vote)
   samplesRun?: number;          // how many samples were taken per engine

@@ -471,6 +471,78 @@ function buildDonut(score: number, radius: number, stroke: number) {
   )}
 
   <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- WHAT AIs SAY — snippets with sentiment                              -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  {(() => {
+    // Collect all snippets where the brand was mentioned
+    const snippets: Array<{ query: string; engine: string; snippet: string; sentiment: string; category: string }> = [];
+    for (const q of queries) {
+      for (const eng of (q.engines || [])) {
+        if (eng.mentioned && eng.snippet && eng.snippet.length > 20) {
+          snippets.push({
+            query: q.query,
+            engine: eng.name,
+            snippet: eng.snippet,
+            sentiment: eng.sentiment || 'neutral',
+            category: q.category || 'sector',
+          });
+        }
+      }
+    }
+    // Show max 6 most interesting snippets
+    const display = snippets.slice(0, 6);
+    if (display.length === 0) return null;
+
+    const sentimentIcon = (s: string) => s === 'positive' ? 'thumb_up' : s === 'negative' ? 'thumb_down' : 'horizontal_rule';
+    const sentimentColor = (s: string) => s === 'positive' ? '#1D9E75' : s === 'negative' ? '#E24B4A' : '#94a3b8';
+    const sentimentBg = (s: string) => s === 'positive' ? '#E1F5EE' : s === 'negative' ? '#FCEBEB' : '#f1f5f9';
+    const sentimentLabel = (s: string) => s === 'positive' ? 'Positivo' : s === 'negative' ? 'Negativo' : 'Neutro';
+
+    return (
+      <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Que dicen las IAs de tu marca</h3>
+            <p style="font-size:12px;color:#94a3b8;margin-top:4px;">Extractos reales de las respuestas donde te mencionan</p>
+          </div>
+          <div style="display:flex;gap:12px;font-size:11px;">
+            <span style="display:flex;align-items:center;gap:4px;color:#1D9E75;"><span class="material-symbols-outlined" style="font-size:14px;">thumb_up</span> Positivo</span>
+            <span style="display:flex;align-items:center;gap:4px;color:#94a3b8;"><span class="material-symbols-outlined" style="font-size:14px;">horizontal_rule</span> Neutro</span>
+            <span style="display:flex;align-items:center;gap:4px;color:#E24B4A;"><span class="material-symbols-outlined" style="font-size:14px;">thumb_down</span> Negativo</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          {display.map((s) => (
+            <div style={`padding:16px 20px;border-radius:12px;background:${sentimentBg(s.sentiment)};border-left:4px solid ${sentimentColor(s.sentiment)};`}>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="material-symbols-outlined" style={`font-size:16px;color:${sentimentColor(s.sentiment)};`}>{sentimentIcon(s.sentiment)}</span>
+                  <span style={`font-size:11px;font-weight:700;color:${sentimentColor(s.sentiment)};text-transform:uppercase;letter-spacing:0.04em;`}>{sentimentLabel(s.sentiment)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:11px;font-weight:600;color:#64748b;">{s.engine}</span>
+                  <span style="font-size:10px;color:#94a3b8;background:white;padding:2px 8px;border-radius:4px;">{s.category}</span>
+                </div>
+              </div>
+              <p style="font-size:13px;color:#334155;line-height:1.6;margin:0;font-style:italic;">"{s.snippet}"</p>
+              <div style="margin-top:8px;font-size:11px;color:#94a3b8;">
+                Consulta: {s.query}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {snippets.length > 6 && (
+          <p style="font-size:12px;color:#94a3b8;margin-top:12px;text-align:center;">
+            +{snippets.length - 6} menciones mas disponibles en los datos del audit
+          </p>
+        )}
+      </section>
+    );
+  })()}
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
   <!-- FALLBACK: simple query list (when no engine breakdown available)     -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
   {queries.length > 0 && engineNames.length === 0 && (
