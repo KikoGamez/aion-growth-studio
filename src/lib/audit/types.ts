@@ -482,6 +482,16 @@ export interface ConversionResult extends ModuleResult {
   summary?: string;
   strengths?: string[];
   weaknesses?: string[];
+  // GA4 cross-signals (enriched post-pipeline by run-radar.ts)
+  ga4Diagnostics?: ConversionGA4Diagnostic[];
+}
+
+export interface ConversionGA4Diagnostic {
+  id: 'blind_spot' | 'bounce_vs_cta' | 'mobile_friction';
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  description: string;
+  icon: string;
 }
 
 // ── New: Pilar 2 enrichment — DataForSEO ─────────────────────────

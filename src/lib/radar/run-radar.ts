@@ -219,6 +219,15 @@ export async function runRadarForClient(client: RadarClient, options?: RadarRunO
             const { updateDataQualityScore } = await import('../integrations');
             await updateDataQualityScore(client.id, 'google_analytics', analyticsData.dataQualityScore);
           }
+
+          // 6b. Conversion × GA4 cross-diagnostics
+          const { enrichConversionWithGA4 } = await import('../audit/conversion-ga4');
+          const enriched = enrichConversionWithGA4(updated.conversion, analyticsData, updated.pagespeed);
+          if (enriched.length > 0) {
+            updated.conversion = { ...updated.conversion, ga4Diagnostics: enriched };
+            await sb.from('snapshots').update({ pipeline_output: updated }).eq('id', snapshotId);
+            console.log(`[radar] Conversion enriched with ${enriched.length} GA4 diagnostics`);
+          }
         }
       }
     } catch (err) {

@@ -392,6 +392,32 @@ const briefing = r.briefing;
     </section>
   )}
 
+  <!-- Conversion × GA4 diagnostics (Conversion only) -->
+  {key === 'conversion' && r.conversion?.ga4Diagnostics?.length > 0 && (
+    <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:#D97706;">analytics</span>
+        <h3 style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Diagnóstico con datos reales (GA4)</h3>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {(r.conversion.ga4Diagnostics as any[]).map((d: any) => {
+          const bg = d.severity === 'critical' ? '#FCEBEB' : d.severity === 'warning' ? '#FAEEDA' : '#f0f4ff';
+          const border = d.severity === 'critical' ? '#E24B4A' : d.severity === 'warning' ? '#BA7517' : '#1A4B8C';
+          const iconColor = d.severity === 'critical' ? '#E24B4A' : d.severity === 'warning' ? '#BA7517' : '#1A4B8C';
+          return (
+            <div style={`background:${bg};border-left:3px solid ${border};border-radius:0 10px 10px 0;padding:16px 20px;`}>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span class="material-symbols-outlined" style={`font-size:20px;color:${iconColor};`}>{d.icon}</span>
+                <p style={`font-size:14px;font-weight:800;color:${iconColor};`}>{d.title}</p>
+              </div>
+              <p style="font-size:13px;color:#1a1a2e;line-height:1.6;">{d.description}</p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
   <!-- GEO queries (GEO only) -->
   {key === 'geo' && r.geo?.queries?.length > 0 && (
     <section style="background:white;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
