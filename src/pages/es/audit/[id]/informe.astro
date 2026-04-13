@@ -493,10 +493,25 @@ function cwvStatus(metric: string, value: number): {color:string;label:string} {
   return value<=good ? {color:'#1D9E75',label:'Bueno'} : value<=poor ? {color:'#BA7517',label:'Mejorable'} : {color:'#E24B4A',label:'Lento'};
 }
 
-// Insights/Plan
-const quickWins: string[] = insights?.bullets?.slice(0,3)||[];
-const strategicActions: any[] = insights?.initiatives?.slice(0,4)||[];
-interface QuickWin { title: string; problem: string; impact: 'alto' | 'medio'; }
+// Insights/Plan — use Growth Agent prioritizedActions directly for rich cards
+interface QuickWin {
+  title: string;
+  problem: string;           // "para qué" context — why this matters to the business
+  impact: 'alto' | 'medio';
+  expectedOutcome?: string;  // what changes if you do this
+  rationale?: string;        // deeper explanation (shown on "Saber más")
+}
+
+// Rich quick wins from Growth Agent (preferred — have full context)
+const gaQuickWins: QuickWin[] = prioritizedActionsGA.slice(0, 6).map((a: any) => ({
+  title: a.title || '',
+  problem: a.description || '',
+  impact: a.businessImpact === 'high' ? 'alto' as const : 'medio' as const,
+  expectedOutcome: a.expectedOutcome || '',
+  rationale: a.rationale || '',
+}));
+
+// Heuristic fallback (only used when Growth Agent didn't produce actions)
 const fallbackQuickWins: QuickWin[] = [
   !techStackMapped.analytics.detected ? { title: 'Instalar Google Analytics 4 y Tag Manager', problem: 'Sin medición activa no puedes saber qué funciona ni optimizar ninguna acción de marketing.', impact: 'alto' } : null,
   ps&&(ps.mobile?.performance||0)<50 ? { title: `Reducir tiempo de carga móvil (ahora ${ps.mobile?.lcp != null ? (ps.mobile.lcp/1000).toFixed(1)+'s' : 'lento'})`, problem: 'Cada segundo de carga adicional reduce las conversiones entre un 10–20%. Tu web móvil necesita optimización urgente de imágenes y código.', impact: 'alto' } : null,
@@ -506,11 +521,7 @@ const fallbackQuickWins: QuickWin[] = [
   missingSchemas.length>0 ? { title: `Implementar Schema Markup (${missingSchemas.slice(0,2).join(', ')})`, problem: 'Sin datos estructurados, Google no puede mostrar tu información enriquecida en resultados de búsqueda.', impact: 'medio' } : null,
   seo&&(seo.keywordsPos4to10||0)>0 ? { title: `Optimizar ${fmt(seo.keywordsPos4to10)} keywords en posición 4–10`, problem: 'Estas keywords ya tienen tracción. Un artículo actualizado o una mejora de contenido puede llevarlas al top 3 sin crear nada nuevo.', impact: 'alto' } : null,
 ].filter(Boolean) as QuickWin[];
-const displayQuickWins: QuickWin[] = quickWins.length>0
-  ? quickWins.map((w: string) => ({ title: w, problem: '', impact: 'medio' as const }))
-  : fallbackQuickWins.slice(0,4);
-// Strategic initiatives: only LLM-generated, no hardcoded fallback
-const displayStrategic = strategicActions.length > 0 ? strategicActions.slice(0, 3) : [];
+const displayQuickWins: QuickWin[] = gaQuickWins.length > 0 ? gaQuickWins : fallbackQuickWins.slice(0, 4);
 
 // GEO cross-model
 const crossModel: any[] = geo?.crossModel||[];
@@ -2965,24 +2976,47 @@ const donutSVG = buildDonutSVG();
                 Quick Wins — Resultados en 30 dias
               </div>
               <div style="display:flex;flex-direction:column;gap:10px;">
-                {displayQuickWins.map((win: any, idx: number) => (
-                  <div class="plan-card" style={`border-left:3px solid ${idx === 0 ? '#69FF87' : idx === 1 ? '#aac7ff' : '#68dbae'};`}>
-                    <div class="plan-num" style={`background:${idx === 0 ? 'rgba(105,255,135,0.15)' : idx === 1 ? 'rgba(170,199,255,0.15)' : 'rgba(104,219,174,0.15)'};color:${idx === 0 ? '#69FF87' : idx === 1 ? '#aac7ff' : '#68dbae'};`}>{idx + 1}</div>
+                {displayQuickWins.map((win: any, idx: number) => {
+                  const colors = ['#69FF87', '#aac7ff', '#68dbae', '#c4b5fd', '#fbbf24', '#f87171'];
+                  const color = colors[idx % colors.length];
+                  const hasDetail = !!(win.expectedOutcome || win.rationale);
+                  return (
+                  <div class="plan-card" style={`border-left:3px solid ${color};`}>
+                    <div class="plan-num" style={`background:${color}20;color:${color};`}>{idx + 1}</div>
                     <div style="flex:1;">
                       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-                        <div style="font-size:0.85rem;font-weight:700;color:#e2e0fc;">{typeof win === 'string' ? win : win.title}</div>
-                        {typeof win !== 'string' && win.impact && (
-                          <span class="tag" style={`background:${win.impact==='alto'?'rgba(255,180,171,0.12)':'rgba(255,180,171,0.08)'};color:#ffb4ab;font-size:0.65rem;`}>
+                        <div style="font-size:0.85rem;font-weight:700;color:#e2e0fc;">{win.title}</div>
+                        {win.impact && (
+                          <span class="tag" style={`background:${win.impact==='alto'?'rgba(255,180,171,0.15)':'rgba(170,199,255,0.1)'};color:${win.impact==='alto'?'#ffb4ab':'#aac7ff'};font-size:0.65rem;`}>
                             Impacto {win.impact}
                           </span>
                         )}
                       </div>
-                      {typeof win !== 'string' && win.problem && (
-                        <div style="font-size:0.78rem;color:#8d909b;line-height:1.5;">{win.problem}</div>
+                      {win.problem && (
+                        <div style="font-size:0.78rem;color:#c3c6d2;line-height:1.55;margin-bottom:4px;">{win.problem}</div>
+                      )}
+                      {win.expectedOutcome && (
+                        <div style="font-size:0.75rem;color:#69FF87;line-height:1.4;display:flex;align-items:baseline;gap:6px;">
+                          <span class="material-symbols-outlined" style="font-size:14px;flex-shrink:0;margin-top:1px;">trending_up</span>
+                          <span>Resultado esperado: {win.expectedOutcome}</span>
+                        </div>
+                      )}
+                      {hasDetail && (
+                        <details style="margin-top:8px;">
+                          <summary style="font-size:0.72rem;color:#aac7ff;cursor:pointer;display:inline-flex;align-items:center;gap:4px;user-select:none;">
+                            <span class="material-symbols-outlined" style="font-size:14px;">info</span>
+                            Saber mas
+                          </summary>
+                          <div style="margin-top:8px;padding:12px 14px;background:rgba(170,199,255,0.06);border-radius:8px;font-size:0.75rem;color:#8d909b;line-height:1.6;">
+                            {win.rationale && <p style="margin:0 0 6px;">{win.rationale}</p>}
+                            {win.expectedOutcome && !win.rationale && <p style="margin:0;">Si implementas esta accion, esperamos: {win.expectedOutcome}</p>}
+                          </div>
+                        </details>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
