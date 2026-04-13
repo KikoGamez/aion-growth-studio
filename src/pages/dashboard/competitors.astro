@@ -1,106 +1,268 @@
 ---
 export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getClient, getLatestSnapshot } from '../../lib/db';
+import { getClient, getLatestSnapshot, getAllSnapshots } from '../../lib/db';
 import type { Tier } from '../../lib/demo-data';
 
 const client = Astro.locals.client ?? await getClient();
 const snapshot = await getLatestSnapshot(client.id);
+const allSnapshots = await getAllSnapshots(client.id);
+const prevSnap = allSnapshots.length >= 2 ? allSnapshots[allSnapshots.length - 2] : null;
 const tier: Tier = client.tier;
 
-const ctItems = snapshot.pipeline_output.competitor_traffic?.items || [];
-const seo = snapshot.pipeline_output.seo || {};
-const geo = snapshot.pipeline_output.geo || {};
-const ps = snapshot.pipeline_output.pagespeed || {};
+const r = snapshot.pipeline_output || {};
+const pr = prevSnap?.pipeline_output || {};
+const seo = r.seo || {};
+const geo = r.geo || {};
+const ps = r.pagespeed || {};
 
-// Build comparison rows: client + competitors
-interface CompRow {
+// ─── Merge competitor data from 4 pipeline sources ──────────────────────
+interface CompetitorRow {
+  domain: string;
   name: string;
   isClient: boolean;
+  type?: string;
+  // SEO
   traffic: number | null;
+  prevTraffic: number | null;
   keywords: number | null;
+  prevKeywords: number | null;
+  paidKeywords: number | null;
+  // Web
   mobilePerf: number | null;
+  // GEO
+  mentionRate: number | null;
+  mentions: string | null;
 }
 
-const compRows: CompRow[] = [
+const ctItems: any[] = r.competitor_traffic?.items || [];
+const prevCtItems: any[] = pr.competitor_traffic?.items || [];
+const cpItems: any[] = r.competitor_pagespeed?.items || [];
+const geoMentions: any[] = geo.competitorMentions || [];
+
+// Build lookup maps
+const cpByDomain = Object.fromEntries(cpItems.map((c: any) => [c.domain, c]));
+const geoByDomain = Object.fromEntries(geoMentions.map((c: any) => [c.domain, c]));
+const prevByDomain = Object.fromEntries(prevCtItems.map((c: any) => [c.domain, c]));
+
+// Client row first
+const rows: CompetitorRow[] = [
   {
+    domain: client.domain,
     name: client.name,
     isClient: true,
-    traffic: seo.organicTrafficEstimate || null,
-    keywords: seo.keywordsTop10 || null,
-    mobilePerf: ps.mobile?.performance || null,
+    traffic: seo.organicTrafficEstimate ?? null,
+    prevTraffic: pr.seo?.organicTrafficEstimate ?? null,
+    keywords: seo.keywordsTop10 ?? null,
+    prevKeywords: pr.seo?.keywordsTop10 ?? null,
+    paidKeywords: seo.paidKeywordsTotal ?? null,
+    mobilePerf: ps.mobile?.performance ?? null,
+    mentionRate: geo.mentionRate ?? null,
+    mentions: geo.mentions != null ? `${geo.mentions}/${geo.totalQueries || 15}` : null,
   },
-  ...ctItems.map((c: any) => ({
-    name: c.domain,
-    isClient: false,
-    traffic: c.organicTrafficEstimate || null,
-    keywords: c.keywordsTop10 || null,
-    mobilePerf: c.mobilePerformance || null,
-  })),
 ];
 
+// Competitor rows (merged from all sources)
+const allDomains = new Set([
+  ...ctItems.map((c: any) => c.domain),
+  ...geoMentions.map((c: any) => c.domain),
+]);
+
+for (const domain of allDomains) {
+  const ct = ctItems.find((c: any) => c.domain === domain) || {};
+  const cp = cpByDomain[domain] || {};
+  const gm = geoByDomain[domain] || {};
+  const prev = prevByDomain[domain] || {};
+
+  rows.push({
+    domain,
+    name: ct.name || gm.name || domain,
+    isClient: false,
+    type: ct.type,
+    traffic: ct.organicTrafficEstimate ?? null,
+    prevTraffic: prev.organicTrafficEstimate ?? null,
+    keywords: ct.keywordsTop10 ?? null,
+    prevKeywords: prev.keywordsTop10 ?? null,
+    paidKeywords: ct.paidKeywordsTotal ?? null,
+    mobilePerf: cp.mobilePerformance ?? null,
+    mentionRate: gm.mentionRate ?? null,
+    mentions: gm.mentions != null ? `${gm.mentions}/${gm.total || 15}` : null,
+  });
+}
+
+// ─── Detect weekly changes (alerts) ─────────────────────────────────────
+interface CompAlert {
+  domain: string;
+  text: string;
+  type: 'positive' | 'negative' | 'neutral';
+  icon: string;
+}
+const alerts: CompAlert[] = [];
+if (prevSnap) {
+  for (const row of rows) {
+    if (row.isClient) continue;
+    if (row.keywords != null && row.prevKeywords != null) {
+      const delta = row.keywords - row.prevKeywords;
+      const pct = row.prevKeywords > 0 ? Math.round((delta / row.prevKeywords) * 100) : 0;
+      if (Math.abs(pct) >= 10 || Math.abs(delta) >= 5) {
+        alerts.push({
+          domain: row.domain,
+          text: `${row.name}: ${delta > 0 ? '+' : ''}${delta} keywords top 10 (${delta > 0 ? '+' : ''}${pct}%)`,
+          type: delta > 0 ? 'negative' : 'positive', // competitor gaining is bad for us
+          icon: delta > 0 ? 'trending_up' : 'trending_down',
+        });
+      }
+    }
+    if (row.traffic != null && row.prevTraffic != null && row.prevTraffic > 0) {
+      const pct = Math.round(((row.traffic - row.prevTraffic) / row.prevTraffic) * 100);
+      if (Math.abs(pct) >= 15) {
+        alerts.push({
+          domain: row.domain,
+          text: `${row.name}: tráfico orgánico ${pct > 0 ? '+' : ''}${pct}%`,
+          type: pct > 0 ? 'negative' : 'positive',
+          icon: pct > 0 ? 'trending_up' : 'trending_down',
+        });
+      }
+    }
+  }
+}
+
+// Growth Agent competitive narrative
+const gaCompNarrative = r.growth_analysis?.auditSummaries?.benchmark;
+
+// ─── Helpers ────────────────────────────────────────────────────────────
 function fmt(n: number | null): string {
   if (n == null) return '—';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${Math.round(n / 1000)}K`;
   return String(n);
 }
 
-function scoreColor(v: number | null, max: number): string {
-  if (v == null) return '#94a3b8';
-  const ratio = v / max;
-  if (ratio >= 0.7) return '#1d9e75';
-  if (ratio >= 0.4) return '#ba7517';
-  return '#ba1a1a';
+function delta(curr: number | null, prev: number | null): { text: string; color: string } | null {
+  if (curr == null || prev == null || prev === 0) return null;
+  const pct = Math.round(((curr - prev) / Math.abs(prev)) * 100);
+  if (Math.abs(pct) < 3) return null;
+  return { text: `${pct > 0 ? '+' : ''}${pct}%`, color: pct > 0 ? '#1D9E75' : '#E24B4A' };
 }
+
+function cellColor(val: number | null, clientVal: number | null, better: 'high' | 'low'): string {
+  if (val == null || clientVal == null) return '#94a3b8';
+  if (better === 'high') return val > clientVal ? '#E24B4A' : val < clientVal ? '#1D9E75' : '#64748b';
+  return val < clientVal ? '#E24B4A' : val > clientVal ? '#1D9E75' : '#64748b';
+}
+
+const clientRow = rows[0];
+const competitorRows = rows.slice(1);
 ---
 
-<DashboardLayout title="Competidores" currentPath="/dashboard/competitors" tier={tier} clientName={client.name} domain={client.domain}>
-  <div style="display:flex;flex-direction:column;gap:32px;">
+<DashboardLayout title="Competidores" currentPath="/dashboard/competitors" tier={tier} clientName={client.name} domain={client.domain} lastReportMonth={snapshot.month} lastReportDate={snapshot.date}>
+<div style="display:flex;flex-direction:column;gap:24px;">
 
-    <div>
-      <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.04em;color:#1a1a2e;">Análisis de Competidores</h1>
-      <p style="font-size:14px;color:#434750;margin-top:4px;">Benchmark detallado frente a tu competencia directa</p>
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:16px;">
+    <a href="/dashboard" style="display:flex;align-items:center;color:#64748b;text-decoration:none;font-size:13px;font-weight:600;">
+      <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span>
+      Resumen
+    </a>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="width:48px;height:48px;border-radius:14px;background:#D85A3015;display:flex;align-items:center;justify-content:center;">
+      <span class="material-symbols-outlined" style="font-size:24px;color:#D85A30;">groups</span>
     </div>
+    <div>
+      <h1 style="font-size:28px;font-weight:900;color:#1a1a2e;letter-spacing:-0.03em;">Competidores</h1>
+      <p style="font-size:14px;color:#64748b;">Benchmark vs {competitorRows.length} competidor{competitorRows.length !== 1 ? 'es' : ''} — datos de esta semana</p>
+    </div>
+  </div>
 
-    <!-- Benchmark table -->
-    <div style="background:#ffffff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+  <!-- Growth Agent competitive narrative -->
+  {gaCompNarrative && (
+    <section style="background:linear-gradient(135deg, #000e41, #001f70);border-radius:16px;padding:24px 28px;color:white;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:#69ff87;">auto_awesome</span>
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#69ff87;">Diagnóstico competitivo</span>
+      </div>
+      <p style="font-size:15px;line-height:1.7;color:#e2e8f0;">{gaCompNarrative}</p>
+    </section>
+  )}
+
+  <!-- Competitive alerts (week-over-week changes) -->
+  {alerts.length > 0 && (
+    <section style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:#D85A30;">notifications_active</span>
+        <h2 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1a1a2e;">Cambios de la competencia esta semana</h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {alerts.map(a => (
+          <div style={`display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:${a.type === 'negative' ? '#FCEBEB' : a.type === 'positive' ? '#E1F5EE' : '#f7f9ff'};`}>
+            <span class="material-symbols-outlined" style={`font-size:18px;color:${a.type === 'negative' ? '#E24B4A' : '#1D9E75'};`}>{a.icon}</span>
+            <p style="font-size:13px;color:#1a1a2e;font-weight:600;">{a.text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- Main comparison table — all pillars available -->
+  <section style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+    <div style="padding:20px 24px;border-bottom:1px solid #f0f0f0;">
+      <h2 style="font-size:15px;font-weight:800;color:#1a1a2e;">Benchmark por pilares</h2>
+      <p style="font-size:12px;color:#64748b;margin-top:2px;">Verde = tú ganas · Rojo = el competidor te supera</p>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:700px;">
         <thead>
-          <tr style="background:#f5f2ff;">
-            <th style="text-align:left;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Empresa</th>
-            <th style="text-align:center;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Tráfico est.</th>
-            <th style="text-align:center;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Keywords top 10</th>
-            <th style="text-align:center;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#434750;">Perf. Mobile</th>
+          <tr style="background:#f7f9ff;">
+            <th style="text-align:left;padding:12px 20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;">Empresa</th>
+            <th style="text-align:center;padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;" title="Keywords en top 10 de Google">KW Top 10</th>
+            <th style="text-align:center;padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;" title="Tráfico orgánico estimado mensual">Tráfico</th>
+            <th style="text-align:center;padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;" title="Keywords de pago activas">Paid</th>
+            <th style="text-align:center;padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;" title="Puntuación PageSpeed mobile">Web</th>
+            <th style="text-align:center;padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;" title="Tasa de mención en respuestas IA">GEO</th>
           </tr>
         </thead>
         <tbody>
-          {compRows.map(row => {
-            const maxTraffic = Math.max(...compRows.map(r => r.traffic || 0));
-            const maxKw = Math.max(...compRows.map(r => r.keywords || 0));
+          {rows.map(row => {
+            const d = (curr: number | null, prev: number | null) => delta(curr, prev);
+            const kwDelta = d(row.keywords, row.prevKeywords);
+            const trDelta = d(row.traffic, row.prevTraffic);
             return (
-              <tr style={`border-bottom:1px solid #f5f2ff;${row.isClient ? 'background:#f0f4ff;' : ''}`}>
-                <td style="padding:16px 20px;">
+              <tr style={`border-bottom:1px solid #f0f0f0;${row.isClient ? 'background:#f0f4ff;' : ''}`}>
+                <td style="padding:14px 20px;">
                   <div style="display:flex;align-items:center;gap:10px;">
-                    <div style={`width:8px;height:8px;border-radius:50%;background:${row.isClient ? '#1a4b8c' : '#d85a30'};flex-shrink:0;`}></div>
-                    <span style={`font-weight:${row.isClient ? '800' : '600'};color:#1a1a2e;`}>{row.name}</span>
-                    {row.isClient && <span style="font-size:10px;background:#d6e3ff;color:#124687;padding:2px 6px;border-radius:4px;font-weight:700;">Tú</span>}
+                    <div style={`width:8px;height:8px;border-radius:50%;background:${row.isClient ? '#1A4B8C' : '#D85A30'};flex-shrink:0;`}></div>
+                    <div>
+                      <span style={`font-weight:${row.isClient ? '800' : '600'};color:#1a1a2e;font-size:13px;`}>{row.name}</span>
+                      {row.isClient && <span style="font-size:9px;background:#1A4B8C;color:white;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:8px;">TÚ</span>}
+                      {row.type === 'aspirational' && <span style="font-size:9px;background:#f0f0f0;color:#64748b;padding:2px 6px;border-radius:4px;font-weight:600;margin-left:6px;">referencia</span>}
+                      <p style="font-size:10px;color:#94a3b8;margin-top:1px;">{row.domain}</p>
+                    </div>
                   </div>
                 </td>
-                <td style="padding:16px 20px;text-align:center;">
-                  <span style={`font-weight:700;font-size:15px;color:${scoreColor(row.traffic, maxTraffic)};`}>{fmt(row.traffic)}</span>
+                <td style="text-align:center;padding:14px 16px;">
+                  <span style={`font-weight:800;font-size:15px;color:${row.isClient ? '#1A4B8C' : cellColor(row.keywords, clientRow.keywords, 'high')};`}>{row.keywords ?? '—'}</span>
+                  {kwDelta && <span style={`display:block;font-size:10px;font-weight:700;color:${kwDelta.color};`}>{kwDelta.text}</span>}
                 </td>
-                <td style="padding:16px 20px;text-align:center;">
-                  <span style={`font-weight:700;font-size:15px;color:${scoreColor(row.keywords, maxKw)};`}>{row.keywords || '—'}</span>
+                <td style="text-align:center;padding:14px 16px;">
+                  <span style={`font-weight:800;font-size:15px;color:${row.isClient ? '#1A4B8C' : cellColor(row.traffic, clientRow.traffic, 'high')};`}>{fmt(row.traffic)}</span>
+                  {trDelta && <span style={`display:block;font-size:10px;font-weight:700;color:${trDelta.color};`}>{trDelta.text}</span>}
                 </td>
-                <td style="padding:16px 20px;text-align:center;">
+                <td style="text-align:center;padding:14px 16px;">
+                  <span style={`font-weight:700;color:${row.paidKeywords ? '#1a1a2e' : '#cbd5e1'};`}>{row.paidKeywords || '—'}</span>
+                </td>
+                <td style="text-align:center;padding:14px 16px;">
                   {row.mobilePerf != null ? (
-                    <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-                      <div style="width:64px;height:6px;background:#e8e5ff;border-radius:999px;overflow:hidden;">
-                        <div style={`height:100%;width:${row.mobilePerf}%;background:${scoreColor(row.mobilePerf, 100)};`}></div>
-                      </div>
-                      <span style={`font-weight:700;color:${scoreColor(row.mobilePerf, 100)};`}>{row.mobilePerf}</span>
+                    <span style={`font-weight:800;color:${row.isClient ? '#1A4B8C' : cellColor(row.mobilePerf, clientRow.mobilePerf, 'high')};`}>{row.mobilePerf}</span>
+                  ) : <span style="color:#cbd5e1;">—</span>}
+                </td>
+                <td style="text-align:center;padding:14px 16px;">
+                  {row.mentionRate != null ? (
+                    <div>
+                      <span style={`font-weight:800;color:${row.isClient ? '#1A4B8C' : cellColor(row.mentionRate, clientRow.mentionRate, 'high')};`}>{row.mentionRate}%</span>
+                      <span style="display:block;font-size:9px;color:#94a3b8;">{row.mentions}</span>
                     </div>
-                  ) : <span style="color:#94a3b8;">—</span>}
+                  ) : <span style="color:#cbd5e1;">—</span>}
                 </td>
               </tr>
             );
@@ -108,27 +270,87 @@ function scoreColor(v: number | null, max: number): string {
         </tbody>
       </table>
     </div>
+  </section>
 
-    <!-- Dimension cards -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
-      {[
-        { label: 'SEO', icon: 'search', value: `${seo.keywordsTop10 || 0} kw top10`, color: '#1d9e75' },
-        { label: 'GEO', icon: 'auto_awesome', value: `${geo.mentionRate || 0}% mención`, color: '#205db0' },
-        { label: 'Web', icon: 'speed', value: `${ps.mobile?.performance || '—'} mobile`, color: '#ba7517' },
-        { label: 'Contenido', icon: 'article', value: 'Análisis mensual', color: '#7c3aed' },
-        { label: 'Paid', icon: 'paid', value: seo.paidKeywordsTotal ? `${seo.paidKeywordsTotal} kw` : 'Sin campañas', color: '#d85a30' },
-      ].map(d => (
-        <div style="background:#ffffff;padding:20px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-            <div style={`width:36px;height:36px;border-radius:10px;background:${d.color}1a;display:flex;align-items:center;justify-content:center;`}>
-              <span class="material-symbols-outlined" style={`font-size:18px;color:${d.color};`}>{d.icon}</span>
+  <!-- Competitor detail cards (expandable) -->
+  {competitorRows.length > 0 && (
+    <section>
+      <h2 style="font-size:15px;font-weight:800;color:#1a1a2e;margin-bottom:14px;">Detalle por competidor</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
+        {competitorRows.map(comp => {
+          const kwVsClient = comp.keywords != null && clientRow.keywords != null ? comp.keywords - clientRow.keywords : null;
+          const trVsClient = comp.traffic != null && clientRow.traffic != null ? comp.traffic - clientRow.traffic : null;
+          const geoVsClient = comp.mentionRate != null && clientRow.mentionRate != null ? comp.mentionRate - clientRow.mentionRate : null;
+
+          return (
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#D85A3015;display:flex;align-items:center;justify-content:center;">
+                  <span class="material-symbols-outlined" style="font-size:18px;color:#D85A30;">domain</span>
+                </div>
+                <div>
+                  <p style="font-size:14px;font-weight:800;color:#1a1a2e;">{comp.name}</p>
+                  <p style="font-size:11px;color:#94a3b8;">{comp.domain}{comp.type === 'aspirational' ? ' · referencia' : ''}</p>
+                </div>
+              </div>
+
+              <!-- Comparison bars -->
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                {[
+                  { label: 'Keywords Top 10', yours: clientRow.keywords, theirs: comp.keywords, better: 'high' as const },
+                  { label: 'Tráfico Orgánico', yours: clientRow.traffic, theirs: comp.traffic, better: 'high' as const },
+                  { label: 'Visibilidad IA', yours: clientRow.mentionRate, theirs: comp.mentionRate, better: 'high' as const },
+                  { label: 'PageSpeed Mobile', yours: clientRow.mobilePerf, theirs: comp.mobilePerf, better: 'high' as const },
+                ].map(metric => {
+                  if (metric.yours == null && metric.theirs == null) return null;
+                  const max = Math.max(metric.yours || 0, metric.theirs || 0, 1);
+                  const youPct = Math.round(((metric.yours || 0) / max) * 100);
+                  const themPct = Math.round(((metric.theirs || 0) / max) * 100);
+                  const youWin = (metric.yours || 0) >= (metric.theirs || 0);
+                  return (
+                    <div>
+                      <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px;">
+                        <span>{metric.label}</span>
+                        <span>{fmt(metric.yours)} vs {fmt(metric.theirs)}</span>
+                      </div>
+                      <div style="display:flex;gap:4px;height:8px;">
+                        <div style={`flex:${youPct || 1};background:${youWin ? '#1A4B8C' : '#94a3b8'};border-radius:4px 0 0 4px;transition:flex 0.3s;`}></div>
+                        <div style={`flex:${themPct || 1};background:${!youWin ? '#D85A30' : '#cbd5e1'};border-radius:0 4px 4px 0;transition:flex 0.3s;`}></div>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;font-size:9px;color:#94a3b8;margin-top:2px;">
+                        <span style={`color:${youWin ? '#1A4B8C' : '#94a3b8'};font-weight:${youWin ? '700' : '400'};`}>Tú</span>
+                        <span style={`color:${!youWin ? '#D85A30' : '#94a3b8'};font-weight:${!youWin ? '700' : '400'};`}>{comp.name.split(' ')[0]}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <!-- Summary badge -->
+              {kwVsClient != null && (
+                <div style={`padding:10px 14px;border-radius:8px;font-size:12px;font-weight:700;text-align:center;${kwVsClient > 0 ? 'background:#FCEBEB;color:#E24B4A;' : 'background:#E1F5EE;color:#1D9E75;'}`}>
+                  {kwVsClient > 0
+                    ? `Te supera en ${kwVsClient.toLocaleString()} keywords`
+                    : kwVsClient < 0
+                    ? `Estás ${Math.abs(kwVsClient).toLocaleString()} keywords por delante`
+                    : 'Empatados en keywords'}
+                </div>
+              )}
             </div>
-            <p style="font-size:13px;font-weight:700;color:#1a1a2e;">{d.label}</p>
-          </div>
-          <p style="font-size:14px;font-weight:600;color:#434750;">{d.value}</p>
-        </div>
-      ))}
-    </div>
+          );
+        })}
+      </div>
+    </section>
+  )}
 
-  </div>
+  <!-- No competitors found -->
+  {competitorRows.length === 0 && (
+    <section style="background:white;border:1px dashed #cbd5e1;border-radius:12px;padding:40px;text-align:center;">
+      <span class="material-symbols-outlined" style="font-size:40px;color:#94a3b8;margin-bottom:12px;display:block;">group_off</span>
+      <p style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">No se detectaron competidores</p>
+      <p style="font-size:13px;color:#64748b;">Configura tus competidores en <a href="/dashboard/settings" style="color:#1A4B8C;">Ajustes</a> o en el onboarding para ver la comparativa.</p>
+    </section>
+  )}
+
+</div>
 </DashboardLayout>
