@@ -318,14 +318,14 @@ function fmtDate(iso: string) {
     function markApplied(evalId) {
       var btn = document.getElementById('apply-btn-' + evalId);
       if (!btn) return;
-      var commitSha = prompt('Commit SHA (opcional, deja vacio si no aplica):');
-      if (commitSha === null) return; // cancelled
+      if (!confirm('Marcar este fix como aplicado?')) return;
       btn.disabled = true;
       btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">hourglass_top</span> Guardando...';
       fetch('/api/admin/qa-fix', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'mark-applied', evaluationId: evalId, commitSha: commitSha || undefined }),
+        body: JSON.stringify({ action: 'mark-applied', evaluationId: evalId }),
       }).then(function(res) { return res.json(); }).then(function(data) {
         if (data.ok) {
           btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">check_circle</span> Aplicado';
