@@ -3,14 +3,12 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { createClient } from '@supabase/supabase-js';
 
-// Require superuser access (middleware already enforces /admin/* but double-check)
-const user = Astro.locals.user as any;
-if (!user || user.role !== 'superuser') {
-  return Astro.redirect('/dashboard');
-}
+const user = (Astro.locals as any).user;
+if (!user || user.role !== 'superuser') return Astro.redirect('/dashboard');
 
 const supabaseUrl = import.meta.env.SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = import.meta.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const supabaseKey = import.meta.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY
+  || import.meta.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 let evaluations: any[] = [];
 let fetchError = '';
@@ -24,7 +22,7 @@ if (supabaseUrl && supabaseKey) {
 
   let q = sb
     .from('qa_quality_evaluations')
-    .select('id, domain, sector, audit_score, overall, clarity, credibility, actionability, urgency, willingness_to_pay, would_send_to_ceo, would_subscribe, errors, not_interesting, best_part, worst_part, prompt_for_claude_code, created_at')
+    .select('id, domain, sector, audit_score, overall, clarity, credibility, actionability, urgency, willingness_to_pay, would_send_to_ceo, would_subscribe, ceo_reason, subscribe_reason, errors, not_interesting, best_part, worst_part, prompt_for_claude_code, created_at')
     .gte('created_at', since)
     .order('created_at', { ascending: false });
 
@@ -44,163 +42,73 @@ const ceoCount = evaluations.filter((e: any) => e.would_send_to_ceo).length;
 const subCount = evaluations.filter((e: any) => e.would_subscribe).length;
 
 function scoreColor(s: number) {
-  if (s >= 7) return '#1d9e75';
-  if (s >= 5) return '#ba7517';
-  return '#e24b4a';
-}
-function scoreLabel(s: number) {
-  if (s >= 7) return 'Bueno';
-  if (s >= 5) return 'Regular';
-  return 'Problemático';
+  if (s >= 7) return '#10b981';
+  if (s >= 5) return '#f59e0b';
+  return '#ef4444';
 }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 ---
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QA Engine — Admin AION</title>
-  <link rel="icon" type="image/png" href="/favicon.png" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #f5f2ff; color: #1a1a2e; margin: 0; min-height: 100vh; }
-    .topbar { background: #1a4b8c; color: #fff; padding: 14px 32px; display: flex; align-items: center; gap: 16px; }
-    .topbar a { color: rgba(255,255,255,.65); text-decoration: none; font-size: 13px; }
-    .topbar a:hover { color: #fff; }
-    .topbar h1 { margin: 0; font-size: 18px; font-weight: 700; }
-    .container { max-width: 1280px; margin: 0 auto; padding: 32px 24px; }
-
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
-    .stat-card { background: #fff; border-radius: 12px; padding: 20px; text-align: center; }
-    .stat-val { font-size: 32px; font-weight: 800; }
-    .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
-
-    .filters { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-    .filters select, .filters input { border: 1px solid #e2e0fc; border-radius: 6px; padding: 6px 10px; font-size: 13px; background: #f8f9fb; }
-    .filters label { font-size: 12px; font-weight: 600; color: #555; }
-    .filters a.btn { background: #1a4b8c; color: #fff; padding: 7px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; }
-
-    table { width: 100%; border-collapse: collapse; }
-    th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #888; padding: 10px 12px; text-align: left; background: #f5f2ff; }
-    td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f0eeff; vertical-align: top; }
-    tr:hover td { background: #fafafa; }
-    tr.expanded td { background: #fafcff; }
-
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-    .badge-good { background: #e1f5ee; color: #1d9e75; }
-    .badge-mid  { background: #faeeda; color: #ba7517; }
-    .badge-bad  { background: #fcebeb; color: #e24b4a; }
-
-    .score-circle { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; font-weight: 800; font-size: 14px; }
-
-    .expand-btn { background: none; border: 1px solid #e2e0fc; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #1a4b8c; font-weight: 600; }
-    .expand-btn:hover { background: #e2e0fc; }
-
-    .detail-panel { background: #f8f9fb; border-radius: 8px; padding: 16px; margin: 8px 0; }
-    .detail-panel h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #888; margin: 0 0 8px; }
-    .error-item { background: #fcebeb; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
-    .error-item .sev { font-size: 11px; font-weight: 700; color: #e24b4a; text-transform: uppercase; }
-    .error-item .section { font-size: 11px; color: #888; }
-    .ni-item { background: #faeeda; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
-    .ni-item .section { font-size: 11px; color: #888; }
-    .claude-block { background: #e2e0fc; border-radius: 8px; padding: 14px; margin-top: 12px; }
-    .claude-block h4 { color: #1a4b8c; margin-bottom: 8px; }
-    .claude-block pre { background: #fff; border-radius: 6px; padding: 12px; font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
-    .copy-btn { background: #1a4b8c; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-weight: 600; margin-top: 8px; }
-    .copy-btn:hover { background: #4a7fd4; }
-
-    .scores-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
-    .score-mini { background: #fff; border-radius: 6px; padding: 8px; text-align: center; }
-    .score-mini .val { font-size: 18px; font-weight: 800; }
-    .score-mini .lbl { font-size: 10px; color: #888; margin-top: 2px; }
-    .no-data { text-align: center; padding: 48px; color: #888; font-size: 14px; }
-  </style>
-</head>
-<body>
-
-<div class="topbar">
-  <a href="/admin">← Panel Admin</a>
-  <span style="color:rgba(255,255,255,.3)">/</span>
-  <h1>QA Engine — Calidad Percibida</h1>
-  <span style="margin-left:auto;font-size:12px;opacity:.65">{evaluations.length} evaluaciones</span>
-</div>
-
-<div class="container">
-
+<AdminLayout title="QA Engine" currentPath="/admin/qa">
   {fetchError && (
-    <div style="background:#fcebeb;border-radius:8px;padding:14px 18px;margin-bottom:20px;color:#e24b4a;font-size:13px">
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px 18px;margin-bottom:20px;color:#dc2626;font-size:13px;">
       Error cargando datos: {fetchError}
     </div>
   )}
 
-  <!-- Stats summary -->
-  <div class="stats-row">
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
     <div class="stat-card">
-      <div class="stat-val" style={`color:${scoreColor(parseFloat(avgOverall) || 0)}`}>{avgOverall}</div>
-      <div class="stat-label">Score medio</div>
+      <div class="label">Score medio</div>
+      <div class="value" style={`color:${scoreColor(parseFloat(avgOverall as string) || 0)}`}>{avgOverall}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-val">{evaluations.length}</div>
-      <div class="stat-label">Evaluaciones</div>
+      <div class="label">Evaluaciones</div>
+      <div class="value">{evaluations.length}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-val" style="color:#1a4b8c">{ceoCount}</div>
-      <div class="stat-label">Enviaría al CEO</div>
+      <div class="label">Enviaria al CEO</div>
+      <div class="value" style="color:#6366f1;">{ceoCount}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-val" style="color:#1d9e75">{subCount}</div>
-      <div class="stat-label">Pagaría</div>
+      <div class="label">Pagaria</div>
+      <div class="value" style="color:#10b981;">{subCount}</div>
     </div>
   </div>
 
   <!-- Filters -->
-  <form class="filters" method="get">
-    <div>
-      <label>Período</label><br>
-      <select name="days">
-        {[1, 3, 7, 14, 30].map(d => (
-          <option value={d} selected={Astro.url.searchParams.get('days') === String(d) || (!Astro.url.searchParams.get('days') && d === 7)}>
-            Últimos {d} día{d > 1 ? 's' : ''}
-          </option>
-        ))}
-      </select>
-    </div>
-    <div>
-      <label>Sector</label><br>
-      <select name="sector">
-        <option value="">Todos</option>
-        {uniqueSectors.map(s => (
-          <option value={s} selected={Astro.url.searchParams.get('sector') === s}>{s}</option>
-        ))}
-      </select>
-    </div>
-    <div>
-      <label>Score mínimo</label><br>
-      <input type="number" name="min" min="0" max="10" step="0.5" value={Astro.url.searchParams.get('min') || ''} placeholder="0" style="width:80px" />
-    </div>
-    <button type="submit" style="background:#1a4b8c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;align-self:flex-end">Filtrar</button>
-    <div style="margin-left:auto;align-self:flex-end">
-      <a href="/admin/qa" class="btn">Reset</a>
-    </div>
+  <form method="get" class="filter-bar" style="margin-bottom:24px;">
+    <select name="days">
+      {[1, 3, 7, 14, 30].map(d => (
+        <option value={d} selected={Astro.url.searchParams.get('days') === String(d) || (!Astro.url.searchParams.get('days') && d === 7)}>
+          Ultimos {d} dia{d > 1 ? 's' : ''}
+        </option>
+      ))}
+    </select>
+    <select name="sector">
+      <option value="">Todos los sectores</option>
+      {uniqueSectors.map(s => (
+        <option value={s} selected={Astro.url.searchParams.get('sector') === s}>{s}</option>
+      ))}
+    </select>
+    <input type="number" name="min" min="0" max="10" step="0.5" value={Astro.url.searchParams.get('min') || ''} placeholder="Score min" style="width:100px;" />
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    {(Astro.url.searchParams.get('sector') || Astro.url.searchParams.get('min')) && (
+      <a href="/admin/qa" class="btn btn-ghost">Limpiar</a>
+    )}
   </form>
 
   <!-- Table -->
-  <div style="background:#fff;border-radius:12px;overflow:hidden">
+  <div class="stat-card" style="padding:0;overflow-x:auto;">
     {evaluations.length === 0 ? (
-      <div class="no-data">
-        <div style="font-size:32px;margin-bottom:12px">🤖</div>
-        <div>Sin evaluaciones en el período seleccionado.</div>
-        <div style="font-size:12px;margin-top:8px;color:#aaa">
-          Ejecuta: <code>npx tsx scripts/run-quality-engine.ts</code>
-        </div>
+      <div style="text-align:center;padding:48px;color:#94a3b8;">
+        <span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:8px;">verified</span>
+        Sin evaluaciones en el periodo seleccionado
       </div>
     ) : (
-      <table>
+      <table class="admin-table">
         <thead>
           <tr>
             <th>Dominio</th>
@@ -220,120 +128,98 @@ function fmtDate(iso: string) {
           {evaluations.map((e: any, idx: number) => {
             const overall = e.overall ?? 0;
             const errCount = (e.errors || []).length;
-            const niCount  = (e.not_interesting || []).length;
-            const hasFix   = !!e.prompt_for_claude_code;
+            const niCount = (e.not_interesting || []).length;
             return (
               <>
                 <tr id={`row-${idx}`}>
                   <td>
-                    <div style="font-weight:600">{e.domain}</div>
-                    {hasFix && <span class="badge badge-bad" style="margin-top:3px;display:inline-block">fix propuesto</span>}
+                    <div style="font-weight:700;font-size:13px;">{e.domain}</div>
+                    {e.prompt_for_claude_code && <span class="badge" style="background:#fef2f2;color:#dc2626;margin-top:3px;">fix propuesto</span>}
                   </td>
-                  <td><span style="font-size:11px;color:#888">{e.sector}</span></td>
+                  <td style="font-size:12px;color:#64748b;">{e.sector}</td>
                   <td>
-                    <div class="score-circle" style={`background:${scoreColor(overall)}20;color:${scoreColor(overall)}`}>
+                    <div style={`display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:${scoreColor(overall)}15;font-weight:900;font-size:14px;color:${scoreColor(overall)};`}>
                       {overall.toFixed(1)}
                     </div>
                   </td>
-                  <td style={`color:${scoreColor(e.clarity ?? 0)};font-weight:600`}>{(e.clarity ?? 0).toFixed(1)}</td>
-                  <td style={`color:${scoreColor(e.credibility ?? 0)};font-weight:600`}>{(e.credibility ?? 0).toFixed(1)}</td>
-                  <td style={`color:${scoreColor(e.actionability ?? 0)};font-weight:600`}>{(e.actionability ?? 0).toFixed(1)}</td>
+                  <td style={`font-weight:700;color:${scoreColor(e.clarity ?? 0)};`}>{(e.clarity ?? 0).toFixed(1)}</td>
+                  <td style={`font-weight:700;color:${scoreColor(e.credibility ?? 0)};`}>{(e.credibility ?? 0).toFixed(1)}</td>
+                  <td style={`font-weight:700;color:${scoreColor(e.actionability ?? 0)};`}>{(e.actionability ?? 0).toFixed(1)}</td>
+                  <td><span class={`badge ${e.would_send_to_ceo ? 'paying' : 'churned'}`}>{e.would_send_to_ceo ? 'Si' : 'No'}</span></td>
+                  <td><span class={`badge ${e.would_subscribe ? 'paying' : 'churned'}`}>{e.would_subscribe ? 'Si' : 'No'}</span></td>
                   <td>
-                    <span class={`badge ${e.would_send_to_ceo ? 'badge-good' : 'badge-bad'}`}>
-                      {e.would_send_to_ceo ? 'Sí' : 'No'}
-                    </span>
+                    {errCount > 0 && <span class="badge churned">{errCount}</span>}
+                    {niCount > 0 && <span class="badge audit_started" style="margin-left:4px;">{niCount} NI</span>}
+                    {errCount === 0 && niCount === 0 && <span style="color:#10b981;">
+                      <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
+                    </span>}
                   </td>
+                  <td style="font-size:11px;color:#94a3b8;white-space:nowrap;">{fmtDate(e.created_at)}</td>
                   <td>
-                    <span class={`badge ${e.would_subscribe ? 'badge-good' : 'badge-bad'}`}>
-                      {e.would_subscribe ? 'Sí' : 'No'}
-                    </span>
-                  </td>
-                  <td>
-                    {errCount > 0 && <span class="badge badge-bad">{errCount} error{errCount > 1 ? 'es' : ''}</span>}
-                    {niCount > 0 && <span class="badge badge-mid" style="margin-left:4px">{niCount} NI</span>}
-                    {errCount === 0 && niCount === 0 && <span style="color:#1d9e75;font-size:12px">✓</span>}
-                  </td>
-                  <td style="font-size:11px;color:#aaa;white-space:nowrap">{fmtDate(e.created_at)}</td>
-                  <td>
-                    <button class="expand-btn" onclick={`toggleDetail(${idx})`}>Ver</button>
+                    <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick={`toggleDetail(${idx})`} id={`btn-${idx}`}>
+                      <span class="material-symbols-outlined" style="font-size:14px;">expand_more</span>
+                    </button>
                   </td>
                 </tr>
-                <tr id={`detail-${idx}`} style="display:none">
-                  <td colspan="11" style="padding:0 12px 16px">
-                    <div class="detail-panel">
-                      <!-- Score breakdown -->
-                      <div class="scores-grid">
-                        {[
-                          ['Claridad', e.clarity],
-                          ['Credibilidad', e.credibility],
-                          ['Accionable', e.actionability],
-                          ['Urgencia', e.urgency],
-                          ['Pagaría', e.willingness_to_pay],
-                        ].map(([lbl, val]: any) => (
-                          <div class="score-mini">
-                            <div class="val" style={`color:${scoreColor(val ?? 0)}`}>{(val ?? 0).toFixed(1)}</div>
-                            <div class="lbl">{lbl}</div>
+                <tr id={`detail-${idx}`} style="display:none;">
+                  <td colspan="11" style="padding:4px 14px 20px;background:#f8fafc;">
+                    <!-- Score breakdown -->
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;">
+                      {[
+                        ['Claridad', e.clarity],
+                        ['Credibilidad', e.credibility],
+                        ['Accionable', e.actionability],
+                        ['Urgencia', e.urgency],
+                        ['Pagaria', e.willingness_to_pay],
+                      ].map(([lbl, val]: any) => (
+                        <div style="background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #f0f0f0;">
+                          <div style={`font-size:22px;font-weight:900;color:${scoreColor(val ?? 0)};`}>{(val ?? 0).toFixed(1)}</div>
+                          <div style="font-size:10px;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:0.04em;">{lbl}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {e.ceo_reason && <div style="font-size:12px;margin-bottom:8px;"><strong>CEO ({e.would_send_to_ceo ? '✓' : '✗'}):</strong> {e.ceo_reason}</div>}
+                    {e.subscribe_reason && <div style="font-size:12px;margin-bottom:8px;"><strong>Pagaria ({e.would_subscribe ? '✓' : '✗'}):</strong> {e.subscribe_reason}</div>}
+                    {e.best_part && <div style="font-size:12px;color:#10b981;margin-bottom:4px;"><strong>Lo mejor:</strong> {e.best_part}</div>}
+                    {e.worst_part && <div style="font-size:12px;color:#ef4444;margin-bottom:12px;"><strong>Lo peor:</strong> {e.worst_part}</div>}
+
+                    {(e.errors || []).length > 0 && (
+                      <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:8px;">Errores del sistema</div>
+                        {(e.errors as any[]).map((err: any) => (
+                          <div style="background:#fef2f2;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #ef4444;">
+                            <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;">{err.severity} <span style="color:#94a3b8;font-weight:500;">· {err.section}</span></div>
+                            <div style="font-size:13px;margin:4px 0;">{err.issue}</div>
+                            <div style="font-size:12px;color:#64748b;">→ {err.what_should_change}</div>
                           </div>
                         ))}
                       </div>
+                    )}
 
-                      <!-- CEO / subscribe reasons -->
-                      {e.ceo_reason && (
-                        <div style="margin-bottom:10px;font-size:12px">
-                          <strong>CEO ({e.would_send_to_ceo ? '✓' : '✗'}):</strong> {e.ceo_reason}
-                        </div>
-                      )}
-                      {e.subscribe_reason && (
-                        <div style="margin-bottom:10px;font-size:12px">
-                          <strong>¿Pagaría? ({e.would_subscribe ? '✓' : '✗'}):</strong> {e.subscribe_reason}
-                        </div>
-                      )}
-                      {e.best_part && (
-                        <div style="margin-bottom:4px;font-size:12px;color:#1d9e75"><strong>✓ Lo mejor:</strong> {e.best_part}</div>
-                      )}
-                      {e.worst_part && (
-                        <div style="margin-bottom:12px;font-size:12px;color:#e24b4a"><strong>✗ Lo peor:</strong> {e.worst_part}</div>
-                      )}
+                    {(e.not_interesting || []).length > 0 && (
+                      <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:8px;">No interesa (producto)</div>
+                        {(e.not_interesting as any[]).map((ni: any) => (
+                          <div style="background:#fffbeb;border-radius:8px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #f59e0b;">
+                            <div style="font-size:11px;color:#94a3b8;">{ni.section}</div>
+                            <div style="font-size:13px;margin:4px 0;">{ni.issue}</div>
+                            <div style="font-size:12px;color:#64748b;">→ {ni.suggestion}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                      <!-- Errors (ERRÓNEO) -->
-                      {(e.errors || []).length > 0 && (
-                        <div style="margin-bottom:12px">
-                          <h4>ERRÓNEO — Bugs del sistema</h4>
-                          {(e.errors as any[]).map((err: any) => (
-                            <div class="error-item">
-                              <div class="sev">{err.severity} · <span class="section">{err.section}</span></div>
-                              <div style="font-size:13px;margin:4px 0">{err.issue}</div>
-                              <div style="font-size:12px;color:#666">→ {err.what_should_change}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <!-- Not interesting -->
-                      {(e.not_interesting || []).length > 0 && (
-                        <div style="margin-bottom:12px">
-                          <h4>NO INTERESA — Problema de producto</h4>
-                          {(e.not_interesting as any[]).map((ni: any) => (
-                            <div class="ni-item">
-                              <div class="section">{ni.section}</div>
-                              <div style="font-size:13px;margin:4px 0">{ni.issue}</div>
-                              <div style="font-size:12px;color:#666">→ {ni.suggestion}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <!-- Claude Code prompt -->
-                      {e.prompt_for_claude_code && (
-                        <div class="claude-block">
-                          <h4>Prompt para Claude Code</h4>
-                          <pre id={`prompt-${e.id}`}>{e.prompt_for_claude_code}</pre>
-                          <button class="copy-btn" onclick={`copyPrompt('${e.id}')`}>
-                            Copiar prompt
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    {e.prompt_for_claude_code && (
+                      <div style="background:#eef2ff;border-radius:10px;padding:16px;margin-top:12px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6366f1;margin-bottom:8px;">Prompt para Claude Code</div>
+                        <pre id={`prompt-${e.id}`} style="background:white;border-radius:8px;padding:14px;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto;border:1px solid #e0e7ff;">{e.prompt_for_claude_code}</pre>
+                        <button class="btn btn-primary" style="margin-top:8px;font-size:12px;" onclick={`copyPrompt('${e.id}')`}>
+                          <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+                          Copiar
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               </>
@@ -344,31 +230,22 @@ function fmtDate(iso: string) {
     )}
   </div>
 
-</div>
-
-<script is:inline>
-  function toggleDetail(idx) {
-    var row = document.getElementById('detail-' + idx);
-    if (!row) return;
-    var isHidden = row.style.display === 'none';
-    row.style.display = isHidden ? 'table-row' : 'none';
-    var btn = document.querySelector('#row-' + idx + ' .expand-btn');
-    if (btn) btn.textContent = isHidden ? 'Cerrar' : 'Ver';
-  }
-
-  function copyPrompt(id) {
-    var el = document.getElementById('prompt-' + id);
-    if (!el) return;
-    navigator.clipboard.writeText(el.textContent || '').then(function() {
-      var btn = el.nextElementSibling;
-      if (btn) {
-        var orig = btn.textContent;
-        btn.textContent = '✓ Copiado';
-        setTimeout(function() { btn.textContent = orig; }, 2000);
-      }
-    });
-  }
-</script>
-
-</body>
-</html>
+  <script is:inline>
+    function toggleDetail(idx) {
+      var row = document.getElementById('detail-' + idx);
+      if (!row) return;
+      var isHidden = row.style.display === 'none';
+      row.style.display = isHidden ? 'table-row' : 'none';
+      var btn = document.getElementById('btn-' + idx);
+      if (btn) btn.querySelector('.material-symbols-outlined').textContent = isHidden ? 'expand_less' : 'expand_more';
+    }
+    function copyPrompt(id) {
+      var el = document.getElementById('prompt-' + id);
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent || '').then(function() {
+        var btn = el.nextElementSibling;
+        if (btn) { var o = btn.innerHTML; btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">check</span> Copiado'; setTimeout(function() { btn.innerHTML = o; }, 2000); }
+      });
+    }
+  </script>
+</AdminLayout>
