@@ -27,15 +27,41 @@ export interface ReferenceAnalysisResult {
 }
 
 async function fetchArticleText(url: string): Promise<{ text: string; title?: string }> {
-  const res = await axios.get(url, {
-    timeout: 15_000,
-    maxRedirects: 5,
-    validateStatus: s => s < 500,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; AIONEditorialBot/1.0)',
-      'Accept': 'text/html,application/xhtml+xml',
-    },
-  });
+  // Use a real browser User-Agent — many newspaper/blog sites block the obvious bot UA
+  // with anti-bot middleware, which causes long hangs (and then a timeout).
+  const browserUA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+  let res;
+  try {
+    res = await axios.get(url, {
+      timeout: 45_000,  // big news sites can be slow on first hit
+      maxRedirects: 5,
+      validateStatus: s => s < 500,
+      headers: {
+        'User-Agent': browserUA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+      },
+    });
+  } catch (err: any) {
+    // SSL chain issues — retry without strict verification (some Spanish SMB sites)
+    if (err?.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || err?.message?.includes('certificate')) {
+      const https = await import('https');
+      res = await axios.get(url, {
+        timeout: 45_000,
+        maxRedirects: 5,
+        validateStatus: s => s < 500,
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+        headers: {
+          'User-Agent': browserUA,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        },
+      });
+    } else {
+      throw err;
+    }
+  }
   if (res.status >= 400) throw new Error(`HTTP ${res.status}`);
 
   const html = String(res.data);
