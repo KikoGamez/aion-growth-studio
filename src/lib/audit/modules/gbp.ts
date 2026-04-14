@@ -113,6 +113,13 @@ function nameLooksLikeBrand(placeName: string, queryName: string): boolean {
   // Full query as substring (strongest signal)
   if (place.includes(query)) return true;
 
+  // Spacing-insensitive match: "Laeuropea" stored in DB vs "La Europea"
+  // returned by Places, or vice versa. If the squashed forms are equal
+  // (or one contains the other), treat as same brand.
+  const querySquashed = query.replace(/\s+/g, '');
+  const placeSquashed = place.replace(/\s+/g, '');
+  if (querySquashed.length >= 5 && (placeSquashed.includes(querySquashed) || querySquashed.includes(placeSquashed))) return true;
+
   const allWords = query.split(/[\s\-_.]+/).filter(w => w.length >= 3);
   if (allWords.length === 0) return false;
 
@@ -121,9 +128,9 @@ function nameLooksLikeBrand(placeName: string, queryName: string): boolean {
   const distinctive = allWords.filter(w => w.length >= 5);
   const candidateWords: string[] = distinctive.length > 0 ? distinctive : allWords;
 
-  // For single-word concatenated brands (e.g. "kikogamez"), try 2-way splits
-  // of length ≥4 so "gamez" can match "Gámez Consulting" but "kik" can't
-  // spuriously match a random KIK store.
+  // For single-word concatenated brands (e.g. "kikogamez", "andbank"), try
+  // 2-way splits of length ≥4 so "gamez" matches "Gámez Consulting" but
+  // "kik" can't spuriously match a random KIK store.
   if (allWords.length === 1 && allWords[0].length >= 7) {
     const w = allWords[0];
     for (let i = 4; i <= w.length - 4; i++) {
