@@ -44,6 +44,21 @@ Si te pido algo que no tiene tarjeta propia, documéntalo en la tarjeta más rel
 7. Documenta en Trello (ver formato arriba).
 8. Si te pido algo fuera del plan de Trello, hazlo y documéntalo igual de bien.
 
+## Git — disciplina de commits
+
+**NUNCA `git add -A` ni `git add .` ni `git add -u`**. Son atajos que arrastran archivos no relacionados (material de diseño untracked, output de tests, archivos generados, placeholders) al commit. Pasó el 14 abril 2026: un `git add -A` metió 76 archivos no relacionados en un commit de feature. Tuve que hacer un commit de housekeeping para untrackearlos.
+
+**Disciplina obligatoria**:
+1. `git status --short` antes de cada commit. Mira la lista de untracked (`??`).
+2. `git add <ruta-específica>` por cada archivo intencional. Nunca wildcards salvo que la wildcard cubra exactamente lo que quieres y nada más.
+3. Si hay >2 archivos untracked sin relación clara con el cambio, **pregunta antes de añadirlos**.
+4. Para revisar hunk a hunk, `git add -p`.
+5. Verifica con `git status` después del `git add` y antes del `git commit` que solo está lo intencional.
+
+**Auto-generados / temporales que no deben commitearse** (ya en `.gitignore`): `.astro/`, `test-results/`, `playwright-report/`, `node_modules/`, `dist/`, `.env`, `.vercel`.
+
+Material de diseño (`stitch-reference/`), placeholders (`public/placeholder-*`) y skills externos (`Skills/`) **se quedan untracked**. No los añadas sin pedir confirmación explícita.
+
 ## Conexión con Trello
 
 Board ID: P2CFCG2k
