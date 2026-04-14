@@ -44,6 +44,17 @@ Si te pido algo que no tiene tarjeta propia, documéntalo en la tarjeta más rel
 7. Documenta en Trello (ver formato arriba).
 8. Si te pido algo fuera del plan de Trello, hazlo y documéntalo igual de bien.
 
+## Iteración rápida — no correr el pipeline completo sin necesidad
+
+El pipeline radar tarda ~5 min y gasta créditos (DFS, Apify, Anthropic). La mayoría de cambios no lo necesitan. Antes de lanzarlo, identifica qué estás tocando:
+
+- **UI, layout, componentes `.astro`**: `npm run dev` → localhost:4321 con HMR contra Supabase prod. Instantáneo, €0.
+- **Scoring (profiles, pesos, thresholds, fórmulas)**: `node --env-file=.env --import tsx scripts/dev/recompute-score.ts <cliente>`. 3 seg, €0.
+- **Prompts del Growth Agent / QA**: `node --env-file=.env --import tsx scripts/dev/regenerate-agent.ts <cliente>`. 4 min, ~€0.05.
+- **Módulos de ingesta (crawl, sector.ts, DFS, Apify, GEO)**: pipeline completo. Solo entonces.
+
+Ver `scripts/dev/README.md` para el árbol de decisión y ejemplos.
+
 ## Git — disciplina de commits
 
 **NUNCA `git add -A` ni `git add .` ni `git add -u`**. Son atajos que arrastran archivos no relacionados (material de diseño untracked, output de tests, archivos generados, placeholders) al commit. Pasó el 14 abril 2026: un `git add -A` metió 76 archivos no relacionados en un commit de feature. Tuve que hacer un commit de housekeeping para untrackearlos.
