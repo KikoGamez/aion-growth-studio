@@ -2,8 +2,8 @@
 export const prerender = false;
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import { getClient } from '../../lib/db';
-import { clientHasEditorial, isSetupCompleted } from '../../lib/editorial/db';
+import { getClient, getClientOnboarding } from '../../lib/db';
+import { clientHasEditorial, isSetupCompleted, getBrandVoice } from '../../lib/editorial/db';
 import { PLATFORM_DEFAULTS } from '../../lib/editorial/profile-defaults';
 
 const client = Astro.locals.client ?? await getClient();
@@ -11,6 +11,29 @@ const tier = client.tier;
 
 const hasEditorial = await clientHasEditorial(client.id);
 const alreadySetup = hasEditorial ? await isSetupCompleted(client.id) : false;
+
+// Pre-fill from existing client_onboarding so the user doesn't re-type data
+// they already gave us during the AION onboarding. Editorial-specific fields
+// (positioning, expertise_areas, languages) start empty for them to fill.
+const onboarding = hasEditorial ? await getClientOnboarding(client.id) : null;
+const existingVoice = hasEditorial ? await getBrandVoice(client.id) : null;
+
+const prefilled = {
+  company_description:
+    existingVoice?.company_description
+    ?? onboarding?.business_description
+    ?? '',
+  positioning: existingVoice?.positioning ?? '',
+  expertise_areas: (existingVoice?.expertise_areas ?? []).join(', ')
+    || (onboarding?.sector ? onboarding.sector : ''),
+  // Suggest Spanish + English if geo_scope is global/multi-country, else just ES
+  defaultLanguages: ((): string[] => {
+    if (existingVoice?.supported_languages?.length) return existingVoice.supported_languages;
+    const scope = onboarding?.geo_scope?.toLowerCase() ?? '';
+    if (scope.includes('global') || scope.includes('multi')) return ['es', 'en'];
+    return ['es'];
+  })(),
+};
 ---
 
 <DashboardLayout
@@ -73,30 +96,48 @@ const alreadySetup = hasEditorial ? await isSetupCompleted(client.id) : false;
         </div>
         <p style="font-size:13px;color:#64748b;margin-bottom:24px;">La voz de la marca es compartida por todo el equipo. No es perfil personal.</p>
 
+        {prefilled.company_description && (
+          <div style="background:#f0f4ff;border:1px solid #c7d7ff;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+            <span class="material-symbols-outlined" style="font-size:18px;color:#1A4B8C;flex-shrink:0;">auto_awesome</span>
+            <p style="font-size:12px;color:#1a1a2e;line-height:1.5;margin:0;">
+              <strong>Hemos pre-rellenado lo que ya sabemos de tu onboarding.</strong> Revisa, edita lo que quieras y completa los campos vacíos.
+            </p>
+          </div>
+        )}
+
         <div style="display:flex;flex-direction:column;gap:20px;">
           <div>
-            <label style="display:block;font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Descripción de la empresa (2-3 frases)</label>
-            <textarea id="company_description" rows="3" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ej: Somos una consultora de growth digital para pymes. Ayudamos a empresas de entre 10-50 empleados a multiplicar su visibilidad en Google y en las IAs generativas."></textarea>
+            <label style="display:block;font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">
+              Descripción de la empresa (2-3 frases)
+              {prefilled.company_description && <span style="color:#1A4B8C;font-weight:600;text-transform:none;letter-spacing:normal;font-size:11px;margin-left:6px;">· del onboarding general</span>}
+            </label>
+            <textarea id="company_description" rows="3" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ej: Somos una consultora de growth digital para pymes. Ayudamos a empresas de entre 10-50 empleados a multiplicar su visibilidad en Google y en las IAs generativas.">{prefilled.company_description}</textarea>
           </div>
 
           <div>
             <label style="display:block;font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Posicionamiento (qué os diferencia)</label>
-            <textarea id="positioning" rows="2" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ej: Contrarios al marketing plantilla. Datos, no opiniones. Resultados medibles en 90 días o devolvemos el dinero."></textarea>
+            <textarea id="positioning" rows="2" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ej: Contrarios al marketing plantilla. Datos, no opiniones. Resultados medibles en 90 días o devolvemos el dinero.">{prefilled.positioning}</textarea>
           </div>
 
           <div>
-            <label style="display:block;font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Áreas de expertise (separadas por comas)</label>
-            <input id="expertise_areas" type="text" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:14px;" placeholder="Ej: SEO, CRO, contenido B2B, LinkedIn ads" />
+            <label style="display:block;font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">
+              Áreas de expertise (separadas por comas)
+              {prefilled.expertise_areas && !existingVoice?.expertise_areas?.length && <span style="color:#1A4B8C;font-weight:600;text-transform:none;letter-spacing:normal;font-size:11px;margin-left:6px;">· sugerido desde tu sector</span>}
+            </label>
+            <input id="expertise_areas" type="text" value={prefilled.expertise_areas} style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:14px;" placeholder="Ej: SEO, CRO, contenido B2B, LinkedIn ads" />
           </div>
 
           <div>
-            <label style="display:block;font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Idiomas de publicación</label>
+            <label style="display:block;font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">
+              Idiomas de publicación
+              {prefilled.defaultLanguages.length === 2 && !existingVoice?.supported_languages?.length && <span style="color:#1A4B8C;font-weight:600;text-transform:none;letter-spacing:normal;font-size:11px;margin-left:6px;">· sugerido por tu alcance geográfico</span>}
+            </label>
             <div style="display:flex;gap:12px;">
               <label style="display:flex;align-items:center;gap:6px;padding:10px 16px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;" class="lang-chip">
-                <input type="checkbox" value="es" checked /> Español
+                <input type="checkbox" value="es" checked={prefilled.defaultLanguages.includes('es')} /> Español
               </label>
               <label style="display:flex;align-items:center;gap:6px;padding:10px 16px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;" class="lang-chip">
-                <input type="checkbox" value="en" /> Inglés
+                <input type="checkbox" value="en" checked={prefilled.defaultLanguages.includes('en')} /> Inglés
               </label>
             </div>
           </div>
