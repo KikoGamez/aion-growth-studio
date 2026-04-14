@@ -59,6 +59,7 @@ function computeDemoBreakdown(po: Record<string, any>): { total: number; breakdo
   const gbp = po.gbp || {};
   const cc = po.content_cadence || {};
   const li = po.linkedin || {};
+  const ig = po.instagram || {};
 
   // SEO — logScore(kw, 2000)*0.6 + logScore(traffic, 5M)*0.4
   const kwScore = logScore(seo.keywordsTop10 ?? 0, 2000);
@@ -97,6 +98,7 @@ function computeDemoBreakdown(po: Record<string, any>): { total: number; breakdo
     repComponents.push({ value: blogScore, weight: 0.15 });
   }
   if (li.followers) repComponents.push({ value: logScore(li.followers, 50000), weight: 0.15 });
+  if (ig.followers) repComponents.push({ value: logScore(ig.followers, 50000), weight: 0.15 });
   let reputationScore = 0;
   if (repComponents.length > 0) {
     const totalW = repComponents.reduce((s, c) => s + c.weight, 0);

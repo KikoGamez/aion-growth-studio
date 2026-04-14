@@ -29,6 +29,7 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
   const techstack  = (results.techstack  || {}) as TechStackResult;
   const conversion = (results.conversion || {}) as ConversionResult;
   const reputation = (results.reputation || {}) as any;
+  const instagram  = (results.instagram  || {}) as any;
   const cc         = (results.content_cadence || {}) as any;
   const isCrawlerBlocked = !!(crawl as any).crawlerBlocked;
 
@@ -178,6 +179,13 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
     repComponents.push({ label: `LinkedIn (${linkedin.followers} seguidores)`, value: liScore, weight: 0.15 });
   }
 
+  // Instagram followers — same logic as LinkedIn, relevant for personal brands,
+  // freelancers, hospitality, and B2C. Only included if Apify scraped successfully.
+  if (!instagram.skipped && instagram.found && (instagram.followers ?? 0) > 0) {
+    const igScore = logScore(instagram.followers!, 50000);
+    repComponents.push({ label: `Instagram (${instagram.followers} seguidores)`, value: igScore, weight: 0.15 });
+  }
+
   // Tech stack maturity feeds into reputation (measurement = trustworthiness signal)
   if (techstack.maturityScore != null && techstack.maturityScore > 0) {
     repComponents.push({ label: `Techstack maturity`, value: techstack.maturityScore, weight: 0.10 });
@@ -242,7 +250,6 @@ export async function runScore(results: Record<string, ModuleResult>): Promise<S
 
   // ── Content pillar (informational — not in main total yet) ──────
   const { computeContentScore } = await import('../content-score');
-  const instagram = (results.instagram || {}) as any;
   const contentScore = computeContentScore(
     { postsLast90Days: cc.postsLast90Days, lastPostDate: cc.lastPostDate, daysSinceLastPost: cc.daysSinceLastPost },
     { found: instagram.found, postsLast90Days: instagram.postsLast90Days, lastPostDate: instagram.lastPostDate, engagementRate: instagram.engagementRate, followers: instagram.followers },
