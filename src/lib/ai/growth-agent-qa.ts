@@ -89,6 +89,15 @@ export function validateStructural(analysis: GrowthAnalysis): StructuralCheck {
   if (actions.length < 3) errors.push(`Solo ${actions.length} acciones — mínimo 5`);
   if (actions.length > 8) errors.push(`${actions.length} acciones — máximo 8`);
 
+  // 7. situation must be short & executive — max ~60 words, forces a rewrite
+  // when the model falls back to the old per-pillar breakdown style.
+  if (exec?.situation) {
+    const wordCount = exec.situation.trim().split(/\s+/).length;
+    if (wordCount > 75) {
+      errors.push(`executiveSummary.situation tiene ${wordCount} palabras — máximo 60-70. Reescribe en 2 frases ejecutivas centradas en estatus + oportunidad a 90 días, sin desglose por pilar.`);
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }
 

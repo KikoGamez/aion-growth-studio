@@ -294,18 +294,29 @@ Las acciones prioritarias DEBEN adaptarse al sector. Usa estas reglas:
 - BIEN (acción): "Optimizar las 37 keywords en posición 4-10 para doblar el tráfico orgánico en 6-8 semanas"
 Cada título empieza por verbo imperativo. Cada descripción: problema con dato → cómo hacerlo → resultado esperado con timeline.
 
-**R11 — Formato estricto del resumen ejecutivo**
-El bloque \`executiveSummary\` se lee como si fuera lo primero que ve un CEO en su dashboard. Estructura obligatoria:
-- \`headline\` = **1 sola frase** contundente. Nunca 2. Nunca media. Una frase que resuma el titular.
-- \`situation\` = **exactamente 3 o 4 frases** que desarrollan el headline. Cada frase cubre un pilar clave (SEO, GEO, Web/Conversión, Reputación si aplica) con al menos 1 dato numérico real. Es una mini-narrativa coherente, no una lista de bullets.
+**R11 — Formato estricto del resumen ejecutivo** (CRÍTICO — es lo único que lee el CEO)
 
-MAL:
-> headline: "${'${name}'} tiene un score de 28/100."
-> situation: "Análisis automático no disponible."
+El bloque \`executiveSummary\` aparece arriba del todo en el dashboard. Es la tarjeta que decide si el CEO sigue leyendo o cierra la pestaña. Lenguaje de comité de dirección, no de consultor técnico.
 
-BIEN:
-> headline: "Kikogamez está en fase inicial de construcción de presencia digital con un score AION de 28/100 y la visibilidad SEO como punto más débil."
-> situation: "En SEO orgánico solo hay 3 keywords en top 10 y ~620 visitas orgánicas estimadas al mes. En visibilidad IA la marca aparece en el 10% de las consultas analizadas, concentradas en consultas de decisión de compra pero ausente en descubrimiento. La web carga razonablemente en móvil (68/100 en Google PageSpeed) pero el embudo de conversión es débil (35/100) con un único formulario genérico sin CTAs claros. La reputación pública es sólida (4.6★ con 18 reseñas) — es el único pilar que no frena el crecimiento."
+- \`headline\` = **1 sola frase contundente** que resume el estatus + señal dominante. Nunca 2 frases. Nunca media.
+- \`situation\` = **2 frases máximo. Total ≤ 60 palabras**. No lista de pilares. No datos técnicos. Responde exactamente 2 preguntas:
+  1. **¿Dónde estoy hoy en términos de negocio?** (1 frase — estatus general + 1 ancla numérica clave, solo si aporta)
+  2. **¿Cuál es la oportunidad concreta de los próximos 90 días?** (1 frase — qué se puede mover y por qué importa)
+
+Prohibido en \`situation\`:
+- Listar pilares uno por uno ("En SEO... En GEO... En Web...") — ese desglose YA está en \`pillarAnalysis\`, no lo duplicas aquí
+- Más de 2 datos numéricos en total. La precisión cuantitativa vive en cada pilar.
+- Terminología técnica (LCP, CLS, schema, canonical, funnel score, mentionRate). Traducir a impacto: "página que tarda en cargar", "IAs que no te conocen", "embudo que pierde visitantes".
+- Adjetivos de relleno ("sólido", "robusto", "significativo", "estratégico"). Di qué palanca mueve el número.
+
+MAL (demasiado técnico + desglose por pilar — lo que hacíamos antes):
+> situation: "En SEO orgánico solo hay 3 keywords en top 10 y ~620 visitas orgánicas estimadas al mes. En visibilidad IA la marca aparece en el 10% de las consultas analizadas. La web carga razonablemente en móvil (68/100 en Google PageSpeed) pero el embudo de conversión es débil (35/100) con un único formulario genérico sin CTAs claros. La reputación pública es sólida (4.6★ con 18 reseñas)."
+
+BIEN (ejecutivo, centrado en oportunidad):
+> situation: "Hoy casi todo el tráfico de Kikogamez viene de quien ya te conoce: sin posicionamiento propio en Google ni presencia en las IAs, el negocio depende de tu red personal. La mayor palanca a 90 días es convertir la autoridad que ya tienes en prensa y LinkedIn en contenido indexado que atraiga demanda nueva sin gastar en publicidad."
+
+BIEN (cliente distinto — ecommerce):
+> situation: "La tienda tiene tráfico y reseñas buenas, pero casi 1 de cada 2 visitantes abandona sin añadir producto al carrito. La oportunidad de los próximos 90 días es pelear la conversión, no el tráfico — un cambio en ficha de producto y envíos puede añadir 20-30% de ventas sin invertir en ads."
 
 ---
 
@@ -353,7 +364,7 @@ Responde con JSON válido siguiendo EXACTAMENTE este schema (sin texto adicional
 {
   "executiveSummary": {
     "headline": "EXACTAMENTE 1 frase contundente que resuma el estado general del cliente con el dato más relevante. NO más de 1 frase. Tono consultor ejecutivo. Debe poderse leer sola y transmitir el titular.",
-    "situation": "EXACTAMENTE 3 o 4 frases de desarrollo (ni menos ni más) que expanden el headline con datos concretos: una frase por pilar clave (SEO, GEO, Web/Conversión, Reputación si aplica). Cada frase debe tener al menos 1 dato numérico real del audit. Cuenta una historia coherente, no listes bullets. Este bloque es lo que lee un CEO en 10 segundos para tomar una decisión.",
+    "situation": "MÁXIMO 2 frases, ≤60 palabras totales. Lenguaje ejecutivo de comité de dirección, cero jerga técnica (nada de LCP, schema, funnel score, mentionRate — traducir a impacto de negocio). NO desglosar pilar por pilar — eso vive en pillarAnalysis. Estructura: (1) dónde está el cliente hoy en términos de negocio con máximo 1 ancla numérica clave; (2) cuál es la oportunidad concreta de los próximos 90 días y por qué mueve la aguja. Esto es lo único que lee el CEO en 10 segundos antes de decidir si sigue leyendo.",
     "strengths": ["2-3 cosas que están funcionando bien"],
     "criticalGaps": ["2-3 problemas más urgentes — cada uno DEBE tener acción correspondiente"],
     "upsidePotential": {
