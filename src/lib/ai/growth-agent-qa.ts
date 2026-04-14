@@ -269,8 +269,11 @@ O si hay correcciones:
 - Si no hay problemas reales, devuelve \`approved: true\` con array vacío. No inventes correcciones para justificar tu existencia.`;
 
   try {
+    // Opus typically takes 45-90s for QA on a full draft + pipeline context.
+    // 40s was too aggressive and aborted every run. 120s leaves headroom but
+    // still caps at half the 240s step budget (Sonnet draft uses the other half).
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 40_000);
+    const timer = setTimeout(() => controller.abort(), 120_000);
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -282,7 +285,10 @@ O si hay correcciones:
       },
       body: JSON.stringify({
         model: QA_MODEL,
-        max_tokens: 2048,
+        // 2048 was truncating: with 10 corrections × ~200 tokens each + summary,
+        // Opus hit the ceiling mid-JSON → parse failure → draft accepted as-is
+        // and all QA corrections lost. 6144 leaves headroom for the full envelope.
+        max_tokens: 6144,
         temperature: 0.1,
         messages: [{ role: 'user', content: prompt }],
       }),
