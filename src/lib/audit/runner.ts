@@ -271,11 +271,10 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
       return runScore(results, audit.clientOnboarding || null);
 
     case 'growth_agent': {
-      // Unified analysis: Sonnet draft → structural validate → Opus QA → corrections.
-      // Runs with minimal context (no client onboarding yet — audit is anonymous until
-      // the client signs up and links it). first-run.ts copies the result verbatim to
-      // snapshot.pipeline_output so the audit report and dashboard share the exact same
-      // growth_analysis. Zero drift audit → dashboard.
+      // Sonnet draft + structural validation only. Opus QA runs in a separate
+      // Vercel Function invocation (/api/growth-agent/qa) fired by the caller
+      // after the draft is persisted — this splits the ~300s of total work
+      // across two 300s budgets and eliminates the timeout risk.
       const hostname = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
       const analysis = await runGrowthAgent({
         clientName: hostname,
@@ -284,9 +283,7 @@ async function runStep(step: AuditStep, audit: AuditPageData): Promise<ModuleRes
         onboarding: null,
         pipelineOutput: results,
         priorSnapshot: null,
-      });
-      // Module result shape — return analysis directly so it lands in results.growth_agent.
-      // Audit report reads from audit.results.growth_agent (which == GrowthAnalysis).
+      }, { skipQA: true });
       return analysis as any;
     }
 

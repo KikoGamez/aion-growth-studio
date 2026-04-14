@@ -22,7 +22,7 @@ import { getIntegration } from '../../../lib/integrations';
  * Name kept as "generate-briefing" for backward compatibility; this
  * is internally the Growth Agent regenerate endpoint.
  */
-export const POST: APIRoute = async ({ locals }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
   const client = (locals as any).client;
 
   if (!client?.id) {
@@ -57,7 +57,8 @@ export const POST: APIRoute = async ({ locals }) => {
       accountEmail: googleIntegration?.account_email,
     };
 
-    // Full Growth Agent pass: Sonnet draft → structural → Opus QA → corrections
+    // Sonnet draft only — Opus QA fires in a separate function via
+    // fire-and-forget /api/growth-agent/qa so we don't blow the 300s budget.
     const growthAnalysis = await runGrowthAgent({
       clientName: client.name,
       domain: client.domain,
@@ -73,7 +74,7 @@ export const POST: APIRoute = async ({ locals }) => {
         inProgress: inProgress.filter((a: any) => a.status === 'in_progress').map((a: any) => ({ title: a.title, impact: a.impact })),
         rejected: rejected.map((r: any) => ({ title: r.title, reason: r.rejected_reason })),
       },
-    });
+    }, { skipQA: true });
 
     // Store in snapshot
     if (!IS_DEMO) {
@@ -86,6 +87,13 @@ export const POST: APIRoute = async ({ locals }) => {
           .update({ pipeline_output: { ...snapshot.pipeline_output, growth_analysis: growthAnalysis } })
           .eq('id', snapshot.id);
       }
+    }
+
+    // Fire Opus QA in a separate function invocation. Uses the current
+    // request URL so preview deployments hit their own QA endpoint.
+    if (growthAnalysis.qaPending) {
+      const { fireQABackground } = await import('../../../lib/ai/fire-qa-background');
+      fireQABackground({ clientId: client.id, snapshotId: snapshot.id, baseUrl: request.url });
     }
 
     return new Response(JSON.stringify({ ok: true, growth_analysis: growthAnalysis }), {

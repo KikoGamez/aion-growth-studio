@@ -89,7 +89,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
               inProgress: inProgress.filter((a: any) => a.status === 'in_progress').map((a: any) => ({ title: a.title, impact: a.impact })),
               rejected: rejected.map((r: any) => ({ title: r.title, reason: r.rejected_reason })),
             },
-          });
+          }, { skipQA: true });
 
           // Save growth_analysis into snapshot
           if (!IS_DEMO) {
@@ -102,6 +102,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
                 .update({ pipeline_output: { ...snapshot.pipeline_output, growth_analysis: growthAnalysis } })
                 .eq('id', snapshot.id);
             }
+          }
+
+          // Fire Opus QA in a separate function invocation (300s of its own)
+          if (growthAnalysis.qaPending) {
+            const { fireQABackground } = await import('../../../lib/ai/fire-qa-background');
+            fireQABackground({ clientId: client.id, snapshotId: snapshot.id, baseUrl: request.url });
           }
 
           // Seed prioritizedActions as trackable recommendations

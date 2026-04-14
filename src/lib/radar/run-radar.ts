@@ -168,6 +168,13 @@ export async function runRadarForClient(client: RadarClient, options?: RadarRunO
           materializeSnapshotColumns(snapshotId, updated).catch(() => {});
         }
         console.log(`[radar] Copied growth_agent → growth_analysis (${pipelineGrowthAgent.prioritizedActions?.length || 0} actions)`);
+
+        // Fire Opus QA in a separate Vercel Function invocation.
+        // The draft already has qaPending=true from runGrowthAgent({skipQA:true}).
+        if (pipelineGrowthAgent.qaPending) {
+          const { fireQABackground } = await import('../ai/fire-qa-background');
+          fireQABackground({ clientId: client.id, snapshotId });
+        }
       } catch (err) {
         console.error(`[radar] growth_analysis copy failed:`, (err as Error).message);
       }

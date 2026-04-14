@@ -106,6 +106,13 @@ async function seedFromAudit(clientId: string, auditId: string, domain: string) 
       growth_analysis: growthAnalysis,
     };
     await sb.from('snapshots').update({ pipeline_output: updated }).eq('id', latest.id);
+
+    // Fire Opus QA in a separate function invocation if the draft is pending.
+    // The pipeline's growth_agent step now skips QA to stay within 300s.
+    if (growthAnalysis.qaPending) {
+      const { fireQABackground } = await import('../../../lib/ai/fire-qa-background');
+      fireQABackground({ clientId, snapshotId: latest.id });
+    }
   } catch (e) {
     console.error(`[first-run] Snapshot save failed:`, (e as Error).message);
   }

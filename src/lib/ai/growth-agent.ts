@@ -124,6 +124,7 @@ export interface GrowthAnalysis {
   readyToUseFixes?: ReadyToUseFix[];         // copy-paste content for detected on-page issues
   onPageAuditContext?: OnPageAuditContextEntry[]; // contextual grading of rule-based on-page audit
   qaPassed?: boolean;                        // true when validated by Opus QA
+  qaPending?: boolean;                       // true when the draft is returned before QA ran
   qaNotes?: string[];                        // list of corrections QA applied, for audit trail
 }
 
@@ -902,7 +903,20 @@ async function generateSonnetDraft(
 // verified analysis". QA cannot be accidentally skipped — it's an internal
 // step of this function, not a separate pipeline step.
 
-export async function runGrowthAgent(input: GrowthAgentInput): Promise<GrowthAnalysis> {
+export interface RunGrowthAgentOptions {
+  /** When true, return the Sonnet draft + structural validation without the
+   *  Opus QA step. The returned GrowthAnalysis will have qaPending=true so
+   *  downstream code can fire /api/growth-agent/qa to complete the review
+   *  in its own 300s function invocation. Use this when the caller is
+   *  already close to the Vercel timeout and cannot afford the extra
+   *  60-120s that QA adds. */
+  skipQA?: boolean;
+}
+
+export async function runGrowthAgent(
+  input: GrowthAgentInput,
+  options?: RunGrowthAgentOptions,
+): Promise<GrowthAnalysis> {
   const t0 = Date.now();
   const clientId = input.onboarding?.client_id;
   let layer = 1;
@@ -942,6 +956,24 @@ export async function runGrowthAgent(input: GrowthAgentInput): Promise<GrowthAna
       logAiGeneration({ client_id: clientId, agent: 'growth_agent', model: MODEL, layer: 4, success: false, latency_ms: Date.now() - t0, structural_errors: structural.errors, error_message: 'Structural validation failed after retry' }).catch(() => {});
       return fallbackAnalysis(input);
     }
+  }
+
+  // ── Early return: skip QA and mark the draft as qaPending ────
+  // Callers using skipQA are responsible for firing /api/growth-agent/qa
+  // after persisting the draft, so the QA step runs in its own 300s budget.
+  if (options?.skipQA) {
+    console.log(`[growth-agent] skipQA=true — returning draft, caller must fire QA endpoint`);
+    logAiGeneration({
+      client_id: clientId,
+      agent: 'growth_agent',
+      model: MODEL,
+      layer,
+      success: true,
+      latency_ms: Date.now() - t0,
+      qa_corrections: 0,
+      structural_errors: structuralErrors.length > 0 ? structuralErrors : undefined,
+    }).catch(() => {});
+    return { ...draft, qaPending: true, qaPassed: false, qaNotes: ['QA pending — will run in separate function invocation'] };
   }
 
   // ── Step 3: Opus QA review (catches subtle factual/coherence issues) ──
