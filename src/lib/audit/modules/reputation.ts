@@ -316,7 +316,7 @@ async function fetchNewsPresence(
           keyword: brandName,
           location_code: 2724,   // Spain
           language_code: 'es',
-          depth: 10,
+          depth: 30,
         }]),
       },
     );
@@ -335,21 +335,27 @@ async function fetchNewsPresence(
     // Filter out negative news (closures, bankruptcy, lawsuits)
     const NEGATIVE_RE = /cierra|cerrar|quiebra|concurso de acreedores|liquidaci[oó]n|demanda contra|fraude|estafa|despidos masivos|ERE |ERTE |bancarrota|bankruptcy|closes|shutdown|fraud|scam|lawsuit/i;
 
-    // Relevance filter: title must contain the brand name or multiple brand words
-    const brandLower = brandName.toLowerCase();
-    const brandWords = brandLower.split(/[\s\-_.]+/).filter(w => w.length >= 3);
-    function isRelevant(title: string): boolean {
+    // Accent-insensitive comparison — "Gámez" should match "Gamez" and vice versa
+    const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Relevance filter: brand name found in title or snippet.
+    // For multi-word brands, accept if any distinctive word (length >= 5) matches —
+    // covers cases where press only uses the last name (e.g. "Gámez" for "Kiko Gámez").
+    const brandNormalized = normalize(brandName);
+    const brandWords = brandNormalized.split(/[\s\-_.]+/).filter(w => w.length >= 3);
+    const distinctiveWords = brandWords.filter(w => w.length >= 5);
+
+    function isRelevant(title: string, snippet: string): boolean {
       if (brandWords.length === 0) return true;
-      const lower = title.toLowerCase();
-      // Full brand name match
-      if (lower.includes(brandLower)) return true;
-      // If brand has multiple words, require 2+ matches (avoids "david" matching random news)
-      const matchCount = brandWords.filter(w => lower.includes(w)).length;
+      const haystack = normalize(`${title} ${snippet}`);
+      if (haystack.includes(brandNormalized)) return true;
+      if (distinctiveWords.some(w => haystack.includes(w))) return true;
+      const matchCount = brandWords.filter(w => haystack.includes(w)).length;
       return brandWords.length >= 2 ? matchCount >= 2 : matchCount >= 1;
     }
 
     const headlines: NewsHeadline[] = newsItems
-      .slice(0, 30) // more candidates to filter from
+      .slice(0, 40) // more candidates to filter from
       .map((it: any) => ({
         title: String(it.title || '').slice(0, 120),
         source: String(it.source || it.domain || ''),
@@ -357,14 +363,14 @@ async function fetchNewsPresence(
         ...(it.url && { url: String(it.url) }),
         ...(it.snippet && { snippet: String(it.snippet).slice(0, 200) }),
         _negative: NEGATIVE_RE.test(String(it.title || '')),
-        _relevant: isRelevant(String(it.title || '')),
+        _relevant: isRelevant(String(it.title || ''), String(it.snippet || '')),
       }))
       .filter((h) => !h._negative && h._relevant)
       .slice(0, 20)  // Keep up to 20 for media module (dashboard shows 10 + "ver más")
       .map(({ _negative, _relevant, ...rest }) => rest);
 
     return {
-      newsCount: Math.max(result?.items_count ?? 0, newsItems.length),
+      newsCount: headlines.length,
       newsHeadlines: headlines,
     };
   } catch {
