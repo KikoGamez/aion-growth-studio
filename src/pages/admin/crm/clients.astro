@@ -8,6 +8,15 @@ if (!user || user.role !== 'superuser') return Astro.redirect('/dashboard');
 
 const clients = await listAllClients();
 
+function isoWeekKey(d: string): string {
+  const date = new Date(d + 'T00:00:00Z');
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
 let enriched: any[] = [];
 if (!IS_DEMO) {
   const sb = getSupabase();
@@ -15,10 +24,17 @@ if (!IS_DEMO) {
     const { data: snaps } = await sb.from('snapshots').select('id, date, score').eq('client_id', c.id).order('date', { ascending: false }).limit(1);
     const { count: auditCount } = await sb.from('audits').select('id', { count: 'exact', head: true }).ilike('url', `%${c.domain}%`);
     const { count: snapCount } = await sb.from('snapshots').select('id', { count: 'exact', head: true }).eq('client_id', c.id);
-    return { ...c, lastSnapshot: snaps?.[0] || null, auditCount: auditCount || 0, snapCount: snapCount || 0 };
+    const { data: realSnaps } = await sb
+      .from('snapshots')
+      .select('date')
+      .eq('client_id', c.id)
+      .gt('score', 0)
+      .eq('has_growth_analysis', true);
+    const realWeeks = new Set((realSnaps || []).map((s: any) => isoWeekKey(s.date))).size;
+    return { ...c, lastSnapshot: snaps?.[0] || null, auditCount: auditCount || 0, snapCount: snapCount || 0, realWeeks };
   }));
 } else {
-  enriched = clients.map((c: any) => ({ ...c, lastSnapshot: null, auditCount: 0, snapCount: 0 }));
+  enriched = clients.map((c: any) => ({ ...c, lastSnapshot: null, auditCount: 0, snapCount: 0, realWeeks: 0 }));
 }
 
 const search = Astro.url.searchParams.get('q') || '';
@@ -111,13 +127,14 @@ function scoreBg(s: number) {
           <th style="padding:16px 24px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#444653;font-family:'Manrope',sans-serif;">Plan</th>
           <th style="padding:16px 24px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#444653;font-family:'Manrope',sans-serif;">Score</th>
           <th style="padding:16px 24px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#444653;font-family:'Manrope',sans-serif;">Snapshots</th>
+          <th style="padding:16px 24px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#444653;font-family:'Manrope',sans-serif;" title="Semanas distintas con score > 0 y análisis completo">Semanas reales</th>
           <th style="padding:16px 24px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#444653;font-family:'Manrope',sans-serif;">Ultimo analisis</th>
           <th style="padding:16px 10px;width:40px;"></th>
         </tr>
       </thead>
       <tbody>
         {filtered.length === 0 ? (
-          <tr><td colspan="7" style="text-align:center;padding:48px;color:#505f76;font-size:14px;">No se han encontrado clientes</td></tr>
+          <tr><td colspan="8" style="text-align:center;padding:48px;color:#505f76;font-size:14px;">No se han encontrado clientes</td></tr>
         ) : filtered.map((c: any) => {
           const score = c.lastSnapshot?.score ?? null;
           const tierLabel: any = { radar: 'Radar', señales: 'Senales', palancas: 'Palancas', free: 'Free' };
@@ -156,6 +173,9 @@ function scoreBg(s: number) {
             </td>
             <td style="padding:16px 24px;font-size:14px;font-weight:600;color:#191c1e;text-align:center;">
               {c.snapCount}
+            </td>
+            <td style="padding:16px 24px;font-size:14px;font-weight:700;text-align:center;color:{c.realWeeks > 0 ? '#003d27' : '#757684'};">
+              {c.realWeeks}
             </td>
             <td style="padding:16px 24px;font-size:13px;font-weight:500;color:#444653;">
               {c.lastSnapshot?.date || '—'}
