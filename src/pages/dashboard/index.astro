@@ -886,45 +886,62 @@ const compRows: CompRow[] = ctItems.map((c: any) => {
         </Fragment>
       ) : (
         <Fragment>
-          <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1a1a2e;margin-bottom:16px;">
-            Cambios esta semana
-          </h3>
-          {(improvements.length > 0 || deteriorations.length > 0) ? (
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Lo que ha mejorado</div>
-            {improvements.length > 0 ? (
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                {improvements.map(ch => (
-                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1a1a2e;">
-                    <span class="material-symbols-outlined" style="font-size:16px;color:#1D9E75;">arrow_upward</span>
-                    {ch.text}
+          {(() => {
+            const hasWeekDiff = improvements.length > 0 || deteriorations.length > 0;
+            const title = hasWeekDiff ? 'Cambios esta semana' : 'Dónde tienes palanca ahora';
+            const leftLabel = hasWeekDiff ? 'Lo que ha mejorado' : 'Lo que ya funciona';
+            const rightLabel = hasWeekDiff ? 'Lo que ha empeorado' : 'Dónde tienes que apretar';
+            const leftItems: string[] = hasWeekDiff
+              ? improvements.map(c => c.text)
+              : execStrengths;
+            const rightItems: string[] = hasWeekDiff
+              ? deteriorations.map(c => c.text)
+              : execCriticalGaps;
+            const hasBullets = leftItems.length > 0 || rightItems.length > 0;
+            return (
+              <Fragment>
+                <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#1a1a2e;margin-bottom:16px;">
+                  {title}
+                </h3>
+                {hasBullets ? (
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">{leftLabel}</div>
+                      {leftItems.length > 0 ? (
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                          {leftItems.map(item => (
+                            <div style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#1a1a2e;line-height:1.5;">
+                              <span class="material-symbols-outlined" style="font-size:16px;color:#1D9E75;flex-shrink:0;margin-top:1px;">{hasWeekDiff ? 'arrow_upward' : 'check_circle'}</span>
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style="font-size:13px;color:#94a3b8;">{hasWeekDiff ? 'Sin mejoras significativas esta semana' : 'Aún no hay fortalezas claras identificadas'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#E24B4A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">{rightLabel}</div>
+                      {rightItems.length > 0 ? (
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                          {rightItems.map(item => (
+                            <div style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#1a1a2e;line-height:1.5;">
+                              <span class="material-symbols-outlined" style="font-size:16px;color:#E24B4A;flex-shrink:0;margin-top:1px;">{hasWeekDiff ? 'arrow_downward' : 'priority_high'}</span>
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style="font-size:13px;color:#94a3b8;">{hasWeekDiff ? 'Sin deterioros significativos esta semana' : 'Sin gaps críticos detectados'}</p>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p style="font-size:13px;color:#94a3b8;">Sin mejoras significativas esta semana</p>
-            )}
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#E24B4A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Lo que ha empeorado</div>
-            {deteriorations.length > 0 ? (
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                {deteriorations.map(ch => (
-                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#1a1a2e;">
-                    <span class="material-symbols-outlined" style="font-size:16px;color:#E24B4A;">arrow_downward</span>
-                    {ch.text}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style="font-size:13px;color:#94a3b8;">Sin deterioros significativos esta semana</p>
-            )}
-          </div>
-        </div>
-      ) : (
-        <p style="font-size:14px;color:#434750;line-height:1.6;">{stableMessage}</p>
-      )}
+                ) : (
+                  <p style="font-size:14px;color:#434750;line-height:1.6;">Tu web se mantiene estable esta semana — sin cambios significativos.</p>
+                )}
+              </Fragment>
+            );
+          })()}
         </Fragment>
       )}
     </section>
