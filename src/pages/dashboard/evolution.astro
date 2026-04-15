@@ -3,9 +3,12 @@ export const prerender = false;
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import EvolutionLine from '../../components/charts/EvolutionLine.astro';
 import SparkLine from '../../components/dashboard/SparkLine.astro';
-import { getClient, getLatestSnapshot, getAllSnapshots, getContextEntries, getAllRecommendations } from '../../lib/db';
+import { getClient, getLatestSnapshot, getAllSnapshots, getContextEntries, getAllRecommendations, getClientOnboarding } from '../../lib/db';
 import { analyzeEvolution } from '../../lib/radar/diff-engine';
 import type { Tier } from '../../lib/demo-data';
+import { resolveProfile } from '../../lib/benchmarks/resolve-profile';
+import { getProfile } from '../../lib/benchmarks/profiles';
+import { projectEvolution } from '../../lib/preview/project-evolution';
 
 const client = Astro.locals.client ?? await getClient();
 const snapshots = await getAllSnapshots(client.id);
@@ -15,9 +18,53 @@ const tier: Tier = client.tier;
 const latest = await getLatestSnapshot(client.id);
 const needsMoreData = snapshots.length < 2;
 
+// ─── First-week preview: synthesize 8 weeks of evolution from the current
+//     snapshot + the client's resolved benchmark profile. Rendered with a
+//     soft blur as a "here's what your dashboard will look like" teaser,
+//     so the first day of onboarding doesn't show an empty chart.
+let previewSnapshots = snapshots;
+let isPreview = false;
+if (needsMoreData && snapshots.length === 1 && latest.id !== 'empty') {
+  const po = latest.pipeline_output || {};
+  const breakdown = po.score?.breakdown || {};
+  const onboarding = await getClientOnboarding(client.id).catch(() => null);
+  const resolved = resolveProfile({
+    onboarding: onboarding ? { business_profile: (onboarding as any).business_profile ?? null, geo_scope: onboarding.geo_scope ?? null } : null,
+    sectorResult: {
+      businessProfile: (po.sector as any)?.businessProfile,
+      geoScope: (po.sector as any)?.geoScope,
+      confidence: (po.sector as any)?.confidence,
+    },
+  });
+  const profile = getProfile(resolved.profile);
+  const projection = projectEvolution({
+    clientId: client.id,
+    profile,
+    currentBreakdown: breakdown,
+    currentTotal: latest.score ?? 0,
+    currentDate: latest.date,
+    weeksAhead: 7,
+  });
+  // Reshape projection rows into Snapshot-like objects so the rest of the
+  // page (chart, pillar cards, table) can consume them without changes.
+  previewSnapshots = projection.map((week, i) => ({
+    ...latest,
+    id: i === 0 ? latest.id : `preview-${i}`,
+    date: week.date,
+    month: week.date.slice(0, 7),
+    score: week.score,
+    pipeline_output: {
+      ...po,
+      score: { breakdown: week.breakdown, total: week.score },
+    },
+  } as any));
+  isPreview = true;
+}
+const renderSnapshots = isPreview ? previewSnapshots : snapshots;
+
 const diffResult = analyzeEvolution(snapshots, allRecs);
 
-const chartData = snapshots.map(s => ({
+const chartData = renderSnapshots.map(s => ({
   month: s.date,
   score: s.score,
 }));
@@ -69,7 +116,7 @@ const pillarDefs = [
 ];
 
 const pillarEvolution = pillarDefs.map(p => {
-  const values = snapshots.map(s => extractPillar(s.pipeline_output || {}, p.key));
+  const values = renderSnapshots.map(s => extractPillar(s.pipeline_output || {}, p.key));
   const current = values[values.length - 1] || 0;
   const prev = values.length >= 2 ? values[values.length - 2] : 0;
   const delta = current - prev;
@@ -116,7 +163,7 @@ function deltaColor(d: number | null): string {
       <p style="font-size:14px;color:#434750;margin-top:4px;">¿Estoy mejorando o empeorando con el tiempo?</p>
     </div>
 
-    {needsMoreData ? (
+    {needsMoreData && !isPreview ? (
       <div style="background:#F8F9FB;border-radius:12px;padding:48px;text-align:center;">
         <div style="font-size:36px;margin-bottom:12px;">📈</div>
         <h3 style="font-size:18px;font-weight:700;color:#1A1A2E;margin-bottom:8px;">
@@ -128,6 +175,16 @@ function deltaColor(d: number | null): string {
       </div>
     ) : (
       <Fragment>
+      {isPreview && (
+        <div style="background:linear-gradient(135deg,#EEF2FF 0%,#F5F3FF 100%);border:1px solid #E0E7FF;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;">
+          <span class="material-symbols-outlined" style="font-size:22px;color:#6366F1;flex-shrink:0;">visibility</span>
+          <div style="flex:1;">
+            <p style="font-size:14px;font-weight:700;color:#1e1b4b;margin:0 0 2px;">Así se va a ir viendo tu evolución</p>
+            <p style="font-size:12px;color:#4f46e5;margin:0;line-height:1.5;">Arrancamos la semana 1 con tu análisis actual. El gráfico se va a ir rellenando con datos reales cada lunes cuando AION Radar ejecute el próximo análisis.</p>
+          </div>
+        </div>
+      )}
+      <div style={isPreview ? 'filter:blur(2.2px);opacity:0.85;pointer-events:none;user-select:none;' : ''}>
 
       <!-- Score global evolution -->
       <section style="background:white;padding:28px;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
@@ -289,6 +346,7 @@ function deltaColor(d: number | null): string {
         </table>
       </section>
 
+      </div>
       </Fragment>
     )}
 
