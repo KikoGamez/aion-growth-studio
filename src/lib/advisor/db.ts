@@ -126,38 +126,29 @@ export async function checkBudget(clientId: string): Promise<BudgetCheck> {
     .single();
 
   let dailyUsed = data?.cost_cents_daily || 0;
-  let monthlyUsed = data?.tokens_used || 0; // we'll repurpose tokens_used as cost_cents_monthly
+  const monthlyUsed = data?.tokens_used || 0;   // kept as an analytics metric, no longer gates
   const lastReset = data?.last_daily_reset;
+  const unlockUntilStr = (data as any)?.unlock_until;
+  const unlockActive = !!unlockUntilStr && new Date(unlockUntilStr).getTime() > Date.now();
 
   // Reset daily counter if date changed
   if (lastReset && lastReset !== today) {
     dailyUsed = 0;
   }
 
-  // Check monthly limit — keep limits server-side (prevents runaway cost),
-  // but never expose euro amounts or tool names to the client. The UI just
-  // sees "has alcanzado el límite de consultas este mes".
-  if (monthlyUsed >= MONTHLY_BUDGET_CENTS) {
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
-    nextMonth.setHours(0, 0, 0, 0);
-    return {
-      allowed: false,
-      reason: `Has alcanzado el límite de consultas de este mes. Se renueva el ${nextMonth.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}.`,
-      renewsAt: nextMonth.toISOString(),
-      dailyUsed,
-      monthlyUsed,
-    };
-  }
+  // No monthly hard lock — the daily cap is the only gate. Monthly total is
+  // tracked for analytics + surfaced to admin dashboards, never blocks a user.
+  // Motivation: the client never faces a multi-week blackout. If they hit the
+  // daily cap they wait a few hours OR pay for a one-day unlock.
 
-  // Check daily limit
-  if (dailyUsed >= DAILY_BUDGET_CENTS) {
+  // Daily cap — bypassed when an unlock is active.
+  if (dailyUsed >= DAILY_BUDGET_CENTS && !unlockActive) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
     return {
       allowed: false,
-      reason: `Has alcanzado el límite de consultas de hoy. Vuelve mañana y el Advisor seguirá aquí.`,
+      reason: `Has alcanzado tu cupo de consultas de hoy. Vuelve mañana o desbloquea 24h más por €1.`,
       renewsAt: tomorrow.toISOString(),
       dailyUsed,
       monthlyUsed,

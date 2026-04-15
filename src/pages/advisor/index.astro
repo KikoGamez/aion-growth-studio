@@ -107,8 +107,16 @@ const contextItems = [
       <!-- Input -->
       <div style="padding:16px 24px;border-top:1px solid #e8e5ff;background:white;">
         {!budget.allowed ? (
-          <div style="text-align:center;padding:12px;background:#FAEEDA;border-radius:8px;font-size:13px;color:#BA7517;">
-            {budget.reason}
+          <div style="background:#FAEEDA;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <p style="font-size:13px;color:#7a5a1a;font-weight:700;margin:0 0 2px;">Has alcanzado tu cupo de consultas de hoy</p>
+              <p style="font-size:12px;color:#BA7517;margin:0;">Vuelve mañana al resetearse o desbloquea 24h más ahora.</p>
+            </div>
+            <button id="btn-unlock-day" type="button"
+              style="background:#BA7517;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;">
+              <span class="material-symbols-outlined" style="font-size:16px;">bolt</span>
+              Desbloquear 24h — €1
+            </button>
           </div>
         ) : (
           <form id="chat-form" style="display:flex;gap:12px;align-items:center;">
@@ -166,6 +174,27 @@ const contextItems = [
   const btnSend = document.getElementById('btn-send');
   const btnNewThread = document.getElementById('btn-new-thread');
   const threadList = document.getElementById('thread-list');
+
+  // Unlock-day button (shown only when !budget.allowed). Currently a stub
+  // that writes unlock_until server-side without charging; swap for a
+  // Stripe Checkout redirect when billing is enabled.
+  const btnUnlockDay = document.getElementById('btn-unlock-day');
+  btnUnlockDay?.addEventListener('click', async () => {
+    const btn = btnUnlockDay as HTMLButtonElement;
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">hourglass_empty</span> Desbloqueando...';
+    try {
+      const res = await fetch('/api/advisor/unlock-day', { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Reload so the page renders with budget.allowed=true and the input is back.
+      window.location.reload();
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      alert('No se ha podido desbloquear. Inténtalo de nuevo en un momento.');
+    }
+  });
 
   let currentThreadId: string | null = null;
   let isStreaming = false;
