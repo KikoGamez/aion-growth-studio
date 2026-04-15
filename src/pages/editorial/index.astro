@@ -171,6 +171,7 @@ function statusLabel(s: string): { text: string; color: string; bg: string } {
     <!-- Settings links -->
     <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:20px;">
       {[
+        { href: '/editorial/performance', icon: 'analytics', label: 'Performance' },
         { href: '/editorial/setup', icon: 'settings', label: 'Reconfigurar' },
         { href: '/editorial/articles', icon: 'list_alt', label: 'Todos los artículos' },
       ].map(l => (

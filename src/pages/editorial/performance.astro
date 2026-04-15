@@ -1,0 +1,224 @@
+---
+export const prerender = false;
+
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { getClient } from '../../lib/db';
+import { clientHasEditorial, listArticles, listPublicationProfiles } from '../../lib/editorial/db';
+
+const client = Astro.locals.client ?? await getClient();
+const tier = client.tier;
+
+if (!(await clientHasEditorial(client.id))) {
+  return Astro.redirect('/editorial');
+}
+
+const [articles, profiles] = await Promise.all([
+  listArticles(client.id, { status: ['published', 'approved_salvaged'], limit: 200 }),
+  listPublicationProfiles(client.id),
+]);
+const profilesById = Object.fromEntries(profiles.map(p => [p.id, p]));
+
+// Aggregates
+const withPerf = articles.filter(a => a.performance_summary);
+const totalSessions = withPerf.reduce((s, a) => s + (a.performance_summary?.total_sessions ?? 0), 0);
+const totalConversions = withPerf.reduce((s, a) => s + (a.performance_summary?.total_conversions ?? 0), 0);
+const totalEngagement = withPerf.reduce((s, a) => s + (a.performance_summary?.total_engagement ?? 0), 0);
+const avgEngagement = withPerf.length > 0 ? Math.round(totalEngagement / withPerf.length) : 0;
+
+// Winners + underperformers
+const winners = [...withPerf]
+  .filter(a => (a.performance_summary?.roi_score ?? 0) >= 60)
+  .sort((a, b) => (b.performance_summary!.roi_score) - (a.performance_summary!.roi_score))
+  .slice(0, 8);
+
+const underperformers = [...withPerf]
+  .filter(a => (a.performance_summary?.roi_score ?? 0) < 25 && (a.performance_summary?.weeks_measured ?? 0) >= 2)
+  .sort((a, b) => (a.performance_summary!.roi_score) - (b.performance_summary!.roi_score))
+  .slice(0, 5);
+
+// By profile
+const byProfile: Record<string, { name: string; count: number; sessions: number; conversions: number }> = {};
+for (const a of withPerf) {
+  const p = profilesById[a.profile_id];
+  const key = p?.platform ?? 'other';
+  if (!byProfile[key]) byProfile[key] = { name: p?.name ?? key, count: 0, sessions: 0, conversions: 0 };
+  byProfile[key].count++;
+  byProfile[key].sessions += a.performance_summary?.total_sessions ?? 0;
+  byProfile[key].conversions += a.performance_summary?.total_conversions ?? 0;
+}
+const profileRows = Object.entries(byProfile).sort((a, b) => b[1].sessions - a[1].sessions);
+---
+
+<DashboardLayout
+  title="Editorial AI · Performance"
+  currentPath="/editorial/performance"
+  tier={tier}
+  clientName={client.name}
+  domain={client.domain}
+  lastReportMonth={0}
+  lastReportDate=""
+>
+
+<div style="max-width:1200px;margin:0 auto;padding:24px;">
+
+  <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b;margin-bottom:8px;">
+    <a href="/dashboard" style="color:#64748b;text-decoration:none;">Dashboard</a>
+    <span>/</span>
+    <a href="/editorial" style="color:#64748b;text-decoration:none;">Editorial AI</a>
+    <span>/</span>
+    <span style="color:#1a1a2e;font-weight:600;">Performance</span>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 style="font-size:28px;font-weight:900;color:#1a1a2e;letter-spacing:-0.03em;">Performance de artículos</h1>
+      <p style="font-size:13px;color:#64748b;margin-top:4px;">Impacto real medido vía GA4, LinkedIn (Apify) y newsletter. Se actualiza cada lunes con el cron Radar.</p>
+    </div>
+    <a href="/editorial/articles" style="padding:10px 16px;background:transparent;color:#1A4B8C;border:1px solid #1A4B8C;border-radius:10px;text-decoration:none;font-weight:600;font-size:13px;">← Todos los artículos</a>
+  </div>
+
+  {articles.length === 0 ? (
+    <div style="background:white;border-radius:16px;padding:40px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <span class="material-symbols-outlined" style="font-size:40px;color:#94a3b8;">analytics</span>
+      <p style="font-size:14px;color:#64748b;margin:12px 0;">Aún no has publicado ningún artículo.</p>
+      <a href="/editorial/new" style="color:#1A4B8C;font-weight:700;font-size:13px;">Crear el primero →</a>
+    </div>
+  ) : withPerf.length === 0 ? (
+    <div style="background:white;border-radius:16px;padding:40px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <span class="material-symbols-outlined" style="font-size:40px;color:#1A4B8C;">hourglass_empty</span>
+      <p style="font-size:14px;color:#64748b;margin:12px 0 4px;">
+        {articles.length} artículo{articles.length === 1 ? '' : 's'} publicado{articles.length === 1 ? '' : 's'}, pero aún sin métricas.
+      </p>
+      <p style="font-size:12px;color:#94a3b8;">El cron Radar corre cada lunes. Las métricas empezarán a aparecer tras el primer ciclo.</p>
+    </div>
+  ) : (
+    <Fragment>
+
+      <!-- Big numbers -->
+      <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px;">
+        <div style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:0.06em;">Artículos medidos</p>
+          <p style="font-size:32px;font-weight:900;color:#1a1a2e;margin-top:6px;">{withPerf.length}</p>
+          <p style="font-size:11px;color:#94a3b8;">de {articles.length} publicados</p>
+        </div>
+        <div style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:0.06em;">Sesiones generadas</p>
+          <p style="font-size:32px;font-weight:900;color:#1A4B8C;margin-top:6px;">{totalSessions.toLocaleString('es-ES')}</p>
+          <p style="font-size:11px;color:#94a3b8;">acumuladas</p>
+        </div>
+        <div style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:0.06em;">Conversiones</p>
+          <p style="font-size:32px;font-weight:900;color:#1D9E75;margin-top:6px;">{totalConversions}</p>
+          <p style="font-size:11px;color:#94a3b8;">atribuidas a artículos</p>
+        </div>
+        <div style="background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:0.06em;">Engagement medio</p>
+          <p style="font-size:32px;font-weight:900;color:#1a1a2e;margin-top:6px;">{avgEngagement}</p>
+          <p style="font-size:11px;color:#94a3b8;">interacciones / artículo</p>
+        </div>
+      </section>
+
+      <!-- Top performers -->
+      {winners.length > 0 && (
+        <section style="background:white;border-radius:16px;padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <h2 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1D9E75;margin-bottom:16px;">
+            <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">trending_up</span>
+            Top performers
+          </h2>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            {winners.map(a => {
+              const s = a.performance_summary!;
+              const profile = profilesById[a.profile_id];
+              return (
+                <a href={`/editorial/articles/${a.id}`} style="display:flex;gap:12px;align-items:center;padding:12px 14px;background:#f0fff4;border-radius:10px;text-decoration:none;">
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-size:13px;font-weight:700;color:#1a1a2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{a.topic}</p>
+                    <p style="font-size:11px;color:#64748b;margin-top:2px;">{profile?.name ?? ''} · {s.weeks_measured} sem · {s.trend === 'growing' ? '↗' : s.trend === 'declining' ? '↘' : '→'} {s.trend}</p>
+                  </div>
+                  <div style="display:flex;gap:14px;flex-shrink:0;align-items:center;">
+                    <div style="text-align:right;">
+                      <p style="font-size:16px;font-weight:900;color:#1a1a2e;">{s.total_sessions.toLocaleString('es-ES')}</p>
+                      <p style="font-size:9px;color:#64748b;text-transform:uppercase;">Sessions</p>
+                    </div>
+                    <div style="text-align:right;">
+                      <p style="font-size:16px;font-weight:900;color:#1D9E75;">{s.total_conversions}</p>
+                      <p style="font-size:9px;color:#64748b;text-transform:uppercase;">Conv</p>
+                    </div>
+                    <div style="text-align:right;min-width:50px;">
+                      <p style="font-size:16px;font-weight:900;color:#1D9E75;">{s.roi_score}</p>
+                      <p style="font-size:9px;color:#64748b;text-transform:uppercase;">ROI</p>
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <!-- Underperformers -->
+      {underperformers.length > 0 && (
+        <section style="background:white;border-radius:16px;padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <h2 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#E24B4A;margin-bottom:8px;">
+            <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">trending_down</span>
+            No han funcionado
+          </h2>
+          <p style="font-size:12px;color:#64748b;margin-bottom:14px;">El Growth Agent usa este historial para evitar proponer patrones similares en el futuro.</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            {underperformers.map(a => {
+              const s = a.performance_summary!;
+              const profile = profilesById[a.profile_id];
+              return (
+                <a href={`/editorial/articles/${a.id}`} style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:#fef2f2;border-radius:10px;text-decoration:none;">
+                  <div style="flex:1;min-width:0;">
+                    <p style="font-size:13px;font-weight:700;color:#1a1a2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{a.topic}</p>
+                    <p style="font-size:11px;color:#64748b;margin-top:2px;">{profile?.name ?? ''} · {s.weeks_measured} semanas</p>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0;">
+                    <p style="font-size:14px;font-weight:900;color:#E24B4A;">{s.total_sessions} sesiones</p>
+                    <p style="font-size:10px;color:#94a3b8;">ROI {s.roi_score}/100</p>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <!-- Breakdown by profile -->
+      {profileRows.length > 1 && (
+        <section style="background:white;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <h2 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1a1a2e;margin-bottom:16px;">
+            <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">view_column</span>
+            Por canal
+          </h2>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#f7f9ff;">
+                <th style="text-align:left;padding:10px 14px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;">Canal</th>
+                <th style="text-align:right;padding:10px 14px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;">Artículos</th>
+                <th style="text-align:right;padding:10px 14px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;">Sesiones</th>
+                <th style="text-align:right;padding:10px 14px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;">Conversiones</th>
+                <th style="text-align:right;padding:10px 14px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;">Sessions/Artículo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profileRows.map(([_key, data]) => (
+                <tr style="border-top:1px solid #f0f0f0;">
+                  <td style="padding:12px 14px;font-weight:600;color:#1a1a2e;">{data.name}</td>
+                  <td style="text-align:right;padding:12px 14px;">{data.count}</td>
+                  <td style="text-align:right;padding:12px 14px;font-weight:700;">{data.sessions.toLocaleString('es-ES')}</td>
+                  <td style="text-align:right;padding:12px 14px;color:#1D9E75;font-weight:700;">{data.conversions}</td>
+                  <td style="text-align:right;padding:12px 14px;color:#64748b;">{Math.round(data.sessions / data.count).toLocaleString('es-ES')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+    </Fragment>
+  )}
+
+</div>
+</DashboardLayout>

@@ -238,18 +238,98 @@ const isReady = article.status === 'ready_for_review' || article.status === 'app
   )}
 
   {article.status === 'published' && (
-    <section style="background:#d1fae5;border:1px solid #1D9E75;border-radius:12px;padding:16px 20px;margin-top:16px;">
-      <p style="font-size:14px;color:#065f46;font-weight:600;">
-        <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;">check_circle</span>
-        Publicado {article.published_at && `el ${new Date(article.published_at).toLocaleDateString('es-ES')}`}
-        {article.published_url && (
-          <Fragment>
-            {' · '}
-            <a href={article.published_url} target="_blank" rel="noopener" style="color:#065f46;text-decoration:underline;">Ver en {new URL(article.published_url).hostname}</a>
-          </Fragment>
-        )}
-      </p>
-    </section>
+    <Fragment>
+      <section style="background:#d1fae5;border:1px solid #1D9E75;border-radius:12px;padding:16px 20px;margin-top:16px;">
+        <p style="font-size:14px;color:#065f46;font-weight:600;">
+          <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;">check_circle</span>
+          Publicado {article.published_at && `el ${new Date(article.published_at).toLocaleDateString('es-ES')}`}
+          {article.published_url && (
+            <Fragment>
+              {' · '}
+              <a href={article.published_url} target="_blank" rel="noopener" style="color:#065f46;text-decoration:underline;">Ver en {new URL(article.published_url).hostname}</a>
+            </Fragment>
+          )}
+        </p>
+      </section>
+
+      {article.published_url && (
+        <section style="background:white;border-radius:12px;padding:20px 24px;margin-top:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <h3 style="font-size:12px;font-weight:800;color:#1a1a2e;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em;">
+            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;color:#1A4B8C;">link</span>
+            URLs para compartir (con tracking)
+          </h3>
+          <p style="font-size:12px;color:#64748b;margin-bottom:14px;">Usa la URL canónica para tu CMS. Las URLs con UTM separan el tráfico social/email en GA4.</p>
+
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;" id="utm-urls">
+            {(() => {
+              const base = article.published_url;
+              const tid = article.tracking_id;
+              const variants = [
+                { label: 'Canónica (CMS / SEO)',    url: base, badge: '#1A4B8C' },
+                { label: 'LinkedIn (share)',        url: `${base}${base.includes('?') ? '&' : '?'}utm_source=linkedin&utm_medium=social&utm_campaign=editorial_ai&utm_content=${tid}`, badge: '#0077B5' },
+                { label: 'Newsletter',              url: `${base}${base.includes('?') ? '&' : '?'}utm_source=newsletter&utm_medium=email&utm_campaign=editorial_ai&utm_content=${tid}`, badge: '#BA7517' },
+                { label: 'Twitter / X',             url: `${base}${base.includes('?') ? '&' : '?'}utm_source=twitter&utm_medium=social&utm_campaign=editorial_ai&utm_content=${tid}`, badge: '#1DA1F2' },
+              ];
+              return variants.map(v => (
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f7f9ff;border-radius:8px;">
+                  <span style={`display:inline-block;padding:2px 8px;border-radius:4px;background:${v.badge};color:white;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0;white-space:nowrap;`}>{v.label}</span>
+                  <input type="text" value={v.url} readonly style="flex:1;min-width:0;background:transparent;border:none;font-size:11px;color:#434750;font-family:monospace;" />
+                  <button class="copy-btn" data-url={v.url} type="button" style="flex-shrink:0;padding:4px 10px;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:#1A4B8C;">Copiar</button>
+                </div>
+              ));
+            })()}
+          </div>
+
+          <script is:inline>
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+              btn.addEventListener('click', async () => {
+                try {
+                  await navigator.clipboard.writeText(btn.dataset.url);
+                  const orig = btn.textContent;
+                  btn.textContent = '✓ Copiado';
+                  btn.style.color = '#1D9E75';
+                  setTimeout(() => { btn.textContent = orig; btn.style.color = '#1A4B8C'; }, 1500);
+                } catch {}
+              });
+            });
+          </script>
+        </section>
+      )}
+
+      {article.performance_summary && (
+        <section style="background:white;border-radius:12px;padding:20px 24px;margin-top:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <h3 style="font-size:12px;font-weight:800;color:#1a1a2e;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em;">
+            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;color:#1A4B8C;">analytics</span>
+            Impacto medido
+          </h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+            <div>
+              <p style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700;">Sesiones totales</p>
+              <p style="font-size:22px;font-weight:900;color:#1a1a2e;">{article.performance_summary.total_sessions.toLocaleString('es-ES')}</p>
+            </div>
+            <div>
+              <p style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700;">Conversiones</p>
+              <p style="font-size:22px;font-weight:900;color:#1D9E75;">{article.performance_summary.total_conversions}</p>
+            </div>
+            <div>
+              <p style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700;">Engagement</p>
+              <p style="font-size:22px;font-weight:900;color:#1a1a2e;">{article.performance_summary.total_engagement}</p>
+            </div>
+            <div>
+              <p style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700;">ROI score</p>
+              <p style={`font-size:22px;font-weight:900;color:${article.performance_summary.roi_score >= 60 ? '#1D9E75' : article.performance_summary.roi_score >= 30 ? '#BA7517' : '#E24B4A'};`}>{article.performance_summary.roi_score}/100</p>
+            </div>
+            <div>
+              <p style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:700;">Tendencia</p>
+              <p style={`font-size:14px;font-weight:700;color:${article.performance_summary.trend === 'growing' ? '#1D9E75' : article.performance_summary.trend === 'declining' ? '#E24B4A' : '#64748b'};`}>
+                {article.performance_summary.trend === 'growing' ? '↗ Creciendo' : article.performance_summary.trend === 'declining' ? '↘ Bajando' : '→ Estable'}
+              </p>
+            </div>
+          </div>
+          <p style="font-size:10px;color:#94a3b8;margin-top:10px;">{article.performance_summary.weeks_measured} semana{article.performance_summary.weeks_measured === 1 ? '' : 's'} medida{article.performance_summary.weeks_measured === 1 ? '' : 's'} · se actualiza cada lunes con el cron Radar</p>
+        </section>
+      )}
+    </Fragment>
   )}
 
   {article.status === 'rejected' && (

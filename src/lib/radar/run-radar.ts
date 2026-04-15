@@ -76,9 +76,18 @@ export async function runRadarForClient(client: RadarClient, options?: RadarRunO
     // Agent uses this list to avoid proposing similar topics in new content
     // recommendations. Non-fatal if query fails.
     let rejectedEditorialTopics: string[] = [];
+    let editorialPerformance: { winners: any[]; losers: any[] } | undefined;
     try {
       const { listRecentRejectedTopicTexts } = await import('../editorial/db');
       rejectedEditorialTopics = await listRecentRejectedTopicTexts(client.id, 10);
+    } catch { /* non-fatal */ }
+
+    // 0c. Load Editorial AI performance context (loop 4 of P7-S6). Winners
+    // and losers from the last 12 weeks so the Growth Agent prioritizes
+    // topics/formats that work and avoids patterns that don't.
+    try {
+      const { getEditorialPerformanceContext } = await import('../editorial/performance');
+      editorialPerformance = await getEditorialPerformanceContext(client.id, 6);
     } catch { /* non-fatal */ }
 
     // 1. Create audit (or reuse existing for phased execution)
@@ -122,6 +131,7 @@ export async function runRadarForClient(client: RadarClient, options?: RadarRunO
       // Editorial AI: pass rejected topic texts so growth_agent can filter
       // similar content recommendations (P7-S6 loop 1).
       (audit as any).rejectedEditorialTopics = rejectedEditorialTopics;
+      (audit as any).editorialPerformance = editorialPerformance;
       (audit as any).clientId = client.id;
 
       if (PHASE_ENTRY_STEPS.has(currentStep as AuditStep)) {
@@ -259,6 +269,21 @@ export async function runRadarForClient(client: RadarClient, options?: RadarRunO
       }
     } catch (err) {
       console.error(`[radar] Analytics failed (non-fatal):`, (err as Error).message);
+    }
+
+    // 6c. Editorial AI performance ingestion (P7-S7 loop 4).
+    // For each published article, fetch weekly metrics from GA4/Apify/Resend
+    // and upsert article_performance. Non-fatal: missing metrics are retried
+    // next week. Only does work if the client has Editorial AI enabled.
+    try {
+      const { clientHasEditorial } = await import('../editorial/db');
+      if (await clientHasEditorial(client.id)) {
+        const { ingestEditorialPerformance } = await import('../editorial/performance');
+        const perfResult = await ingestEditorialPerformance(client.id);
+        console.log(`[radar] Editorial perf: ${perfResult.articles_processed} articles, ${perfResult.rows_upserted} rows, ${perfResult.errors} errors`);
+      }
+    } catch (err) {
+      console.error(`[radar] Editorial performance ingestion failed (non-fatal):`, (err as Error).message);
     }
 
     // 7. Diff engine + correlations (NICE-TO-HAVE — "cambios esta semana")

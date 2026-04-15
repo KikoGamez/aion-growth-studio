@@ -183,6 +183,15 @@ export interface GrowthAgentInput {
   //     ~10 from rejected_topics and pass the topic_text strings.
   rejectedEditorialTopics?: string[];
 
+  // Editorial AI performance context (loop 4):
+  //   - winners:  published articles with roi_score ≥ 60. Agent should
+  //               prioritize similar topics/formats in contentGeneration.
+  //   - losers:   roi_score < 25 after ≥2 weeks. Agent should avoid similar.
+  editorialPerformance?: {
+    winners: Array<{ topic: string; sessions: number; conversions: number; type: string }>;
+    losers: Array<{ topic: string; sessions: number; type: string }>;
+  };
+
   // When omitted, the agent resolves it internally from sector.ts inference
   // inside pipelineOutput. Pass explicitly when the caller already has the
   // resolved profile (e.g. run-radar uses confirmed onboarding values).
@@ -849,6 +858,30 @@ ${(() => {
   if (input.rejectedEditorialTopics?.length) {
     const lines = input.rejectedEditorialTopics.slice(0, 10).map(t => `- ${t}`);
     sections.push(`## TOPICS DE CONTENIDO RECHAZADOS (NO proponer en contentGeneration ni temas semánticamente similares)\n${lines.join('\n')}`);
+  }
+
+  // ─── Editorial AI: performance context (loop 4 of P7-S6) ───────────────
+  // Winners and losers from published articles. The agent should prioritize
+  // topics/formats similar to winners and avoid those similar to losers.
+  if (input.editorialPerformance) {
+    const perf = input.editorialPerformance;
+    const lines: string[] = [];
+    if (perf.winners.length > 0) {
+      lines.push('GANADORES (topics/formatos que funcionan — prioriza similares):');
+      perf.winners.forEach(w => {
+        lines.push(`- "${w.topic}" — ${w.sessions} sesiones${w.conversions > 0 ? `, ${w.conversions} conversiones` : ''}`);
+      });
+    }
+    if (perf.losers.length > 0) {
+      if (lines.length > 0) lines.push('');
+      lines.push('FRACASOS (topics que NO han funcionado — evita similares):');
+      perf.losers.forEach(l => {
+        lines.push(`- "${l.topic}" — solo ${l.sessions} sesiones`);
+      });
+    }
+    if (lines.length > 0) {
+      sections.push(`## IMPACTO REAL DE ARTÍCULOS PUBLICADOS (últimas 12 semanas)\n${lines.join('\n')}\n\nCuando propongas contentGeneration, APRENDE de este historial: patrones de los ganadores merecen más de lo mismo; patrones de los fracasos no se repiten.`);
+    }
   }
 
   return sections.join('\n\n');
