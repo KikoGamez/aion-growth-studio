@@ -1,7 +1,6 @@
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
-import { waitUntil } from '@vercel/functions';
 import { listAllClients, IS_DEMO } from '../../../lib/db';
 
 const CRON_SECRET = import.meta.env?.CRON_SECRET || process.env.CRON_SECRET;
@@ -67,47 +66,57 @@ async function handler({ request }: { request: Request }): Promise<Response> {
 
     console.log(`[radar:cron] Internal fetch target: ${targetUrl}`);
 
-    // Fan-out: fire each run-client asynchronously. Each runs the full
-    // pipeline (~200-300s) in its own 300s Function invocation. The
-    // dispatcher must NOT await them — with 300s shared budget, a single
-    // slow client would timeout the dispatcher and lose all logs.
+    // Fan-out with short-timeout fetches. Each run-client runs the full
+    // pipeline (200-300s) in its own Function invocation. The dispatcher
+    // needs to ensure the request is SENT over TCP, then abort the
+    // client-side connection so it doesn't sit waiting on the response.
     //
-    // Each fetch is wrapped in waitUntil() so Vercel keeps the dispatcher
-    // Function alive until the fetches settle — otherwise the TCP requests
-    // can be dropped when we return the Response.
+    // AbortSignal.timeout(5000) gives each fetch 5 seconds to flush its
+    // request bytes. The server-side run-client keeps running the
+    // pipeline even after the client aborts — Vercel only cancels
+    // functions when `supportsCancellation: true` is set in vercel.json,
+    // which we intentionally don't set.
     //
-    // We previously tried awaited Promise.allSettled; it worked in theory
-    // but the slowest client kept pushing dispatcher past 300s, killing
-    // the log stream mid-run.
-    const dispatched: string[] = [];
-    for (const client of clients) {
-      const fetchPromise = fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CRON_SECRET}`,
-        },
-        body: JSON.stringify({ clientId: client.id }),
-      })
-        .then((res) => {
-          console.log(`[radar:cron] ${client.name} → ${res.status}`);
-          return res;
-        })
-        .catch((err) => {
-          console.error(`[radar:cron] ${client.name} → ERROR: ${err.message}`);
-        });
-      waitUntil(fetchPromise);
-      dispatched.push(client.name);
-      console.log(`[radar:cron] Dispatched: ${client.name}`);
-    }
+    // Results are visible in /api/radar/run-client logs, not here.
+    const settled = await Promise.allSettled(
+      clients.map(async (client) => {
+        try {
+          await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${CRON_SECRET}`,
+            },
+            body: JSON.stringify({ clientId: client.id }),
+            signal: AbortSignal.timeout(5000),
+          });
+          // Response received quickly — unusual but not an error
+          console.log(`[radar:cron] ${client.name} → responded before timeout (pipeline may be skipped)`);
+          return { client: client.name, status: 'responded' };
+        } catch (err) {
+          const name = (err as Error).name;
+          if (name === 'TimeoutError' || name === 'AbortError') {
+            // Expected: request flushed, we aborted. run-client keeps running.
+            console.log(`[radar:cron] ${client.name} → dispatched (server processing)`);
+            return { client: client.name, status: 'dispatched' };
+          }
+          console.error(`[radar:cron] ${client.name} → failed to send: ${(err as Error).message}`);
+          return { client: client.name, status: 'failed', error: (err as Error).message };
+        }
+      }),
+    );
 
-    console.log(`[radar:cron] Dispatched ${dispatched.length}/${clients.length} (pipelines run in background, check run-client logs for results)`);
+    const dispatched = settled.filter(
+      (r) => r.status === 'fulfilled' && r.value.status === 'dispatched',
+    ).length;
+
+    console.log(`[radar:cron] Dispatched ${dispatched}/${clients.length} (pipelines run in background, check /api/radar/run-client logs for results)`);
 
     return new Response(JSON.stringify({
       ok: true,
-      dispatched: dispatched.length,
+      dispatched,
       total: clients.length,
-      message: `Dispatched ${dispatched.length} run-client invocations in parallel. Each runs ~200-300s; check /api/radar/run-client logs for results.`,
+      message: `Dispatched ${dispatched} run-client invocations in parallel. Each runs ~200-300s; check /api/radar/run-client logs for results.`,
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
