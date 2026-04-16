@@ -246,9 +246,6 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
                 <div class="rec-row" style={`--priority-color:${bucket.color};`}>
                   <div class="rec-header">
                     <div class="rec-trigger">
-                      <span class="rec-rank" style={`background:${bucket.bg};color:${bucket.color};`}>
-                        {rank != null ? rank : '•'}
-                      </span>
                       {pillarBadge && (
                         <span class="rec-chip" style={`background:${pillarBadge.bg};color:${pillarBadge.fg};`}>{pillarBadge.label}</span>
                       )}
@@ -353,9 +350,6 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
             <div class="rec-row" style={`--priority-color:${statusColor};`}>
               <div class="rec-header">
                 <div class="rec-trigger">
-                  <span class="rec-rank" style={`background:${isActive ? '#d1fae5' : '#f0f4ff'};color:${statusColor};`}>
-                    <span class="material-symbols-outlined" style="font-size:14px;">{isActive ? 'pending' : 'task_alt'}</span>
-                  </span>
                   <span class="rec-chip" style={`background:${statusBg};color:${statusColor};`}>{isActive ? 'En marcha' : 'Pendiente'}</span>
                   <span class="rec-title">{action.title}</span>
                   {subtasks.length > 0 && (
