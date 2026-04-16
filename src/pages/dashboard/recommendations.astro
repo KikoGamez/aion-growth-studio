@@ -72,6 +72,106 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
   lastReportMonth={hasData ? snapshot.month : ''} lastReportDate={hasData ? snapshot.date : ''}
 >
 
+<style>
+  .rec-row {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    border-left: 3px solid var(--priority-color, #cbd5e1);
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .rec-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .rec-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .rec-trigger {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .rec-rank {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .rec-chip {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .rec-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a2e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rec-repeat {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #BA7517;
+    font-weight: 600;
+  }
+  .rec-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 4px;
+  }
+  .rec-btn-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: filter 0.15s;
+  }
+  .rec-btn-icon:hover { filter: brightness(0.92); }
+  .rec-chevron {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: transform 0.2s;
+    user-select: none;
+  }
+  .rec-row.is-open .rec-chevron { transform: rotate(180deg); }
+  .rec-body {
+    padding: 0 16px 14px 46px;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 2px;
+  }
+  .rec-body > :first-child { margin-top: 10px; }
+  @media (max-width: 720px) {
+    .rec-title { font-size: 13px; }
+    .rec-chip.rec-impact, .rec-repeat { display: none; }
+    .rec-body { padding-left: 16px; }
+  }
+</style>
+
 <div style="display:flex;flex-direction:column;gap:32px;">
 
   <!-- Header -->
@@ -95,204 +195,122 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
         <h2 style="font-size:15px;font-weight:800;color:#BA7517;">Recomendaciones de AION</h2>
       </div>
 
-      <!-- Executive intro: counts by priority + pillar breakdown -->
-      <div style="background:#FFF8EE;border-radius:10px;padding:18px 20px;margin-bottom:20px;border-left:3px solid #BA7517;">
-        <p style="font-size:13px;color:#7a5a1a;line-height:1.5;margin-bottom:14px;">
-          {proposed.length} {proposed.length === 1 ? 'oportunidad detectada' : 'oportunidades detectadas'} en tu negocio.
-          Las hemos triado por impacto para que sepas dónde poner el foco primero.
-          <strong>Revisa, acepta las que entren en tu plan, descarta las que no apliquen.</strong>
+      <!-- Compact intro: counts + pillar chips in single row -->
+      <div style="background:#FFF8EE;border-radius:10px;padding:12px 16px;margin-bottom:16px;border-left:3px solid #BA7517;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <p style="font-size:13px;color:#7a5a1a;margin:0;">
+          <strong>{proposed.length}</strong> {proposed.length === 1 ? 'oportunidad triada' : 'oportunidades triadas'} por impacto · click para expandir
         </p>
-
-        <!-- Counts by priority bucket -->
-        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
           {priorityRecs.length > 0 && (
-            <div style="display:inline-flex;align-items:center;gap:6px;background:#FCEBEB;color:#E24B4A;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;">
-              <span class="material-symbols-outlined" style="font-size:14px;">priority_high</span>
-              {priorityRecs.length} {priorityRecs.length === 1 ? 'prioritaria' : 'prioritarias'}
-            </div>
+            <span style="background:#FCEBEB;color:#E24B4A;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;">{priorityRecs.length} prioritarias</span>
           )}
           {secondaryRecs.length > 0 && (
-            <div style="display:inline-flex;align-items:center;gap:6px;background:#FAEEDA;color:#BA7517;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;">
-              <span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>
-              {secondaryRecs.length} {secondaryRecs.length === 1 ? 'secundaria' : 'secundarias'}
-            </div>
+            <span style="background:#FAEEDA;color:#BA7517;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;">{secondaryRecs.length} secundarias</span>
           )}
           {niceToHaveRecs.length > 0 && (
-            <div style="display:inline-flex;align-items:center;gap:6px;background:#E1F5EE;color:#1D9E75;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;">
-              <span class="material-symbols-outlined" style="font-size:14px;">favorite</span>
-              {niceToHaveRecs.length} nice-to-have
-            </div>
+            <span style="background:#E1F5EE;color:#1D9E75;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;">{niceToHaveRecs.length} nice-to-have</span>
           )}
-        </div>
-
-        <!-- Counts by pillar -->
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;align-self:center;margin-right:4px;">por pilar:</span>
+          <span style="width:1px;height:14px;background:#E6D3A3;margin:0 4px;"></span>
           {pillarOrder.map(p => {
             const count = pillarCounts[p] || 0;
             if (count === 0) return null;
             const meta = pillarLabels[p];
             return (
-              <span style={`display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:${meta.bg};color:${meta.fg};`}>
-                {meta.label} <strong>{count}</strong>
+              <span style={`font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:${meta.bg};color:${meta.fg};`}>
+                {meta.label} {count}
               </span>
             );
           })}
         </div>
       </div>
 
-      <!-- Render all 3 buckets sequentially with the same card markup -->
+      <!-- 3 priority buckets rendered as compact click-to-expand rows -->
       {[
-        { key: 'priority', recs: priorityRecs, color: '#E24B4A', bg: '#FCEBEB', icon: 'priority_high', label: 'Prioritarias', subtitle: 'mayor impacto, atácalas primero', collapsed: false },
-        { key: 'secondary', recs: secondaryRecs, color: '#BA7517', bg: '#FAEEDA', icon: 'trending_up', label: 'Secundarias', subtitle: 'impacto medio, en cuanto cierres las prioritarias', collapsed: false },
-        { key: 'nicetohave', recs: niceToHaveRecs, color: '#1D9E75', bg: '#E1F5EE', icon: 'favorite', label: 'Nice-to-have', subtitle: 'impacto bajo, opcionales', collapsed: true },
-      ].filter(b => b.recs.length > 0).map(bucket => (
-        bucket.collapsed ? (
-          <details style="margin-bottom:24px;">
-            <summary style="display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;padding:8px 0;">
-              <span class="material-symbols-outlined" style={`font-size:18px;color:${bucket.color};`}>{bucket.icon}</span>
-              <h3 style={`font-size:14px;font-weight:800;color:${bucket.color};text-transform:uppercase;letter-spacing:0.04em;margin:0;`}>{bucket.label} ({bucket.recs.length})</h3>
-              <span style="font-size:11px;color:#94a3b8;">— click para ver · {bucket.subtitle}</span>
-            </summary>
-            <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
-              {bucket.recs.map(rec => {
-                const impact = impactColor[(rec as any).impact || 'medium'];
-                const recData = (rec.data as any) || {};
-                const rank = recData.rank;
-                const expectedOutcome = recData.expectedOutcome;
-                const effort = recData.effort;
-                const timeframe = recData.timeframe;
-                const rationale = recData.rationale;
-                const pillar = (rec as any).pillar;
-                const pillarBadge = pillar ? pillarLabels[pillar] : null;
-                return (
-                  <div class="rec-card" style={`background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:16px;align-items:flex-start;border-left:3px solid ${bucket.color};`}>
-                    <div style={`flex-shrink:0;width:40px;height:40px;border-radius:10px;background:${bucket.bg};display:flex;align-items:center;justify-content:center;position:relative;`}>
-                      <span class="material-symbols-outlined" style={`font-size:20px;color:${bucket.color};`}>auto_awesome</span>
-                      {rank != null && (
-                        <span style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#1A4B8C;color:white;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.15);">{rank}</span>
+        { key: 'priority', recs: priorityRecs, color: '#E24B4A', bg: '#FCEBEB', label: 'Prioritarias', collapsed: false },
+        { key: 'secondary', recs: secondaryRecs, color: '#BA7517', bg: '#FAEEDA', label: 'Secundarias', collapsed: false },
+        { key: 'nicetohave', recs: niceToHaveRecs, color: '#1D9E75', bg: '#E1F5EE', label: 'Nice-to-have', collapsed: true },
+      ].filter(b => b.recs.length > 0).map(bucket => {
+        const rowList = (
+          <div class="rec-list" style="display:flex;flex-direction:column;gap:6px;">
+            {bucket.recs.map(rec => {
+              const impact = impactColor[(rec as any).impact || 'medium'];
+              const recData = (rec.data as any) || {};
+              const rank = recData.rank;
+              const expectedOutcome = recData.expectedOutcome;
+              const effort = recData.effort;
+              const timeframe = recData.timeframe;
+              const rationale = recData.rationale;
+              const pillar = (rec as any).pillar;
+              const pillarBadge = pillar ? pillarLabels[pillar] : null;
+              return (
+                <div class="rec-row" style={`--priority-color:${bucket.color};`}>
+                  <div class="rec-header">
+                    <div class="rec-trigger">
+                      <span class="rec-rank" style={`background:${bucket.bg};color:${bucket.color};`}>
+                        {rank != null ? rank : '•'}
+                      </span>
+                      {pillarBadge && (
+                        <span class="rec-chip" style={`background:${pillarBadge.bg};color:${pillarBadge.fg};`}>{pillarBadge.label}</span>
+                      )}
+                      <span class="rec-title" id={`detail-${rec.id}`}>{rec.title}</span>
+                      <span class="rec-chip rec-impact" style={`background:${impact.bg};color:${impact.fg};`}>{impact.label}</span>
+                      {(rec.times_proposed ?? 1) > 1 && (
+                        <span class="rec-repeat">×{rec.times_proposed}</span>
                       )}
                     </div>
-                    <div style="flex:1;min-width:0;">
-                      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-                        {pillarBadge && (
-                          <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${pillarBadge.bg};color:${pillarBadge.fg};`}>{pillarBadge.label}</span>
-                        )}
-                        <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>Impacto {impact.label}</span>
-                        {effort && (
-                          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:#f1f5f9;color:#475569;">Esfuerzo {effort === 'high' ? 'alto' : effort === 'medium' ? 'medio' : 'bajo'}</span>
-                        )}
-                        {timeframe && <span style="font-size:10px;color:#94a3b8;font-weight:600;">· {timeframe}</span>}
-                        {(rec.times_proposed ?? 1) > 1 && <span style="font-size:10px;color:#BA7517;font-weight:600;">Propuesta {rec.times_proposed}x</span>}
-                      </div>
-                      <h4 id={`detail-${rec.id}`} style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{rec.title}</h4>
-                      {rec.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{rec.description}</p>}
-                      {expectedOutcome && (
-                        <p style="font-size:12px;color:#1D9E75;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;">
-                          <span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>
-                          Resultado esperado: {expectedOutcome}
-                        </p>
-                      )}
-                      {rationale && <p style="font-size:11px;color:#94a3b8;margin-top:4px;font-style:italic;">↳ {rationale}</p>}
-                      {recData?.detail && (
-                        <details class="rec-detail" style="margin-top:10px;cursor:pointer;">
-                          <summary style="font-size:12px;font-weight:700;color:#1A4B8C;display:flex;align-items:center;gap:4px;list-style:none;">
-                            <span class="material-symbols-outlined" style="font-size:16px;">info</span>
-                            Saber más — guía paso a paso
-                          </summary>
-                          <div style="margin-top:12px;padding:16px;background:#f7f9ff;border-radius:10px;font-size:13px;color:#434750;line-height:1.7;white-space:pre-line;">
-                            {recData.detail.replace(/\*\*(.*?)\*\*/g, '$1')}
-                          </div>
-                        </details>
-                      )}
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-self:center;">
-                      <button class="btn-accept" data-rec-id={rec.id} style="background:#1A4B8C;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;">
-                        <span class="material-symbols-outlined" style="font-size:16px;">add_task</span>Incluir en Plan
+                    <div class="rec-actions">
+                      <button class="btn-accept rec-btn-icon" data-rec-id={rec.id} title="Incluir en Plan"
+                        style="background:#d6e3ff;color:#1A4B8C;">
+                        <span class="material-symbols-outlined" style="font-size:16px;">add_task</span>
                       </button>
-                      <button class="btn-reject" data-rec-id={rec.id} style="background:#f0f0f0;color:#64748b;border:none;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;">
-                        <span class="material-symbols-outlined" style="font-size:16px;">close</span>Descartar
+                      <button class="btn-reject rec-btn-icon" data-rec-id={rec.id} title="Descartar"
+                        style="background:#f5f5f7;color:#94a3b8;">
+                        <span class="material-symbols-outlined" style="font-size:16px;">close</span>
                       </button>
                     </div>
+                    <span class="material-symbols-outlined rec-chevron">expand_more</span>
                   </div>
-                );
-              })}
-            </div>
+                  <div class="rec-body" hidden>
+                    {rec.description && <p style="margin:0 0 10px 0;font-size:13px;color:#434750;line-height:1.55;">{rec.description}</p>}
+                    {expectedOutcome && (
+                      <p style="font-size:12px;color:#1D9E75;font-weight:600;margin:0 0 8px 0;display:flex;align-items:center;gap:4px;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>
+                        {expectedOutcome}
+                      </p>
+                    )}
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;">
+                      {effort && (
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:#f1f5f9;color:#475569;">Esfuerzo {effort === 'high' ? 'alto' : effort === 'medium' ? 'medio' : 'bajo'}</span>
+                      )}
+                      {timeframe && <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#f1f5f9;color:#64748b;font-weight:600;">{timeframe}</span>}
+                    </div>
+                    {rationale && <p style="font-size:12px;color:#94a3b8;margin:6px 0 0 0;font-style:italic;">↳ {rationale}</p>}
+                    {recData?.detail && (
+                      <div style="margin-top:10px;padding:12px 14px;background:#f7f9ff;border-radius:8px;font-size:13px;color:#434750;line-height:1.7;white-space:pre-line;">
+                        {recData.detail.replace(/\*\*(.*?)\*\*/g, '$1')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+        return bucket.collapsed ? (
+          <details style="margin-bottom:18px;">
+            <summary style="display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;padding:6px 0;">
+              <span class="material-symbols-outlined" style={`font-size:14px;color:${bucket.color};`}>expand_more</span>
+              <h3 style={`font-size:12px;font-weight:800;color:${bucket.color};text-transform:uppercase;letter-spacing:0.06em;margin:0;`}>{bucket.label} ({bucket.recs.length})</h3>
+            </summary>
+            <div style="margin-top:8px;">{rowList}</div>
           </details>
         ) : (
-          <div style="margin-bottom:24px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-              <span class="material-symbols-outlined" style={`font-size:18px;color:${bucket.color};`}>{bucket.icon}</span>
-              <h3 style={`font-size:14px;font-weight:800;color:${bucket.color};text-transform:uppercase;letter-spacing:0.04em;margin:0;`}>{bucket.label}</h3>
-              <span style="font-size:11px;color:#94a3b8;">— {bucket.subtitle}</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              {bucket.recs.map(rec => {
-                const impact = impactColor[(rec as any).impact || 'medium'];
-                const recData = (rec.data as any) || {};
-                const rank = recData.rank;
-                const expectedOutcome = recData.expectedOutcome;
-                const effort = recData.effort;
-                const timeframe = recData.timeframe;
-                const rationale = recData.rationale;
-                const pillar = (rec as any).pillar;
-                const pillarBadge = pillar ? pillarLabels[pillar] : null;
-                return (
-                  <div class="rec-card" style={`background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;gap:16px;align-items:flex-start;border-left:3px solid ${bucket.color};`}>
-                    <div style={`flex-shrink:0;width:40px;height:40px;border-radius:10px;background:${bucket.bg};display:flex;align-items:center;justify-content:center;position:relative;`}>
-                      <span class="material-symbols-outlined" style={`font-size:20px;color:${bucket.color};`}>auto_awesome</span>
-                      {rank != null && (
-                        <span style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#1A4B8C;color:white;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.15);">{rank}</span>
-                      )}
-                    </div>
-                    <div style="flex:1;min-width:0;">
-                      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-                        {pillarBadge && (
-                          <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${pillarBadge.bg};color:${pillarBadge.fg};`}>{pillarBadge.label}</span>
-                        )}
-                        <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>Impacto {impact.label}</span>
-                        {effort && (
-                          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:#f1f5f9;color:#475569;">Esfuerzo {effort === 'high' ? 'alto' : effort === 'medium' ? 'medio' : 'bajo'}</span>
-                        )}
-                        {timeframe && <span style="font-size:10px;color:#94a3b8;font-weight:600;">· {timeframe}</span>}
-                        {(rec.times_proposed ?? 1) > 1 && <span style="font-size:10px;color:#BA7517;font-weight:600;">Propuesta {rec.times_proposed}x</span>}
-                      </div>
-                      <h4 id={`detail-${rec.id}`} style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{rec.title}</h4>
-                      {rec.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{rec.description}</p>}
-                      {expectedOutcome && (
-                        <p style="font-size:12px;color:#1D9E75;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;">
-                          <span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>
-                          Resultado esperado: {expectedOutcome}
-                        </p>
-                      )}
-                      {rationale && <p style="font-size:11px;color:#94a3b8;margin-top:4px;font-style:italic;">↳ {rationale}</p>}
-                      {recData?.detail && (
-                        <details class="rec-detail" style="margin-top:10px;cursor:pointer;">
-                          <summary style="font-size:12px;font-weight:700;color:#1A4B8C;display:flex;align-items:center;gap:4px;list-style:none;">
-                            <span class="material-symbols-outlined" style="font-size:16px;">info</span>
-                            Saber más — guía paso a paso
-                          </summary>
-                          <div style="margin-top:12px;padding:16px;background:#f7f9ff;border-radius:10px;font-size:13px;color:#434750;line-height:1.7;white-space:pre-line;">
-                            {recData.detail.replace(/\*\*(.*?)\*\*/g, '$1')}
-                          </div>
-                        </details>
-                      )}
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-self:center;">
-                      <button class="btn-accept" data-rec-id={rec.id} style="background:#1A4B8C;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;">
-                        <span class="material-symbols-outlined" style="font-size:16px;">add_task</span>Incluir en Plan
-                      </button>
-                      <button class="btn-reject" data-rec-id={rec.id} style="background:#f0f0f0;color:#64748b;border:none;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;">
-                        <span class="material-symbols-outlined" style="font-size:16px;">close</span>Descartar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div style="margin-bottom:18px;">
+            <h3 style={`font-size:12px;font-weight:800;color:${bucket.color};text-transform:uppercase;letter-spacing:0.06em;margin:0 0 8px 0;`}>{bucket.label} ({bucket.recs.length})</h3>
+            {rowList}
           </div>
-        )
-      ))}
+        );
+      })}
     </section>
   )}
 
@@ -312,19 +330,16 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
         <span class="material-symbols-outlined" style="font-size:20px;color:#1A4B8C;">checklist</span>
         <h2 style="font-size:15px;font-weight:800;color:#1A4B8C;">Tu Plan de Accion ({pending.length + inProgress.length})</h2>
       </div>
-      <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:16px;">
-        <div style="flex:1;background:#f0f4ff;border-radius:10px;padding:14px 18px;border-left:3px solid #1A4B8C;">
-          <p style="font-size:13px;color:#2a4a7a;line-height:1.5;">
-            Estas son las acciones a las que te has comprometido. Marcalas como <strong>"En marcha"</strong> cuando empieces
-            y como <strong>"Completada"</strong> cuando termines. AION medira el impacto real en tus KPIs.
-          </p>
-        </div>
-        <button id="btn-add-manual" style="flex-shrink:0;background:#1A4B8C;color:white;border:none;border-radius:10px;padding:12px 18px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
-          <span class="material-symbols-outlined" style="font-size:18px;">add</span>
-          Añadir tarea propia
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+        <p style="flex:1;font-size:12px;color:#64748b;margin:0;">
+          Click para expandir · marca <strong>En marcha</strong> al empezar y <strong>Completada</strong> al terminar.
+        </p>
+        <button id="btn-add-manual" style="flex-shrink:0;background:#1A4B8C;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">
+          <span class="material-symbols-outlined" style="font-size:16px;">add</span>
+          Tarea propia
         </button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="rec-list" style="display:flex;flex-direction:column;gap:6px;">
         {[...inProgress, ...pending].map(action => {
           const impact = impactColor[action.impact || 'medium'];
           const isActive = action.status === 'in_progress';
@@ -332,30 +347,51 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
           const subtasks: any[] = Array.isArray(actData.subtasks) ? actData.subtasks : [];
           const doneCount = subtasks.filter(s => s.done).length;
           const progressPct = subtasks.length > 0 ? Math.round((doneCount / subtasks.length) * 100) : 0;
-          const hasDetail = !!(actData.detail || actData.rationale || actData.expectedOutcome || actData.effort || actData.timeframe);
+          const statusColor = isActive ? '#0e7c5f' : '#1A4B8C';
+          const statusBg = isActive ? '#d1fae5' : '#d6e3ff';
           return (
-            <div style={`background:white;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border-left:3px solid ${isActive ? '#0e7c5f' : '#1A4B8C'};display:flex;gap:16px;align-items:flex-start;`}>
-              <div style={`flex-shrink:0;width:40px;height:40px;border-radius:10px;background:${isActive ? '#d1fae5' : '#f0f4ff'};display:flex;align-items:center;justify-content:center;`}>
-                <span class="material-symbols-outlined" style={`font-size:20px;color:${isActive ? '#0e7c5f' : '#1A4B8C'};`}>
-                  {isActive ? 'pending' : 'task_alt'}
-                </span>
-              </div>
-              <div style="flex:1;min-width:0;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;${isActive ? 'background:#d1fae5;color:#0e7c5f;' : 'background:#d6e3ff;color:#1A4B8C;'}`}>
-                    {isActive ? 'En marcha' : 'Pendiente'}
+            <div class="rec-row" style={`--priority-color:${statusColor};`}>
+              <div class="rec-header">
+                <div class="rec-trigger">
+                  <span class="rec-rank" style={`background:${isActive ? '#d1fae5' : '#f0f4ff'};color:${statusColor};`}>
+                    <span class="material-symbols-outlined" style="font-size:14px;">{isActive ? 'pending' : 'task_alt'}</span>
                   </span>
-                  <span style={`font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${impact.bg};color:${impact.fg};`}>
-                    Impacto {impact.label}
-                  </span>
+                  <span class="rec-chip" style={`background:${statusBg};color:${statusColor};`}>{isActive ? 'En marcha' : 'Pendiente'}</span>
+                  <span class="rec-title">{action.title}</span>
                   {subtasks.length > 0 && (
-                    <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:#f1f5f9;color:#475569;">
-                      {doneCount}/{subtasks.length} subtareas
-                    </span>
+                    <span class="rec-repeat" style="color:#64748b;">{doneCount}/{subtasks.length}</span>
+                  )}
+                  <span class="rec-chip rec-impact" style={`background:${impact.bg};color:${impact.fg};`}>{impact.label}</span>
+                  {action.source === 'manual' && (
+                    <span class="rec-chip" style="background:#e8e5ff;color:#434750;">Propia</span>
                   )}
                 </div>
-                <h4 style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">{action.title}</h4>
-                {action.description && <p style="font-size:13px;color:#434750;line-height:1.5;">{action.description}</p>}
+                <div class="rec-actions">
+                  {!isActive && (
+                    <button class="btn-start rec-btn-icon" data-action-id={action.id} title="Marcar en marcha"
+                      style="background:#d1fae5;color:#0e7c5f;">
+                      <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
+                    </button>
+                  )}
+                  <button class="btn-done rec-btn-icon" data-action-id={action.id} title="Marcar completada"
+                    style="background:#E1F5EE;color:#1D9E75;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">check</span>
+                  </button>
+                </div>
+                <span class="material-symbols-outlined rec-chevron">expand_more</span>
+              </div>
+              <div class="rec-body" hidden>
+                {action.description && <p style="margin:0 0 10px 0;font-size:13px;color:#434750;line-height:1.55;">{action.description}</p>}
+
+                {subtasks.length > 0 && (
+                  <div style="margin-bottom:12px;">
+                    <div style="height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
+                      <div class="progress-bar" data-action-id={action.id}
+                        style={`height:100%;background:${progressPct === 100 ? '#1D9E75' : '#1A4B8C'};width:${progressPct}%;transition:width 0.3s;`}></div>
+                    </div>
+                    <p class="progress-label" data-action-id={action.id} style="font-size:11px;color:#94a3b8;margin-top:4px;">{doneCount} de {subtasks.length} subtareas · {progressPct}%</p>
+                  </div>
+                )}
 
                 {actData.contentGeneration?.topic && actData.contentGeneration?.type && (
                   <GenerateArticleButton
@@ -364,18 +400,23 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
                   />
                 )}
 
-                {subtasks.length > 0 && (
-                  <div style="margin-top:10px;">
-                    <div style="height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;">
-                      <div class="progress-bar" data-action-id={action.id}
-                        style={`height:100%;background:${progressPct === 100 ? '#1D9E75' : '#1A4B8C'};width:${progressPct}%;transition:width 0.3s;`}></div>
-                    </div>
-                    <p class="progress-label" data-action-id={action.id} style="font-size:10px;color:#94a3b8;margin-top:4px;">{doneCount} de {subtasks.length} subtareas completadas · {progressPct}%</p>
-                  </div>
-                )}
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
+                  {actData.expectedOutcome && (
+                    <span style="font-size:11px;padding:3px 8px;border-radius:4px;background:#E1F5EE;color:#1D9E75;font-weight:600;display:inline-flex;align-items:center;gap:3px;">
+                      <span class="material-symbols-outlined" style="font-size:12px;">trending_up</span>
+                      {actData.expectedOutcome}
+                    </span>
+                  )}
+                  {actData.effort && (
+                    <span style="font-size:11px;padding:3px 8px;border-radius:4px;background:#f1f5f9;color:#475569;font-weight:600;">Esfuerzo {actData.effort === 'high' ? 'alto' : actData.effort === 'medium' ? 'medio' : 'bajo'}</span>
+                  )}
+                  {actData.timeframe && (
+                    <span style="font-size:11px;padding:3px 8px;border-radius:4px;background:#f1f5f9;color:#64748b;font-weight:600;">{actData.timeframe}</span>
+                  )}
+                </div>
 
                 {(action as any).expected_kpis?.length > 0 && (
-                  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;">
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;">
                     <span style="font-size:10px;color:#94a3b8;margin-right:2px;">KPIs objetivo:</span>
                     {((action as any).expected_kpis as any[]).map((kpi: any) => (
                       <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#E1F5EE;color:#1D9E75;font-weight:600;">
@@ -384,7 +425,35 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
                     ))}
                   </div>
                 )}
-                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:11px;color:#94a3b8;">
+
+                {subtasks.length > 0 && (
+                  <div style="margin-bottom:10px;">
+                    <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#64748b;margin:0 0 6px 0;">Subtareas</p>
+                    <ul class="subtask-list" data-action-id={action.id} style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">
+                      {subtasks.map((st) => (
+                        <li style="display:flex;align-items:flex-start;gap:8px;">
+                          <input type="checkbox" class="subtask-checkbox"
+                            data-action-id={action.id} data-subtask-id={st.id}
+                            checked={st.done}
+                            style="margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer;accent-color:#1A4B8C;" />
+                          <span style={`font-size:13px;line-height:1.5;${st.done ? 'color:#94a3b8;text-decoration:line-through;' : 'color:#1a1a2e;'}`}>{st.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {actData.detail && subtasks.length === 0 && (
+                  <div style="padding:12px 14px;background:#f7f9ff;border-radius:8px;font-size:13px;color:#434750;line-height:1.7;white-space:pre-line;">
+                    {actData.detail.replace(/\*\*(.*?)\*\*/g, '$1')}
+                  </div>
+                )}
+
+                {actData.rationale && (
+                  <p style="font-size:12px;color:#64748b;font-style:italic;margin:8px 0 0 0;">↳ {actData.rationale}</p>
+                )}
+
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:11px;color:#94a3b8;">
                   {(action as any).accepted_by && (
                     <span>Aceptada por {(action as any).accepted_by}</span>
                   )}
@@ -394,78 +463,7 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
                   {action.started_at && (
                     <span>· Iniciada {new Date(action.started_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
                   )}
-                  {action.source === 'manual' && (
-                    <span style="background:#e8e5ff;color:#434750;padding:1px 6px;border-radius:3px;font-weight:600;">Tarea propia</span>
-                  )}
                 </div>
-
-                {(hasDetail || subtasks.length > 0) && (
-                  <details class="action-detail" style="margin-top:12px;cursor:pointer;">
-                    <summary style="font-size:12px;font-weight:700;color:#1A4B8C;display:flex;align-items:center;gap:4px;list-style:none;user-select:none;">
-                      <span class="material-symbols-outlined" style="font-size:16px;">unfold_more</span>
-                      Abrir detalle completo
-                    </summary>
-                    <div style="margin-top:12px;padding:16px;background:#f7f9ff;border-radius:10px;display:flex;flex-direction:column;gap:14px;">
-
-                      {(actData.expectedOutcome || actData.effort || actData.timeframe) && (
-                        <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:12px;">
-                          {actData.expectedOutcome && (
-                            <div style="display:inline-flex;align-items:center;gap:4px;color:#1D9E75;font-weight:600;">
-                              <span class="material-symbols-outlined" style="font-size:14px;">trending_up</span>
-                              {actData.expectedOutcome}
-                            </div>
-                          )}
-                          {actData.effort && (
-                            <span style="padding:2px 8px;border-radius:4px;background:#f1f5f9;color:#475569;font-weight:600;">Esfuerzo {actData.effort === 'high' ? 'alto' : actData.effort === 'medium' ? 'medio' : 'bajo'}</span>
-                          )}
-                          {actData.timeframe && (
-                            <span style="color:#94a3b8;">· {actData.timeframe}</span>
-                          )}
-                        </div>
-                      )}
-                      {actData.rationale && (
-                        <p style="font-size:12px;color:#64748b;font-style:italic;line-height:1.5;margin:0;">↳ {actData.rationale}</p>
-                      )}
-
-                      {subtasks.length > 0 && (
-                        <div>
-                          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#64748b;margin:0 0 8px 0;">Subtareas</p>
-                          <ul class="subtask-list" data-action-id={action.id} style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">
-                            {subtasks.map((st) => (
-                              <li style="display:flex;align-items:flex-start;gap:8px;">
-                                <input type="checkbox" class="subtask-checkbox"
-                                  data-action-id={action.id} data-subtask-id={st.id}
-                                  checked={st.done}
-                                  style="margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer;accent-color:#1A4B8C;" />
-                                <span style={`font-size:13px;line-height:1.5;${st.done ? 'color:#94a3b8;text-decoration:line-through;' : 'color:#1a1a2e;'}`}>{st.text}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {actData.detail && subtasks.length === 0 && (
-                        <div style="font-size:13px;color:#434750;line-height:1.7;white-space:pre-line;">
-                          {actData.detail.replace(/\*\*(.*?)\*\*/g, '$1')}
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                )}
-              </div>
-              <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-self:center;">
-                {!isActive && (
-                  <button class="btn-start" data-action-id={action.id}
-                    style="background:#d1fae5;color:#0e7c5f;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
-                    <span class="material-symbols-outlined" style="font-size:16px;">play_arrow</span>
-                    En marcha
-                  </button>
-                )}
-                <button class="btn-done" data-action-id={action.id}
-                  style="background:#E1F5EE;color:#1D9E75;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
-                  <span class="material-symbols-outlined" style="font-size:16px;">check</span>
-                  Completada
-                </button>
               </div>
             </div>
           );
@@ -582,6 +580,24 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
 </div>
 
 <script>
+  // Compact rows: click trigger or chevron to toggle body
+  document.querySelectorAll('.rec-trigger, .rec-chevron').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const row = (e.currentTarget as HTMLElement).closest('.rec-row') as HTMLElement | null;
+      if (!row) return;
+      const body = row.querySelector(':scope > .rec-body') as HTMLElement | null;
+      if (!body) return;
+      const isOpen = !body.hidden;
+      body.hidden = isOpen;
+      row.classList.toggle('is-open', !isOpen);
+    });
+  });
+
+  // Prevent icon-button clicks from propagating to the trigger
+  document.querySelectorAll('.rec-btn-icon').forEach(btn => {
+    btn.addEventListener('click', (e) => e.stopPropagation());
+  });
+
   async function callAPI(body: Record<string, any>) {
     await fetch('/api/dashboard/update-action', {
       method: 'POST',
@@ -747,13 +763,17 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
     await callAPI({ title, description: description || undefined, impact, expected_kpis: suggestedKpis });
   });
 
-  // Auto-open detail if hash points to a recommendation
+  // Auto-open row if hash points to a recommendation
   if (window.location.hash.startsWith('#detail-')) {
     const el = document.getElementById(window.location.hash.slice(1));
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const details = el.closest('.rec-card')?.querySelector('details.rec-detail');
-      if (details) (details as HTMLDetailsElement).open = true;
+      const row = el.closest('.rec-row') as HTMLElement | null;
+      const body = row?.querySelector(':scope > .rec-body') as HTMLElement | null;
+      if (row && body) {
+        body.hidden = false;
+        row.classList.add('is-open');
+      }
     }
   }
 </script>
