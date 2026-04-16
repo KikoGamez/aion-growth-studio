@@ -31,13 +31,31 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   const sb = getSupabase();
-  const { error } = await sb
-    .from('client_onboarding')
-    .update({ business_impact_kpis: body.kpi_keys })
-    .eq('client_id', client.id);
-  if (error) return json({ error: error.message }, 500);
 
-  return json({ ok: true, saved: body.kpi_keys });
+  // Upsert instead of update: if the onboarding row doesn't exist yet
+  // (new client, never ran onboarding), update returns no rows but no
+  // error — user sees "saved" but nothing persists. Upsert creates the
+  // row on the fly, keyed by client_id (unique).
+  const { error, data } = await sb
+    .from('client_onboarding')
+    .upsert(
+      { client_id: client.id, business_impact_kpis: body.kpi_keys },
+      { onConflict: 'client_id' },
+    )
+    .select('client_id');
+
+  if (error) {
+    console.error('[save-kpis] Supabase error', {
+      clientId: client.id,
+      kpiKeys: body.kpi_keys,
+      code: (error as any).code,
+      message: error.message,
+      details: (error as any).details,
+    });
+    return json({ error: error.message, code: (error as any).code }, 500);
+  }
+
+  return json({ ok: true, saved: body.kpi_keys, rows: data?.length ?? 0 });
 };
 
 function json(body: any, status = 200): Response {
