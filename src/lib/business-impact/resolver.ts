@@ -13,6 +13,7 @@
  */
 
 import { getSupabase, getAllSnapshots, getClientOnboarding } from '../db';
+import { getIntegration } from '../integrations';
 import { KPI_DEFINITIONS } from './definitions';
 import { getDefaultKpis } from './presets';
 import type {
@@ -32,15 +33,40 @@ function firstOfPreviousMonth(): string {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
 }
 
-function detectAvailability(
+/**
+ * Integration status is the live source of truth — we query the `integrations`
+ * table to know if GA4/GSC are currently connected, NOT the snapshot (a snapshot
+ * reflects the state at cron time, which can lag a user's fresh connection).
+ * GBP stays snapshot-based because it's a public profile, not an OAuth link.
+ */
+async function detectAvailability(
+  clientId: string,
   snapshot: any | null,
   onboarding: any | null,
-): Availability {
+): Promise<Availability> {
   const analytics = snapshot?.pipeline_output?.analytics ?? {};
   const gbp = snapshot?.pipeline_output?.gbp ?? {};
+
+  // Live integration check — filters status='connected' inside getIntegration()
+  // Google Analytics and Google Search Console share the same OAuth integration
+  // (provider='google_analytics'); property_id indicates GA4 is usable.
+  let hasGa4 = !!analytics.ga4;   // fallback to snapshot
+  let hasGsc = !!analytics.gsc;
+  try {
+    const integ = await getIntegration(clientId, 'google_analytics');
+    if (integ) {
+      hasGsc = true;  // OAuth connected ⇒ GSC always works (domain-scoped)
+      hasGa4 = !!integ.property_id;  // GA4 needs a property to query
+    } else {
+      // No connected integration — override any stale snapshot flags
+      hasGa4 = false;
+      hasGsc = false;
+    }
+  } catch { /* non-fatal — keep snapshot-based values */ }
+
   return {
-    has_ga4: !!analytics.ga4,
-    has_gsc: !!analytics.gsc,
+    has_ga4: hasGa4,
+    has_gsc: hasGsc,
     has_gbp: !!(gbp.found || gbp.rating || gbp.reviewCount),
     has_ad_spend: typeof onboarding?.monthly_ad_spend === 'number' && onboarding.monthly_ad_spend > 0,
     has_deal_value: typeof onboarding?.avg_deal_value === 'number' && onboarding.avg_deal_value > 0,
@@ -248,7 +274,7 @@ export async function resolveBusinessKpis(clientId: string): Promise<{
   const latestPo = (latest as any)?.pipeline_output ?? null;
   const prevPo = (previous as any)?.pipeline_output ?? null;
 
-  const availability = detectAvailability(latest, onboarding);
+  const availability = await detectAvailability(clientId, latest, onboarding);
   const profile = resolveBusinessProfile(onboarding, latestPo?.sector);
 
   // Custom selection wins over presets

@@ -21,6 +21,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_gbp: true,
     description: 'Llamadas directas que has recibido desde tu ficha de Google Business este mes.',
     better: 'up',
+    period: 'last_30_days',
   },
   gbp_direction_requests: {
     key: 'gbp_direction_requests',
@@ -32,6 +33,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_gbp: true,
     description: 'Personas que han pedido indicaciones para llegar a tu ubicación — intención de visita.',
     better: 'up',
+    period: 'last_30_days',
   },
   gbp_website_clicks: {
     key: 'gbp_website_clicks',
@@ -43,6 +45,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_gbp: true,
     description: 'Clicks al botón "Sitio web" desde tu ficha de Google Business.',
     better: 'up',
+    period: 'last_30_days',
   },
   gbp_profile_views: {
     key: 'gbp_profile_views',
@@ -54,6 +57,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_gbp: true,
     description: 'Veces que tu ficha ha aparecido en los resultados de búsqueda o Maps.',
     better: 'up',
+    period: 'last_30_days',
   },
 
   // ─── Reseñas ─────────────────────────────────────────────────────────
@@ -67,6 +71,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_gbp: true,
     description: 'Reseñas nuevas recibidas en Google Business este periodo.',
     better: 'up',
+    period: 'snapshot_delta',
   },
   reviews_new_total: {
     key: 'reviews_new_total',
@@ -77,6 +82,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     profiles: ['local_foot_traffic', 'local_services', 'ecommerce'],
     description: 'Reseñas nuevas sumando todas las plataformas (Google + Trustpilot).',
     better: 'up',
+    period: 'snapshot_delta',
   },
 
   // ─── Tráfico ─────────────────────────────────────────────────────────
@@ -89,6 +95,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     profiles: 'all',
     description: 'Visitas mensuales estimadas desde Google por las keywords donde rankeas. Estimado por DataForSEO.',
     better: 'up',
+    period: 'monthly_estimate',
   },
   traffic_branded: {
     key: 'traffic_branded',
@@ -99,6 +106,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     profiles: ['ecommerce', 'freelance_personal', 'b2b_services', 'media'],
     description: 'Búsquedas que contienen tu nombre de marca — indicador directo de brand awareness.',
     better: 'up',
+    period: 'monthly_estimate',
   },
   gsc_clicks: {
     key: 'gsc_clicks',
@@ -110,6 +118,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_gsc: true,
     description: 'Clicks reales desde los resultados de Google (datos de Search Console, no estimados).',
     better: 'up',
+    period: 'last_7_days',
   },
   keywords_indexed_top10: {
     key: 'keywords_indexed_top10',
@@ -120,6 +129,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     profiles: ['freelance_personal', 'media', 'b2b_saas', 'b2b_services'],
     description: 'Número de keywords donde apareces en la primera página de Google.',
     better: 'up',
+    period: 'current_total',
   },
 
   // ─── E-commerce ──────────────────────────────────────────────────────
@@ -133,6 +143,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ga4: true,
     description: 'Ingresos totales atribuidos por GA4 este periodo (requiere Enhanced Ecommerce configurado).',
     better: 'up',
+    period: 'last_7_days',
   },
   ecommerce_transactions: {
     key: 'ecommerce_transactions',
@@ -144,6 +155,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ga4: true,
     description: 'Número de compras completadas — cada una cuenta como una venta.',
     better: 'up',
+    period: 'last_7_days',
   },
   ecommerce_cpa: {
     key: 'ecommerce_cpa',
@@ -156,6 +168,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ad_spend: true,
     description: 'Inversión en publicidad dividida entre ventas totales (monthly_ad_spend / transactions).',
     better: 'down',
+    period: 'last_7_days',
   },
   ecommerce_roas: {
     key: 'ecommerce_roas',
@@ -168,6 +181,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ad_spend: true,
     description: 'Return on Ad Spend: revenue / inversión publicitaria. >1 = rentable.',
     better: 'up',
+    period: 'last_7_days',
   },
 
   // ─── Lead-gen / SaaS ─────────────────────────────────────────────────
@@ -181,6 +195,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ga4: true,
     description: 'Formularios enviados o eventos de lead capturados en GA4 este periodo.',
     better: 'up',
+    period: 'last_7_days',
   },
   leads_manual: {
     key: 'leads_manual',
@@ -191,6 +206,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     profiles: ['b2b_services', 'b2b_saas', 'local_services'],
     description: 'Leads reportados manualmente. Útil como fallback cuando GA4 no está conectado.',
     better: 'up',
+    period: 'monthly_actual',
   },
   cost_per_lead: {
     key: 'cost_per_lead',
@@ -202,6 +218,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ad_spend: true,
     description: 'Inversión en publicidad dividida entre leads totales este mes.',
     better: 'down',
+    period: 'last_7_days',
   },
   activations: {
     key: 'activations',
@@ -213,6 +230,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ga4: true,
     description: 'Usuarios que han completado el evento de activación clave (sign_up / trial / start_free).',
     better: 'up',
+    period: 'last_7_days',
   },
   cost_per_activation: {
     key: 'cost_per_activation',
@@ -225,6 +243,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_ad_spend: true,
     description: 'Inversión en publicidad dividida entre activaciones totales.',
     better: 'down',
+    period: 'last_7_days',
   },
 
   // ─── Derived ─────────────────────────────────────────────────────────
@@ -238,6 +257,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     requires_deal_value: true,
     description: 'Valor estimado del pipeline: leads × valor medio de cliente × tasa de cierre.',
     better: 'up',
+    period: 'monthly_estimate',
   },
 
   // ─── Engagement (media profile only) ─────────────────────────────────
@@ -250,6 +270,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, KpiDefinition> = {
     profiles: ['media'],
     description: 'Suma de likes + comentarios + shares en redes sociales este mes.',
     better: 'up',
+    period: 'monthly_estimate',
   },
 };
 

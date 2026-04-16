@@ -80,6 +80,9 @@ export interface KpiDefinition {
   description: string;
   /** Direction: higher = better, lower = better, neutral. */
   better: 'up' | 'down' | 'neutral';
+  /** Short period label shown under the value ("este mes", "últimos 7 días", etc.).
+   *  Helps the user know what time window the number represents. */
+  period: 'monthly_estimate' | 'monthly_actual' | 'last_7_days' | 'last_30_days' | 'current_total' | 'snapshot_delta';
 }
 
 /** A resolved KPI — definition + current value + previous value + target. */
