@@ -530,6 +530,14 @@ const heroStatus = statusStyle(ss(health.total));
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-BG43BFQC8E"></script>
+  <script is:inline>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-BG43BFQC8E');
+    gtag('event', 'diagnostico_completed', { language: 'en' });
+  </script>
   <title>Digital Presence Report — {domain}</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
   <meta name="robots" content="noindex,nofollow" />

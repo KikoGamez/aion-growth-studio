@@ -370,6 +370,7 @@ const lang = 'en';
     if (!email || !email.includes('@')) return showError('error-step1', 'Please enter a valid email.');
 
     userData = { url, name, email };
+    if (typeof gtag === 'function') gtag('event', 'diagnostico_started', { language: 'en', url });
     setBtn('btn-step1', 'Finding competitors…', true);
 
     const listEl = document.getElementById('competitor-list');

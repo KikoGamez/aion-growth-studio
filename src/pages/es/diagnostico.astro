@@ -430,6 +430,7 @@ const lang = 'es';
     if (!email || !emailRegex.test(email)) return showError('error-step1', 'Introduce un email válido (ej: tu@empresa.com).');
 
     userData = { url, name, email };
+    if (typeof gtag === 'function') gtag('event', 'diagnostico_started', { language: 'es', url });
     setBtn('btn-step1', 'Buscando competidores…', true);
 
     const listEl = document.getElementById('competitor-list');

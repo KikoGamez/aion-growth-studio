@@ -67,6 +67,19 @@ const ogImageUrl = ogImage.startsWith('http') ? ogImage : `${Astro.url.origin}${
       </script>
     )}
 
+    <!-- Google Analytics 4 — production only, same guard as Clarity. -->
+    {Astro.url.hostname === 'aiongrowth.studio' && (
+      <Fragment>
+        <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-BG43BFQC8E"></script>
+        <script is:inline>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-BG43BFQC8E');
+        </script>
+      </Fragment>
+    )}
+
     <title>{title}</title>
   </head>
   <body class="font-sans antialiased text-slate-900 bg-white">

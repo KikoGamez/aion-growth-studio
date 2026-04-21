@@ -860,6 +860,14 @@ const donutSVG = buildDonutSVG();
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-BG43BFQC8E"></script>
+  <script is:inline>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-BG43BFQC8E');
+    gtag('event', 'diagnostico_completed', { language: 'es' });
+  </script>
   <title>Informe de Presencia Digital — {domain}</title>
   <meta name="description" content={`Diagnóstico completo de presencia digital de ${domain}. Score: ${health.total ?? 0}/100.`} />
   <link rel="icon" type="image/png" href="/favicon.png" />

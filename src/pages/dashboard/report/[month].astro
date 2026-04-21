@@ -28,6 +28,9 @@ const metaAds = (!r.meta_ads?.skipped && r.meta_ads) ? r.meta_ads : null;
 const topKws: any[] = seo.topKeywords?.slice(0, 5) || [];
 const ctItems: any[] = r.competitor_traffic?.items || [];
 
+// GA4: track report view
+const _reportMonth = snapshot.month;
+
 // Prev values
 const prevSeo = prevSnapshot?.pipeline_output.seo;
 const prevGeo = prevSnapshot?.pipeline_output.geo;
@@ -354,4 +357,7 @@ const planCards = actionItems.slice(0, 3).length > 0 ? actionItems.slice(0, 3) :
   </section>
 
 </div>
+<script is:inline define:vars={{ _reportMonth }}>
+  if (typeof gtag === 'function') gtag('event', 'report_viewed', { month: _reportMonth });
+</script>
 </DashboardLayout>

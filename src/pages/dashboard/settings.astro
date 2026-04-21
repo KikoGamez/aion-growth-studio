@@ -1148,4 +1148,14 @@ const tierLabels: Record<Tier, string> = { radar: 'Radar', señales: 'Señales',
       }
     });
   </script>
+  <script is:inline>
+    // Track integration connection from OAuth callback query params
+    (function() {
+      if (typeof gtag !== 'function') return;
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('ga4') === 'connected') gtag('event', 'integration_connected', { provider: 'google_analytics' });
+      if (p.get('meta') === 'connected') gtag('event', 'integration_connected', { provider: 'meta' });
+      if (p.get('linkedin') === 'connected') gtag('event', 'integration_connected', { provider: 'linkedin' });
+    })();
+  </script>
 </DashboardLayout>

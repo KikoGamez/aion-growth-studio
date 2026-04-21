@@ -108,6 +108,7 @@ const payload = encodeURIComponent(JSON.stringify({ contentGeneration, sourceAct
       catch { return; }
 
       const cg = payload.contentGeneration;
+      if (typeof gtag === 'function') gtag('event', 'editorial_article_generated', { content_type: cg.type, topic: cg.topic });
       btn.disabled = true;
       btn.style.opacity = '0.7';
 

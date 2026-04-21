@@ -233,6 +233,7 @@ const contextItems = [
     e.preventDefault();
     const msg = chatInput?.value.trim();
     if (!msg || isStreaming) return;
+    if (typeof gtag === 'function') gtag('event', 'advisor_message_sent');
 
     isStreaming = true;
     chatInput.value = '';

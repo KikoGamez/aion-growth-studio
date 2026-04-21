@@ -633,7 +633,9 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
   document.querySelectorAll('.btn-accept').forEach(btn => {
     btn.addEventListener('click', () => {
       const recId = (btn as HTMLElement).dataset.recId;
-      if (recId) callAPI({ recommendationId: recId, status: 'accepted' });
+      if (!recId) return;
+      if (typeof gtag === 'function') gtag('event', 'recommendation_accepted', { recommendation_id: recId });
+      callAPI({ recommendationId: recId, status: 'accepted' });
     });
   });
 
@@ -644,6 +646,7 @@ const pillarLabels: Record<string, { label: string; bg: string; fg: string }> = 
       if (!recId) return;
       const reason = prompt('¿Por que descartas esta recomendacion? (opcional)', '');
       if (reason === null) return; // cancelled
+      if (typeof gtag === 'function') gtag('event', 'recommendation_rejected', { recommendation_id: recId });
       callAPI({ recommendationId: recId, status: 'rejected', feedback: reason });
     });
   });

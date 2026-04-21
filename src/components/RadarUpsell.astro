@@ -59,7 +59,7 @@ const {
       </div>
 
       <div style="display:flex;align-items:center;gap:16px;">
-        <a href="/es/radar" style="background:#69ff87;color:#000e41;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+        <a href="/es/radar" onclick="if(typeof gtag==='function')gtag('event','radar_activation_click',{variant:'full'})" style="background:#69ff87;color:#000e41;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
           <span class="material-symbols-outlined" style="font-size:18px;">rocket_launch</span>
           Activar Radar
         </a>
@@ -80,7 +80,7 @@ const {
       </p>
       <p style="font-size:12px;color:#64748b;">Monitorización semanal + recomendaciones personalizadas</p>
     </div>
-    <a href="/es/radar" style="background:#1A4B8C;color:white;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;">
+    <a href="/es/radar" onclick="if(typeof gtag==='function')gtag('event','radar_activation_click',{variant:'compact'})" style="background:#1A4B8C;color:white;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;">
       Activar Radar →
     </a>
   </div>
@@ -97,7 +97,7 @@ const {
           : '¿Quieres ver si tu score mejora semana a semana?'
       }
     </span>
-    <a href="/es/radar" style="background:#69ff87;color:#000e41;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
+    <a href="/es/radar" onclick="if(typeof gtag==='function')gtag('event','radar_activation_click',{variant:'inline'})" style="background:#69ff87;color:#000e41;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
       Activar Radar
     </a>
   </div>
