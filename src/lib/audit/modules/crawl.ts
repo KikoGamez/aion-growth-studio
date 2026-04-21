@@ -51,15 +51,25 @@ async function enrichFromGoogle(domain: string, result: CrawlResult): Promise<Cr
         result.description = organic.description.slice(0, 200);
       }
 
-      // Detect Instagram/LinkedIn from Google results
+      // Detect Instagram/LinkedIn from Google results — but ONLY from
+      // items whose URL contains the domain or whose title mentions
+      // the brand. Without this filter, unrelated SERP results inject
+      // wrong handles (e.g. @automatiziaenlinea for nxhumans.com).
+      const domainLower = domain.toLowerCase();
+      const brandLower = (cleanTitle || '').toLowerCase();
       for (const item of items) {
-        const itemUrl = item.url || '';
+        const itemUrl = (item.url || '').toLowerCase();
+        const itemTitle = (item.title || '').toLowerCase();
+        const belongsToBrand = itemUrl.includes(domainLower)
+          || (brandLower.length > 3 && (itemTitle.includes(brandLower) || itemUrl.includes(brandLower)));
+        if (!belongsToBrand) continue;
+
         if (!result.instagramHandle && itemUrl.includes('instagram.com/')) {
-          const m = itemUrl.match(/instagram\.com\/([A-Za-z0-9_.]{3,30})\/?/);
+          const m = item.url.match(/instagram\.com\/([A-Za-z0-9_.]{3,30})\/?/);
           if (m) { result.instagramHandle = m[1]; console.log(`[crawl] Google → IG: @${m[1]}`); }
         }
         if (!result.linkedinUrl && itemUrl.includes('linkedin.com/company/')) {
-          result.linkedinUrl = itemUrl.split('?')[0];
+          result.linkedinUrl = item.url.split('?')[0];
           console.log(`[crawl] Google → LI: ${result.linkedinUrl}`);
         }
       }
@@ -522,9 +532,12 @@ export async function runCrawl(url: string): Promise<CrawlResult> {
       ...(blogUrl && { blogUrl }),
     };
 
-    // If the site blocked our crawler, enrich from Google's index
-    if (BLOCKED_TITLE_RE.test(title) || (wordCount < 50 && !description)) {
-      console.log(`[crawl] Site appears blocked (title="${title.slice(0, 30)}", words=${wordCount}). Using Google fallback.`);
+    // If the site blocked our crawler, enrich from Google's index.
+    // Use the crawlerBlocked flag (set earlier by WAF/status detection), not
+    // just the title regex — Cloudflare often serves the REAL title tag inside
+    // the challenge page, so BLOCKED_TITLE_RE doesn't catch it.
+    if (crawlerBlocked || BLOCKED_TITLE_RE.test(title) || (wordCount < 50 && !description)) {
+      console.log(`[crawl] Site blocked or thin (blocked=${crawlerBlocked}, title="${title.slice(0, 30)}", words=${wordCount}). Using Google fallback.`);
       result = await enrichFromGoogle(domain, result);
     }
 
