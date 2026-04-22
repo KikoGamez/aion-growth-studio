@@ -35,6 +35,17 @@ const selectedGeoScope = existing?.geo_scope || inferredGeoScopeDb || '';
 const profileWasConfirmed = !!(existing as any)?.business_profile;
 const geoWasConfirmed = !!existing?.geo_scope;
 
+// Pre-fill competitors from audit data when onboarding hasn't saved any yet.
+// The audit stores competitors in pipeline_output.competitors (array of {name, url, snippet}).
+const auditCompetitors: Array<{ name: string; url: string }> =
+  ((auditResults?.competitors as any)?.competitors || [])
+    .slice(0, 3)
+    .map((c: any) => ({ name: c.name || '', url: c.url || '' }));
+const prefillCompetitors: Array<{ name?: string; url?: string }> =
+  (existing?.competitors as any[])?.length > 0
+    ? (existing.competitors as any[])
+    : auditCompetitors;
+
 const PROFILE_OPTIONS = [
   { value: 'freelance', label: 'Freelance / marca personal' },
   { value: 'professional-services', label: 'Servicios profesionales (agencia / despacho)' },
@@ -345,10 +356,12 @@ const PROFILE_OPTIONS = [
           <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;color:#1A4B8C;">swords</span>
           Competidores que te preocupan
         </label>
-        <p class="hint">Hemos detectado estos competidores automáticamente. Puedes cambiar cualquiera por otro que te preocupe más — verificaremos que el dominio es real.</p>
+        <p class="hint">{prefillCompetitors.length > 0 && !(existing?.competitors as any[])?.length
+          ? 'Hemos pre-rellenado los competidores de tu diagnóstico. Puedes cambiar cualquiera.'
+          : 'Hemos detectado estos competidores automáticamente. Puedes cambiar cualquiera por otro que te preocupe más — verificaremos que el dominio es real.'}</p>
         <div id="comp-list">
           {[0, 1, 2].map(i => {
-            const comp = (existing?.competitors || [])[i];
+            const comp = prefillCompetitors[i];
             return (
               <div class="comp-row" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
                 <input type="url" name={`comp_${i}`} placeholder={`https://competidor${i+1}.es`}
