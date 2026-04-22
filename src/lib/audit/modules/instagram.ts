@@ -18,12 +18,14 @@ const BAD_TITLE_RE = /^(access denied|just a moment|attention required|403|404|b
 function handleMatchesBrand(handle: string, domain: string, companyName?: string): boolean {
   const h = handle.toLowerCase().replace(/[._]/g, '');
   const d = domain.split('.')[0].replace(/-/g, '');
-  // Direct match: handle contains domain or domain contains handle
-  if (h.includes(d) || d.includes(h)) return true;
+  // Domain match — but only if domain is non-empty. When the crawler is
+  // blocked, finalUrl may be undefined → domain=''. h.includes('') is
+  // always true, which let ANY handle pass (e.g. @humansuncut for nxhumans).
+  if (d.length >= 3 && (h.includes(d) || d.includes(h))) return true;
   // Company name match
   if (companyName) {
     const cn = companyName.toLowerCase().replace(/[\s._-]/g, '');
-    if (h.includes(cn) || cn.includes(h)) return true;
+    if (cn.length >= 3 && (h.includes(cn) || cn.includes(h))) return true;
     // Word overlap: at least one significant word matches
     const words = companyName.toLowerCase().split(/\s+/).filter(w => w.length > 3);
     if (words.some(w => h.includes(w))) return true;
