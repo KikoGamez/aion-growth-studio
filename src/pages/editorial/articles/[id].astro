@@ -505,10 +505,23 @@ const isReady = article.status === 'ready_for_review' || article.status === 'app
     setInterval(poll, 2500);
   }
 
-  els.advanceBtn.addEventListener('click', () => {
+  els.advanceBtn.addEventListener('click', async () => {
     if (els.advanceBtn.dataset.endpoint === 'retry') {
-      // TODO: reset_stuck RPC then poll
-      window.location.reload();
+      els.advanceBtn.disabled = true;
+      els.advanceBtn.textContent = 'Reintentando...';
+      try {
+        const res = await fetch(`/api/editorial/articles/${articleId}/retry`, { method: 'POST' });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          alert(err.error || 'Error al reintentar');
+          els.advanceBtn.disabled = false;
+          els.advanceBtn.textContent = 'Reintentar';
+        }
+      } catch {
+        window.location.reload();
+      }
     } else if (els.advanceBtn.dataset.endpoint) {
       triggerNext(els.advanceBtn.dataset.endpoint);
       setTimeout(poll, 500);
