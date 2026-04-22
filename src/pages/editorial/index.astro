@@ -168,6 +168,31 @@ function statusLabel(s: string): { text: string; color: string; bg: string } {
       )}
     </section>
 
+    <!-- Style rules — "Educa al redactor" -->
+    <section style="background:white;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-top:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:800;color:#1a1a2e;">Reglas de estilo</h2>
+          <p style="font-size:12px;color:#64748b;margin-top:2px;">Educa al redactor: qué expresiones evitar, qué tono usar.</p>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <input type="text" id="rule-input" placeholder="Ej: Nunca uses 'en el vertiginoso mundo de'" style="flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;" />
+        <select id="rule-type" style="padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;background:white;">
+          <option value="vocabulary_avoid">Evitar expresión</option>
+          <option value="vocabulary_prefer">Preferir expresión</option>
+          <option value="tone">Tono / voz</option>
+          <option value="structure">Estructura</option>
+        </select>
+        <button id="rule-add" style="padding:10px 18px;background:#1A4B8C;color:white;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">+ Añadir</button>
+      </div>
+
+      <div id="rules-list" style="display:flex;flex-direction:column;gap:6px;">
+        <p style="font-size:13px;color:#94a3b8;text-align:center;padding:12px;">Cargando reglas...</p>
+      </div>
+    </section>
+
     <!-- Settings links -->
     <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:20px;">
       {[
@@ -186,4 +211,96 @@ function statusLabel(s: string): { text: string; color: string; bg: string } {
   )}
 
 </div>
+
+<script>
+  const ruleTypeMeta = {
+    vocabulary_avoid: { label: 'Evitar', bg: '#FCEBEB', fg: '#791F1F' },
+    vocabulary_prefer: { label: 'Preferir', bg: '#E1F5EE', fg: '#065F46' },
+    tone: { label: 'Tono', bg: '#dbeafe', fg: '#1A4B8C' },
+    structure: { label: 'Estructura', bg: '#FAEEDA', fg: '#633806' },
+    formula: { label: 'Fórmula', bg: '#f3e8ff', fg: '#7C3AED' },
+    length: { label: 'Longitud', bg: '#f1f5f9', fg: '#475569' },
+    formatting: { label: 'Formato', bg: '#f1f5f9', fg: '#475569' },
+    structural: { label: 'Estructura', bg: '#FAEEDA', fg: '#633806' },
+  };
+
+  function renderRules(rules) {
+    const list = document.getElementById('rules-list');
+    if (!list) return;
+    if (!rules.length) {
+      list.innerHTML = '<p style="font-size:13px;color:#94a3b8;text-align:center;padding:12px;">Sin reglas personalizadas. El redactor usará la voz de marca del setup.</p>';
+      return;
+    }
+    list.innerHTML = rules.map(r => {
+      const meta = ruleTypeMeta[r.rule_type] || { label: r.rule_type, bg: '#f1f5f9', fg: '#475569' };
+      const srcLabel = r.source === 'manual' ? '' : r.source === 'wizard_extracted' ? ' · del setup' : r.source === 'learned_from_article' ? ' · aprendida' : '';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f7f9ff;border-radius:8px;" data-rule-id="${r.id}">
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:${meta.bg};color:${meta.fg};flex-shrink:0;">${meta.label}</span>
+        <span style="font-size:13px;color:#1a1a2e;flex:1;">${r.content}</span>
+        <span style="font-size:10px;color:#94a3b8;flex-shrink:0;">P${r.priority}${srcLabel}</span>
+        <button class="rule-delete" data-id="${r.id}" style="width:28px;height:28px;border-radius:6px;border:none;background:#f5f5f7;color:#94a3b8;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="Eliminar">
+          <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+        </button>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.rule-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+        await fetch('/api/editorial/style-rules', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        loadRules();
+      });
+    });
+  }
+
+  async function loadRules() {
+    try {
+      const res = await fetch('/api/editorial/style-rules');
+      const data = await res.json();
+      renderRules(data.rules || []);
+    } catch {
+      const list = document.getElementById('rules-list');
+      if (list) list.innerHTML = '<p style="font-size:13px;color:#E24B4A;">Error cargando reglas</p>';
+    }
+  }
+
+  document.getElementById('rule-add')?.addEventListener('click', async () => {
+    const input = document.getElementById('rule-input');
+    const typeSelect = document.getElementById('rule-type');
+    const content = input.value.trim();
+    if (!content) { input.focus(); return; }
+
+    const btn = document.getElementById('rule-add');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    await fetch('/api/editorial/style-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rule_type: typeSelect.value,
+        content,
+        priority: typeSelect.value === 'vocabulary_avoid' ? 5 : 4,
+      }),
+    });
+
+    input.value = '';
+    btn.disabled = false;
+    btn.textContent = '+ Añadir';
+    loadRules();
+  });
+
+  document.getElementById('rule-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('rule-add')?.click();
+  });
+
+  // Load on page init
+  if (document.getElementById('rules-list')) loadRules();
+</script>
+
 </DashboardLayout>
